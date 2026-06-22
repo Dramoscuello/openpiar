@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors */
+  --color-surface-tint: #494bd6;
+  --color-primary: #4648d4;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #6063ee;
+  --color-on-primary-container: #fffbff;
+  --color-primary-fixed: #e1e0ff;
+  --color-on-primary-fixed: #07006c;
+  --color-on-primary-fixed-variant: #2f2ebe;
+  --color-primary-fixed-dim: #c0c1ff;
+  --color-inverse-primary: #c0c1ff;
+
+  --color-secondary: #695a64;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #efdae6;
+  --color-on-secondary-container: #6e5e68;
+  --color-secondary-fixed: #f1dde9;
+  --color-on-secondary-fixed: #231820;
+  --color-on-secondary-fixed-variant: #51434c;
+  --color-secondary-fixed-dim: #d5c1cd;
+
+  --color-tertiary: #466252;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #5e7b6a;
+  --color-on-tertiary-container: #f6fff6;
+  --color-tertiary-fixed: #caead6;
+  --color-on-tertiary-fixed: #042014;
+  --color-on-tertiary-fixed-variant: #314d3e;
+  --color-tertiary-fixed-dim: #afceba;
+
+  --color-background: #f9f9ff;
+  --color-on-background: #141b2b;
+
+  --color-surface: #f9f9ff;
+  --color-on-surface: #141b2b;
+  --color-surface-variant: #dce2f7;
+  --color-on-surface-variant: #464554;
+  --color-surface-dim: #d3daef;
+  --color-surface-bright: #f9f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f1f3ff;
+  --color-surface-container: #e9edff;
+  --color-surface-container-high: #e1e8fd;
+  --color-surface-container-highest: #dce2f7;
+  --color-inverse-surface: #293040;
+  --color-inverse-on-surface: #edf0ff;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --color-outline: #767586;
+  --color-outline-variant: #c7c4d7;
+
+  /* Custom Spacing */
+  --spacing-base: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-gutter: 20px;
+  --spacing-md: 24px;
+  --spacing-container-margin: 24px;
+  --spacing-lg: 32px;
+  --spacing-xl: 48px;
+
+  /* Border Radius */
+  --radius-lg: 20px;
+  --radius-xl: 0.75rem;
+  --radius-input: 12px;
+}
+
+:root {
+  --primary-color: #4648d4;
+  --bg-color: #F8F9FD;
+  --text-primary: #111827;
+  --text-muted: #4B5563;
+  --border-gray: #E5E7EB;
+  --soft-shadow: 0 20px 40px rgba(99, 102, 241, 0.05);
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: var(--soft-shadow);
+}
+
+.left-panel-gradient {
+  background: linear-gradient(135deg, #EEF2FF 0%, #F0FDFA 100%);
+}
+
+.star-icon {
+  color: var(--primary-color);
+  font-variation-settings: 'FILL' 1;
+}
+
+/* Custom fonts definitions */
+.font-headline-lg {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+}
+
+.font-headline-md {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+}
+
+.font-body-lg {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500;
+}
+
+.font-body-md {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 400;
+}
+
+.font-label-md {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+}
+
+.font-label-sm {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500;
+}
+
+.font-display {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+}
+
+/* Custom text utility sizes */
+.text-headline-lg {
+  font-size: 2.25rem;
+  line-height: 1.2;
+}
+
+.text-headline-md {
+  font-size: 1.75rem;
+  line-height: 1.25;
+}
+
+.text-body-lg {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+.text-body-md {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.text-label-md {
+  font-size: 0.875rem;
+}
+
+.text-label-sm {
+  font-size: 0.75rem;
+}
+
+/* Micro-interactions */
+.btn-hover-effect {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-hover-effect:hover {
+  transform: translateY(-2px);
+  filter: brightness(110%);
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+}
+
+.badge-pulse {
+  animation: soft-pulse 4s infinite ease-in-out;
+}
+
+@keyframes soft-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}

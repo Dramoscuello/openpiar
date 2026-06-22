@@ -1,0 +1,49 @@
+# OpenPiar Backend — .gitignore
+# ==========================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# --- Variables de entorno (NUNCA subir) ---
+.env
+.env.local
+.env.*.local
+*.env
+
+# --- Base de datos ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Alembic —  (las versiones SÍ se suben, pero no el cache) ---
+alembic/__pycache__/
+
+# --- PDFs de estudiantes / uploads ---
+uploads/
+media/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- macOS ---
+.DS_Store

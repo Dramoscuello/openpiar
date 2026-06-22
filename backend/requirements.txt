@@ -1,0 +1,43 @@
+# ==============================================================================
+# OpenPiar — Dependencias Python
+# Instalar con: pip install -r requirements.txt
+# ==============================================================================
+
+# --- Framework Web ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# --- Base de Datos ---
+sqlalchemy==2.0.36
+asyncpg==0.30.0          # Driver async para PostgreSQL
+alembic==1.14.0          # Migraciones de base de datos
+
+# --- Configuración ---
+pydantic==2.10.3
+pydantic-settings==2.6.1  # Leer .env con BaseSettings
+
+# --- Seguridad / Auth ---
+passlib[bcrypt]==1.7.4    # Hash de contraseñas
+bcrypt==4.2.1             # Backend bcrypt para passlib (Python 3.13 compatible)
+python-jose[cryptography]==3.3.0  # JWT tokens
+python-multipart==0.0.12  # Form data (login OAuth2)
+
+# --- IA — Gemini ---
+google-generativeai==0.8.3
+
+# --- Procesamiento de PDF (para ingesta de PEI y DBA/EBC) ---
+pdfplumber==0.11.4
+PyMuPDF==1.24.14
+
+# --- Utilidades ---
+python-dotenv==1.0.1      # Carga de .env en scripts locales
+httpx==0.28.0             # HTTP client (para tests y llamadas externas)
+aiofiles==24.1.0          # Manejo de archivos async
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.0             # AsyncClient para tests de FastAPI
+
+
+greenlet==3.2.4

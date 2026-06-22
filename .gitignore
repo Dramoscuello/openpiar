@@ -1,0 +1,76 @@
+# Archivos de entorno y configuración sensible
+.env
+.env.*
+*.env
+*.key
+*.pem
+
+# Directorio de agentes (configuraciones y habilidades de Antigravity)
+.agents/
+**/.agents/
+
+# Archivos PDF (mallas curriculares y formatos oficiales)
+*.pdf
+**/*.pdf
+
+# Imágenes y recursos multimedia
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp
+*.ico
+*.bmp
+*.tiff
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.svg
+**/*.webp
+
+# Archivos Markdown
+# Ignora todos los archivos .md en cualquier nivel del proyecto, a excepción del archivo readme.md principal
+*.md
+**/*.md
+!readme.md
+!README.md
+
+# Archivos del Sistema Operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Entornos virtuales y dependencias de Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Carpetas de dependencias y compilación de Frontend (Vue.js / Vite)
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+.nuxt/
+.output/
+
+# Archivos de empaquetado y bases de datos locales temporales
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+design/
