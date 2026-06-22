@@ -94,6 +94,21 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def validar_nueva_password(cls, v: str) -> str:
+        from app.domain.entities import validar_password_fortaleza
+        try:
+            validar_password_fortaleza(v)
+        except ValueError as exc:
+            raise ValueError(str(exc))
+        return v
+
+
 class TokenResponse(BaseResponse):
     access_token: str
     token_type: str = "bearer"

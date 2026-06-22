@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Brand colors */
   --color-surface-tint: #494bd6;
@@ -55,6 +57,7 @@
 
   --color-outline: #767586;
   --color-outline-variant: #c7c4d7;
+  --color-brand-periwinkle: #6366F1;
 
   /* Custom Spacing */
   --spacing-base: 4px;
@@ -194,4 +197,28 @@ body {
   50% {
     transform: scale(1.02);
   }
+}
+
+.dark {
+  --primary-color: #6366F1;
+  --bg-color: #0b0c16;
+  --text-primary: #f3f4f6;
+  --text-muted: #9ca3af;
+  --border-gray: #1f2937;
+  --soft-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  
+  --color-background: #0b0c16;
+  --color-on-background: #f3f4f6;
+  --color-surface-container-lowest: #111222;
+  --color-surface-container-low: #18192f;
+  --color-surface-container: #1e203c;
+  --color-surface-container-high: #242749;
+  --color-surface-container-highest: #2b2e56;
+  --color-on-surface: #f3f4f6;
+  --color-on-surface-variant: #9ca3af;
+  --color-outline: #8e91b1;
+  --color-outline-variant: #3a3f6d;
+  --color-brand-periwinkle: #6366F1;
+  --color-surface-dim: #1f213b;
+  --color-surface-bright: #18192f;
 }

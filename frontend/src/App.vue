@@ -7,6 +7,14 @@ import { useAuthStore } from './stores/auth'
 const authStore = useAuthStore()
 
 onMounted(async () => {
+  // Aplicar tema oscuro si está guardado en localStorage
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+
   // Inicializar estado de autenticación y setup al arrancar
   await authStore.initAuth()
 })

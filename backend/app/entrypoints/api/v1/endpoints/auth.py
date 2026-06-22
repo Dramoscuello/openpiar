@@ -11,7 +11,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.exceptions import CredencialesInvalidasError
 from app.entrypoints.api.dependencies import CurrentUser, get_usuario_repo
-from app.entrypoints.api.schemas import TokenResponse, UsuarioResponse
+from app.entrypoints.api.schemas import TokenResponse, UsuarioResponse, ChangePasswordRequest
 from app.use_cases.auth.login import LoginInput, LoginUseCase
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -64,3 +64,36 @@ async def get_me(current_user: CurrentUser) -> UsuarioResponse:
         rol=str(current_user.rol),
         created_at=current_user.created_at,
     )
+
+
+@router.post(
+    "/change-password",
+    summary="Cambiar contraseña",
+    description="Cambia la contraseña del usuario actualmente autenticado.",
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: CurrentUser,
+    repo=Depends(get_usuario_repo),
+) -> dict:
+    from app.use_cases.auth.change_password import ChangePasswordInput, ChangePasswordUseCase
+    use_case = ChangePasswordUseCase(repo)
+    try:
+        await use_case.execute(
+            ChangePasswordInput(
+                usuario_id=str(current_user.id),
+                current_password=body.current_password,
+                new_password=body.new_password,
+            )
+        )
+    except CredencialesInvalidasError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+    return {"message": "Contraseña actualizada exitosamente."}

@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Seguridad — JWT
     # ------------------------------------------------------------------
     SECRET_KEY: str = "dev-secret-key-change-in-production-please"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
     ALGORITHM: str = "HS256"
 
     # ------------------------------------------------------------------
