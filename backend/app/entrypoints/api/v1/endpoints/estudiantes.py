@@ -36,6 +36,10 @@ from app.entrypoints.api.schemas import (
     EntornoSaludResponse,
     EstudianteListResponse,
     EstudianteResponse,
+    TrayectoriaEducativaRequest,
+    TrayectoriaEducativaResponse,
+    MatriculaActualRequest,
+    MatriculaActualResponse,
 )
 from app.use_cases.estudiantes.crear_estudiante import (
     CrearEstudianteInput,
@@ -210,6 +214,75 @@ async def obtener_estudiante(
 
 
 # ---------------------------------------------------------------------------
+# PATCH /estudiantes/{id}
+# ---------------------------------------------------------------------------
+
+@router.patch(
+    "/{estudiante_id}",
+    response_model=EstudianteResponse,
+    summary="Actualizar datos generales del estudiante",
+)
+async def actualizar_estudiante(
+    estudiante_id: uuid.UUID,
+    body: CrearEstudianteRequest,
+    current_user: CurrentUser = None,
+    repo=Depends(get_estudiante_repo),
+) -> EstudianteResponse:
+    estudiante = await repo.find_by_id(estudiante_id)
+    if not estudiante:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Estudiante {estudiante_id} no encontrado.",
+        )
+
+    # Actualizar campos
+    estudiante.nombres = body.nombres.strip()
+    estudiante.apellidos = body.apellidos.strip()
+    estudiante.tipo_documento = body.tipo_documento
+    estudiante.numero_documento = body.numero_documento.strip()
+    estudiante.fecha_nacimiento = body.fecha_nacimiento
+    estudiante.edad = body.edad
+    estudiante.departamento_residencia = body.departamento_residencia
+    estudiante.municipio_residencia = body.municipio_residencia
+    estudiante.direccion = body.direccion
+    estudiante.barrio_vereda = body.barrio_vereda
+    estudiante.lugar_nacimiento = body.lugar_nacimiento
+    estudiante.telefono = body.telefono
+    estudiante.correo = str(body.correo) if body.correo else None
+    estudiante.en_centro_proteccion = body.en_centro_proteccion
+    estudiante.centro_proteccion_donde = body.centro_proteccion_donde
+    estudiante.grupo_etnico = body.grupo_etnico
+    estudiante.victima_conflicto = body.victima_conflicto
+    estudiante.registro_victima = body.registro_victima
+
+    # Persistir
+    await repo.save(estudiante)
+
+    return EstudianteResponse(
+        id=estudiante.id,
+        nombres=estudiante.nombres,
+        apellidos=estudiante.apellidos,
+        tipo_documento=estudiante.tipo_documento,
+        numero_documento=estudiante.numero_documento,
+        fecha_nacimiento=estudiante.fecha_nacimiento,
+        edad=estudiante.edad,
+        departamento_residencia=estudiante.departamento_residencia,
+        municipio_residencia=estudiante.municipio_residencia,
+        direccion=estudiante.direccion,
+        barrio_vereda=estudiante.barrio_vereda,
+        lugar_nacimiento=estudiante.lugar_nacimiento,
+        telefono=estudiante.telefono,
+        correo=estudiante.correo,
+        en_centro_proteccion=estudiante.en_centro_proteccion,
+        centro_proteccion_donde=estudiante.centro_proteccion_donde,
+        grupo_etnico=estudiante.grupo_etnico,
+        victima_conflicto=estudiante.victima_conflicto,
+        registro_victima=estudiante.registro_victima,
+        created_at=estudiante.created_at,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entorno Salud — GET / POST / PATCH
 # ---------------------------------------------------------------------------
 
@@ -355,3 +428,153 @@ async def actualizar_entorno_hogar(
     await db.flush()
     await db.refresh(hogar)
     return EntornoHogarResponse.model_validate(hogar)
+
+
+# ---------------------------------------------------------------------------
+# Trayectoria Educativa — GET / POST / PATCH
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{estudiante_id}/trayectoria",
+    response_model=TrayectoriaEducativaResponse,
+    summary="Obtener trayectoria educativa",
+)
+async def get_trayectoria_educativa(
+    estudiante_id: uuid.UUID,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> TrayectoriaEducativaResponse:
+    result = await db.execute(
+        select(TrayectoriaEducativaORM).where(TrayectoriaEducativaORM.estudiante_id == estudiante_id)
+    )
+    trayectoria = result.scalars().first()
+    if not trayectoria:
+        raise HTTPException(status_code=404, detail="Trayectoria educativa no encontrada.")
+    return TrayectoriaEducativaResponse.model_validate(trayectoria)
+
+
+@router.post(
+    "/{estudiante_id}/trayectoria",
+    response_model=TrayectoriaEducativaResponse,
+    status_code=201,
+    summary="Crear trayectoria educativa",
+)
+async def crear_trayectoria_educativa(
+    estudiante_id: uuid.UUID,
+    body: TrayectoriaEducativaRequest,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> TrayectoriaEducativaResponse:
+    estudiante = await db.get(EstudianteORM, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+
+    orm = TrayectoriaEducativaORM(
+        estudiante_id=estudiante_id,
+        **body.model_dump(),
+    )
+    db.add(orm)
+    await db.flush()
+    await db.refresh(orm)
+    return TrayectoriaEducativaResponse.model_validate(orm)
+
+
+@router.patch(
+    "/{estudiante_id}/trayectoria",
+    response_model=TrayectoriaEducativaResponse,
+    summary="Actualizar trayectoria educativa",
+)
+async def actualizar_trayectoria_educativa(
+    estudiante_id: uuid.UUID,
+    body: TrayectoriaEducativaRequest,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> TrayectoriaEducativaResponse:
+    result = await db.execute(
+        select(TrayectoriaEducativaORM).where(TrayectoriaEducativaORM.estudiante_id == estudiante_id)
+    )
+    trayectoria = result.scalars().first()
+    if not trayectoria:
+        raise HTTPException(status_code=404, detail="Trayectoria educativa no encontrada.")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(trayectoria, field, value)
+
+    await db.flush()
+    await db.refresh(trayectoria)
+    return TrayectoriaEducativaResponse.model_validate(trayectoria)
+
+
+# ---------------------------------------------------------------------------
+# Matrícula Actual — GET / POST / PATCH
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{estudiante_id}/matricula",
+    response_model=MatriculaActualResponse,
+    summary="Obtener matrícula actual",
+)
+async def get_matricula_actual(
+    estudiante_id: uuid.UUID,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> MatriculaActualResponse:
+    result = await db.execute(
+        select(MatriculaActualORM).where(MatriculaActualORM.estudiante_id == estudiante_id)
+    )
+    matricula = result.scalars().first()
+    if not matricula:
+        raise HTTPException(status_code=404, detail="Matrícula actual no encontrada.")
+    return MatriculaActualResponse.model_validate(matricula)
+
+
+@router.post(
+    "/{estudiante_id}/matricula",
+    response_model=MatriculaActualResponse,
+    status_code=201,
+    summary="Crear matrícula actual",
+)
+async def crear_matricula_actual(
+    estudiante_id: uuid.UUID,
+    body: MatriculaActualRequest,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> MatriculaActualResponse:
+    estudiante = await db.get(EstudianteORM, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+
+    orm = MatriculaActualORM(
+        estudiante_id=estudiante_id,
+        **body.model_dump(),
+    )
+    db.add(orm)
+    await db.flush()
+    await db.refresh(orm)
+    return MatriculaActualResponse.model_validate(orm)
+
+
+@router.patch(
+    "/{estudiante_id}/matricula",
+    response_model=MatriculaActualResponse,
+    summary="Actualizar matrícula actual",
+)
+async def actualizar_matricula_actual(
+    estudiante_id: uuid.UUID,
+    body: MatriculaActualRequest,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> MatriculaActualResponse:
+    result = await db.execute(
+        select(MatriculaActualORM).where(MatriculaActualORM.estudiante_id == estudiante_id)
+    )
+    matricula = result.scalars().first()
+    if not matricula:
+        raise HTTPException(status_code=404, detail="Matrícula actual no encontrada.")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(matricula, field, value)
+
+    await db.flush()
+    await db.refresh(matricula)
+    return MatriculaActualResponse.model_validate(matricula)

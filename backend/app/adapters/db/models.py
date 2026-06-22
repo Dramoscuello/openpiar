@@ -25,6 +25,8 @@ from sqlalchemy import (
     Integer,
     Text,
     UniqueConstraint,
+    Table,
+    Column,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -108,6 +110,15 @@ class UsuarioORM(Base):
     estudiantes: Mapped[list["EstudianteORM"]] = relationship(
         back_populates="creador", foreign_keys="EstudianteORM.creado_por"
     )
+    sedes: Mapped[list["SedeORM"]] = relationship(
+        "SedeORM", secondary="docente_sedes", back_populates="docentes"
+    )
+    grupos_dirigidos: Mapped[list["GrupoORM"]] = relationship(
+        "GrupoORM", back_populates="director"
+    )
+    carga_academica: Mapped[list["CargaAcademicaORM"]] = relationship(
+        "CargaAcademicaORM", back_populates="docente"
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -150,6 +161,9 @@ class EstudianteORM(Base):
     creado_por: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
     )
+    grupo_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("grupos.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=_now, onupdate=_now, server_default=func.now()
@@ -159,6 +173,7 @@ class EstudianteORM(Base):
     creador: Mapped[Optional["UsuarioORM"]] = relationship(
         back_populates="estudiantes", foreign_keys=[creado_por]
     )
+    grupo: Mapped[Optional["GrupoORM"]] = relationship()
     entorno_salud: Mapped[Optional["EntornoSaludORM"]] = relationship(
         back_populates="estudiante", cascade="all, delete-orphan"
     )
@@ -612,4 +627,79 @@ class EstandarEBCORM(Base):
 
     __table_args__ = (
         Index("estandares_ebc_busqueda_idx", "rango_grados", "area"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Nuevas Tablas de Control Institucional y Carga Académica (Sedes, Asignaturas, Grupos, Docentes)
+# ---------------------------------------------------------------------------
+
+docente_sedes = Table(
+    "docente_sedes",
+    Base.metadata,
+    Column("docente_id", UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True),
+    Column("sede_id", UUID(as_uuid=True), ForeignKey("sedes.id", ondelete="CASCADE"), primary_key=True)
+)
+
+
+class SedeORM(Base):
+    __tablename__ = "sedes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    direccion: Mapped[Optional[str]] = mapped_column(Text)
+    telefono: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(default=_now, onupdate=_now, server_default=func.now())
+
+    docentes: Mapped[list["UsuarioORM"]] = relationship(
+        "UsuarioORM", secondary=docente_sedes, back_populates="sedes"
+    )
+    grupos: Mapped[list["GrupoORM"]] = relationship(
+        "GrupoORM", back_populates="sede", cascade="all, delete-orphan"
+    )
+
+
+class AsignaturaORM(Base):
+    __tablename__ = "asignaturas"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    nombre: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+
+
+class GrupoORM(Base):
+    __tablename__ = "grupos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    grado: Mapped[str] = mapped_column(Text, nullable=False)
+    sede_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sedes.id", ondelete="CASCADE"), nullable=False)
+    director_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(default=_now, onupdate=_now, server_default=func.now())
+
+    sede: Mapped["SedeORM"] = relationship(back_populates="grupos")
+    director: Mapped[Optional["UsuarioORM"]] = relationship(back_populates="grupos_dirigidos")
+    carga: Mapped[list["CargaAcademicaORM"]] = relationship(back_populates="grupo", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("nombre", "grado", "sede_id", name="uq_grupo_sede"),
+    )
+
+
+class CargaAcademicaORM(Base):
+    __tablename__ = "carga_academica"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    docente_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
+    asignatura_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("asignaturas.id", ondelete="CASCADE"), nullable=False)
+    grupo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grupos.id", ondelete="CASCADE"), nullable=False)
+
+    docente: Mapped["UsuarioORM"] = relationship(back_populates="carga_academica")
+    asignatura: Mapped["AsignaturaORM"] = relationship()
+    grupo: Mapped["GrupoORM"] = relationship(back_populates="carga")
+
+    __table_args__ = (
+        UniqueConstraint("docente_id", "asignatura_id", "grupo_id", name="uq_carga_academica"),
     )

@@ -241,6 +241,45 @@ class EntornoHogarResponse(EntornoHogarRequest, BaseResponse):
 
 
 # ---------------------------------------------------------------------------
+# Trayectoria Educativa
+# ---------------------------------------------------------------------------
+
+class TrayectoriaEducativaRequest(BaseModel):
+    vinculado_educacion_inicial: bool = False
+    educacion_inicial_instituciones: Optional[str] = None
+    ultimo_grado_cursado: Optional[str] = None
+    aprobo_ultimo_grado: bool = True
+    observaciones_trayectoria: Optional[str] = None
+    recibe_informe_pedagogico: bool = False
+    institucion_procedencia_informe: Optional[str] = None
+    asiste_programas_complementarios: bool = False
+    programas_complementarios_cuales: Optional[str] = None
+
+
+class TrayectoriaEducativaResponse(TrayectoriaEducativaRequest, BaseResponse):
+    id: uuid.UUID
+    estudiante_id: uuid.UUID
+
+
+# ---------------------------------------------------------------------------
+# Matrícula Actual
+# ---------------------------------------------------------------------------
+
+class MatriculaActualRequest(BaseModel):
+    institucion_educativa: str
+    sede: str
+    grado_ingreso: str
+    jornada: Literal["mañana", "tarde", "unica", "nocturna"]
+    medio_transporte: Optional[str] = None
+    distancia_tiempo_hogar: Optional[str] = None
+
+
+class MatriculaActualResponse(MatriculaActualRequest, BaseResponse):
+    id: uuid.UUID
+    estudiante_id: uuid.UUID
+
+
+# ---------------------------------------------------------------------------
 # Curriculum — DBA y EBC
 # ---------------------------------------------------------------------------
 

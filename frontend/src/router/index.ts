@@ -26,6 +26,24 @@ const router = createRouter({
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/estudiantes',
+      name: 'students',
+      component: () => import('../views/StudentsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/estudiantes/formulario/:id?',
+      name: 'student-form',
+      component: () => import('../views/StudentFormView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/gestion-escolar',
+      name: 'school-management',
+      component: () => import('../views/SchoolManagementView.vue'),
+      meta: { requiresAuth: true },
+    },
     // Fallback redirect
     {
       path: '/:pathMatch(.*)*',

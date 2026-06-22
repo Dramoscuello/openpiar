@@ -1,0 +1,1156 @@
+<!-- Copyright (c) 2026 OpenPiar Contributors — GPL-3.0 -->
+<script setup lang="ts">
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useStudentsStore } from '../stores/students'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const route = useRoute()
+const studentsStore = useStudentsStore()
+const authStore = useAuthStore()
+
+// State
+const currentStep = ref(1)
+const isEditMode = ref(false)
+const validationError = ref<string | null>(null)
+
+// Load data on mount
+onMounted(async () => {
+  const studentId = route.params.id as string
+  if (studentId) {
+    isEditMode.value = true
+    await studentsStore.fetchStudentForEdit(studentId)
+  } else {
+    isEditMode.value = false
+    studentsStore.loadDraft()
+    // Default system values
+    if (!studentsStore.draft.matricula.institucion_educativa && authStore.nombreInstitucion) {
+      studentsStore.draft.matricula.institucion_educativa = authStore.nombreInstitucion
+    }
+  }
+})
+
+// Auto-save draft on changes (de-bounced via watcher)
+let debounceTimeout: any = null
+const saveDraft = () => {
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+  debounceTimeout = setTimeout(() => {
+    if (!isEditMode.value) {
+      studentsStore.saveDraft()
+    }
+  }, 1000)
+}
+
+// Watch draft to trigger saveDraft
+watch(() => studentsStore.draft, () => {
+  saveDraft()
+}, { deep: true })
+
+// Age auto-calculator from birthdate
+watch(() => studentsStore.draft.general.fecha_nacimiento, (newDate) => {
+  if (!newDate) return
+  try {
+    const today = new Date()
+    const birthDate = new Date(newDate)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const m = today.getMonth() - birthDate.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    if (age >= 0 && age <= 30) {
+      studentsStore.draft.general.edad = age
+    }
+  } catch (e) {
+    console.error('Error calculando edad:', e)
+  }
+})
+
+// Add/Remove therapies details dynamically
+const addTerapia = () => {
+  studentsStore.draft.salud.terapias_detalle.push({ tipo: '', frecuencia: '' })
+}
+
+const removeTerapia = (index: number) => {
+  studentsStore.draft.salud.terapias_detalle.splice(index, 1)
+}
+
+// Stepper Validation
+const validateStep = (step: number): boolean => {
+  validationError.value = null
+  const gen = studentsStore.draft.general
+
+  if (step === 1) {
+    if (!gen.nombres || !gen.apellidos) {
+      validationError.value = 'Completa los nombres y apellidos del estudiante.'
+      return false
+    }
+    if (!gen.tipo_documento || !gen.numero_documento) {
+      validationError.value = 'Completa el tipo y número de documento de identidad.'
+      return false
+    }
+    if (!gen.fecha_nacimiento || gen.edad < 0 || gen.edad > 30) {
+      validationError.value = 'Ingresa una fecha de nacimiento válida (edad máx: 30 años).'
+      return false
+    }
+    if (!gen.departamento_residencia || !gen.municipio_residencia) {
+      validationError.value = 'El departamento y el municipio son obligatorios.'
+      return false
+    }
+    if (!gen.direccion || !gen.barrio_vereda) {
+      validationError.value = 'Ingresa la dirección y barrio o vereda de residencia.'
+      return false
+    }
+  }
+
+  if (step === 2) {
+    const salud = studentsStore.draft.salud
+    if (salud.afiliacion_salud && (!salud.eps || !salud.regimen)) {
+      validationError.value = 'Si cuenta con afiliación de salud, completa la EPS y el régimen.'
+      return false
+    }
+    if (salud.tiene_diagnostico_medico && !salud.diagnostico_medico) {
+      validationError.value = 'Si tiene diagnóstico médico, ingresa los detalles del diagnóstico.'
+      return false
+    }
+    if (salud.asiste_terapias && salud.terapias_detalle.length === 0) {
+      validationError.value = 'Si asiste a terapias, añade al menos una terapia.'
+      return false
+    }
+    if (salud.asiste_terapias) {
+      for (const t of salud.terapias_detalle) {
+        if (!t.tipo || !t.frecuencia) {
+          validationError.value = 'Completa el tipo y frecuencia de todas las terapias añadidas.'
+          return false
+        }
+      }
+    }
+    if (salud.tratamiento_medico && !salud.tratamiento_medico_cual) {
+      validationError.value = 'Ingresa los detalles del tratamiento médico.'
+      return false
+    }
+    if (salud.consume_medicamentos && !salud.medicamentos_detalle) {
+      validationError.value = 'Ingresa los detalles del consumo de medicamentos (frecuencia/horarios).'
+      return false
+    }
+    if (salud.productos_apoyo_movilidad && !salud.productos_apoyo_cual) {
+      validationError.value = 'Detalla los productos de apoyo (silla de ruedas, audífonos, etc.).'
+      return false
+    }
+  }
+
+  if (step === 3) {
+    const hogar = studentsStore.draft.hogar
+    if (hogar.bajo_proteccion && !hogar.personas_vive_estudiante) {
+      validationError.value = 'Describe con quiénes vive el estudiante.'
+      return false
+    }
+    if (hogar.recibe_subsidio && !hogar.subsidio_cual) {
+      validationError.value = 'Especifica qué subsidio recibe la familia.'
+      return false
+    }
+  }
+
+  if (step === 4) {
+    const mat = studentsStore.draft.matricula
+    if (!mat.institucion_educativa || !mat.sede || !mat.grado_ingreso || !mat.jornada) {
+      validationError.value = 'Completa todos los campos obligatorios de la matrícula actual (IE, Sede, Grado y Jornada).'
+      return false
+    }
+  }
+
+  return true
+}
+
+// Navigation Actions
+const nextStep = () => {
+  if (validateStep(currentStep.value)) {
+    if (currentStep.value < 4) {
+      currentStep.value++
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+}
+
+const prevStep = () => {
+  if (currentStep.value > 1) {
+    currentStep.value--
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const goToStep = (step: number) => {
+  // Solo permitir saltar a pasos anteriores o al paso inmediatamente siguiente si el actual es válido
+  if (step < currentStep.value) {
+    currentStep.value = step
+  } else if (step === currentStep.value + 1 && validateStep(currentStep.value)) {
+    currentStep.value = step
+  }
+}
+
+const cancel = () => {
+  studentsStore.clearDraft()
+  router.push('/estudiantes')
+}
+
+const save = async () => {
+  if (!validateStep(4)) return
+
+  const studentId = route.params.id as string
+  const success = await studentsStore.saveStudent(studentId)
+
+  if (success) {
+    router.push('/estudiantes')
+  }
+}
+</script>
+
+<template>
+  <div class="flex bg-background text-on-background min-h-screen transition-colors duration-300">
+    <!-- SideNavBar -->
+    <aside
+      class="w-64 h-screen fixed left-0 top-0 flex flex-col bg-surface-container-lowest border-r border-outline-variant z-40 transition-colors duration-300"
+    >
+      <div class="px-gutter py-8">
+        <div class="flex items-center gap-3 mb-10">
+          <span class="material-symbols-outlined text-primary text-headline-md star-icon">star</span>
+          <h1 class="text-headline-md font-display font-bold text-primary">OpenPiar</h1>
+        </div>
+        
+        <nav class="space-y-1">
+          <p class="text-label-sm uppercase tracking-wider text-outline mb-4 px-4 select-none">VISTA GENERAL</p>
+          <RouterLink
+            to="/dashboard"
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
+          >
+            <span class="material-symbols-outlined">dashboard</span>
+            <span class="font-label-md">Dashboard</span>
+          </RouterLink>
+          <RouterLink
+            to="/estudiantes"
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
+          >
+            <span class="material-symbols-outlined">group</span>
+            <span class="font-label-md">Estudiantes</span>
+          </RouterLink>
+          <a
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            href="#"
+          >
+            <span class="material-symbols-outlined">description</span>
+            <span class="font-label-md">PIARs (Anexo 2)</span>
+          </a>
+          <a
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            href="#"
+          >
+            <span class="material-symbols-outlined">history_edu</span>
+            <span class="font-label-md">Actas (Anexo 3)</span>
+          </a>
+          <a
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            href="#"
+          >
+            <span class="material-symbols-outlined">school</span>
+            <span class="font-label-md">Currículo</span>
+          </a>
+          <RouterLink
+            v-if="authStore.user?.rol === 'directivo'"
+            to="/gestion-escolar"
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
+          >
+            <span class="material-symbols-outlined">domain</span>
+            <span class="font-label-md">Gestión Escolar</span>
+          </RouterLink>
+        </nav>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="mt-auto p-gutter">
+        <div class="bg-inverse-surface rounded-xxl p-md text-white relative overflow-hidden group">
+          <div class="absolute -right-4 -top-4 w-16 h-16 bg-primary/20 rounded-full transition-transform group-hover:scale-150"></div>
+          <div class="relative z-10">
+            <div class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center mb-3">
+              <span class="material-symbols-outlined text-on-primary-container">support_agent</span>
+            </div>
+            <h3 class="font-headline-md text-[16px] mb-1">Centro de Soporte</h3>
+            <p class="text-label-sm opacity-70 mb-4">¿Necesitas ayuda con los anexos?</p>
+            <button
+              class="w-full bg-white text-zinc-900 hover:bg-zinc-100 py-2.5 rounded-xl font-label-md transition-all active:scale-95 cursor-pointer"
+            >
+              Ayuda Offline
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 flex-1 min-h-screen flex flex-col">
+      <!-- Header -->
+      <header
+        class="h-20 w-full sticky top-0 z-30 bg-background/85 backdrop-blur-md flex justify-between items-center px-gutter border-b border-outline-variant/30 transition-colors duration-300"
+      >
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary text-[28px]">assignment_ind</span>
+          <h2 class="font-headline-md text-headline-md text-on-surface">
+            {{ isEditMode ? 'Editar' : 'Registrar' }} Registro Pedagógico — Anexo 1
+          </h2>
+        </div>
+        <div class="flex items-center gap-xs">
+          <button
+            @click="cancel"
+            class="px-lg py-3 border border-error/30 text-error hover:bg-error/5 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer transition-all active:scale-95"
+          >
+            <span class="material-symbols-outlined text-[18px]">close</span>
+            Cancelar
+          </button>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="p-gutter max-w-4xl mx-auto w-full space-y-gutter flex-grow">
+        <!-- Visual Stepper Progress Bar -->
+        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl p-md shadow-sm flex justify-between items-center select-none transition-colors duration-300">
+          <div
+            v-for="step in 4"
+            :key="step"
+            @click="goToStep(step)"
+            class="flex-1 flex flex-col items-center gap-xs cursor-pointer relative"
+            :class="{ 'pointer-events-none': step > currentStep + 1 }"
+          >
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-label-md transition-all duration-300"
+              :class="
+                step === currentStep
+                  ? 'bg-primary text-white scale-110 shadow-md shadow-primary/20'
+                  : step < currentStep
+                  ? 'bg-tertiary text-on-tertiary'
+                  : 'bg-surface-container-high text-outline'
+              "
+            >
+              <span v-if="step < currentStep" class="material-symbols-outlined text-[18px]">check</span>
+              <span v-else>{{ step }}</span>
+            </div>
+            <span
+              class="text-label-sm font-bold transition-colors"
+              :class="step === currentStep ? 'text-primary' : 'text-outline'"
+            >
+              {{ step === 1 ? 'General' : step === 2 ? 'Salud' : step === 3 ? 'Hogar' : 'Trayectoria' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Validation Alert -->
+        <div v-if="validationError" class="p-sm bg-error-container text-on-error-container rounded-xl text-body-md border border-error/20 flex gap-xs items-start">
+          <span class="material-symbols-outlined text-error">error</span>
+          <span>{{ validationError }}</span>
+        </div>
+
+        <!-- Form Cards by Step -->
+        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl p-md md:p-xl shadow-sm space-y-md transition-colors duration-300">
+          
+          <!-- STEP 1: INFORMACIÓN GENERAL -->
+          <div v-if="currentStep === 1" class="space-y-md">
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">1. Información General del Estudiante</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Nombres *</label>
+                <input
+                  v-model="studentsStore.draft.general.nombres"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  type="text"
+                  placeholder="Nombres completos"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Apellidos *</label>
+                <input
+                  v-model="studentsStore.draft.general.apellidos"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  type="text"
+                  placeholder="Apellidos completos"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Tipo Documento *</label>
+                <select
+                  v-model="studentsStore.draft.general.tipo_documento"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                >
+                  <option value="RC">Registro Civil (RC)</option>
+                  <option value="TI">Tarjeta de Identidad (TI)</option>
+                  <option value="CC">Cédula de Ciudadanía (CC)</option>
+                  <option value="NES">Número Establecido por Secretaría (NES)</option>
+                  <option value="PEP">Permiso Especial de Permanencia (PEP)</option>
+                </select>
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Número Documento *</label>
+                <input
+                  v-model="studentsStore.draft.general.numero_documento"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  type="text"
+                  placeholder="Número de identidad"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Fecha de Nacimiento *</label>
+                <input
+                  v-model="studentsStore.draft.general.fecha_nacimiento"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="date"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Edad Calculada</label>
+                <input
+                  v-model.number="studentsStore.draft.general.edad"
+                  readonly
+                  class="w-full px-4 py-3 bg-surface-container border border-outline-variant/50 rounded-input font-body-md text-outline cursor-not-allowed dark:text-white"
+                  type="number"
+                />
+              </div>
+              <div class="space-y-xs md:col-span-3">
+                <label class="font-label-md text-label-md text-on-surface-variant">Lugar de Nacimiento</label>
+                <input
+                  v-model="studentsStore.draft.general.lugar_nacimiento"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Municipio, Departamento / País"
+                />
+              </div>
+            </div>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">DIRECCIÓN Y CONTACTO</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Departamento de Residencia *</label>
+                <input
+                  v-model="studentsStore.draft.general.departamento_residencia"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Municipio de Residencia *</label>
+                <input
+                  v-model="studentsStore.draft.general.municipio_residencia"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Dirección Física *</label>
+                <input
+                  v-model="studentsStore.draft.general.direccion"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Calle / Carrera / Avenida..."
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Barrio / Vereda *</label>
+                <input
+                  v-model="studentsStore.draft.general.barrio_vereda"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono de Contacto</label>
+                <input
+                  v-model="studentsStore.draft.general.telefono"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="tel"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Correo Electrónico</label>
+                <input
+                  v-model="studentsStore.draft.general.correo"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="email"
+                />
+              </div>
+            </div>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">CONDICIONES PARTICULARES</h4>
+            <div class="space-y-sm bg-surface-container-low p-md rounded-xl border border-outline-variant/20">
+              <div class="flex items-center gap-xs">
+                <input
+                  id="conflicto"
+                  v-model="studentsStore.draft.general.victima_conflicto"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="conflicto" class="font-label-md text-label-md text-on-surface select-none">¿Es víctima del conflicto armado?</label>
+              </div>
+
+              <div v-if="studentsStore.draft.general.victima_conflicto" class="flex items-center gap-xs pl-6">
+                <input
+                  id="registro-victima"
+                  v-model="studentsStore.draft.general.registro_victima"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="registro-victima" class="font-label-md text-label-md text-on-surface select-none">¿Cuenta con Registro Único de Víctimas (RUV)?</label>
+              </div>
+
+              <div class="flex items-center gap-xs">
+                <input
+                  id="proteccion"
+                  v-model="studentsStore.draft.general.en_centro_proteccion"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="proteccion" class="font-label-md text-label-md text-on-surface select-none">¿Está bajo un centro de protección (ICBF/Fundación)?</label>
+              </div>
+
+              <div v-if="studentsStore.draft.general.en_centro_proteccion" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">¿En dónde?</label>
+                <input
+                  v-model="studentsStore.draft.general.centro_proteccion_donde"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Nombre de la institución"
+                />
+              </div>
+
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Pertenencia a Grupo Étnico</label>
+                <input
+                  v-model="studentsStore.draft.general.grupo_etnico"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Ej: Indígena (especificar resguardo), Afrocolombiano, Raizal, Rom o NULL"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2: ENTORNO SALUD -->
+          <div v-if="currentStep === 2" class="space-y-md">
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">2. Entorno Salud</h3>
+
+            <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="flex items-center gap-xs">
+                <input
+                  id="afiliacion-salud"
+                  v-model="studentsStore.draft.salud.afiliacion_salud"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="afiliacion-salud" class="font-label-md text-label-md text-on-surface select-none">¿Está afiliado al sistema de salud (SGSSS)?</label>
+              </div>
+
+              <div v-if="studentsStore.draft.salud.afiliacion_salud" class="grid grid-cols-1 md:grid-cols-2 gap-md pl-6">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">EPS *</label>
+                  <input
+                    v-model="studentsStore.draft.salud.eps"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                  />
+                </div>
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Régimen *</label>
+                  <select
+                    v-model="studentsStore.draft.salud.regimen"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  >
+                    <option value="">Selecciona régimen...</option>
+                    <option value="contributivo">Contributivo</option>
+                    <option value="subsidiado">Subsidiado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Lugar de Emergencias</label>
+                <input
+                  v-model="studentsStore.draft.salud.lugar_emergencias"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="IPS o clínica de atención prioritaria"
+                />
+              </div>
+            </div>
+
+            <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="flex items-center gap-xs">
+                <input
+                  id="atendido-salud"
+                  v-model="studentsStore.draft.salud.atendido_sector_salud"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="atendido-salud" class="font-label-md text-label-md text-on-surface select-none">¿Es atendido periódicamente por salud especial?</label>
+              </div>
+
+              <div v-if="studentsStore.draft.salud.atendido_sector_salud" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">Frecuencia de Atención</label>
+                <input
+                  v-model="studentsStore.draft.salud.frecuencia_atencion_salud"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Ej: Mensual, Trimestral"
+                />
+              </div>
+            </div>
+
+            <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="flex items-center gap-xs">
+                <input
+                  id="tiene-diagnostico"
+                  v-model="studentsStore.draft.salud.tiene_diagnostico_medico"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="tiene-diagnostico" class="font-label-md text-label-md text-on-surface select-none">¿Tiene un diagnóstico médico acreditado? *</label>
+              </div>
+
+              <div v-if="studentsStore.draft.salud.tiene_diagnostico_medico" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">Diagnóstico Médico (e.g. Autismo, TDAH, Discapacidad Auditiva) *</label>
+                <textarea
+                  v-model="studentsStore.draft.salud.diagnostico_medico"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  rows="2"
+                  placeholder="Escribe el diagnóstico tal cual figura en la historia clínica"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="flex items-center gap-xs">
+                <input
+                  id="asiste-terapias"
+                  v-model="studentsStore.draft.salud.asiste_terapias"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="asiste-terapias" class="font-label-md text-label-md text-on-surface select-none">¿Asiste a terapias extracurriculares? *</label>
+              </div>
+
+              <div v-if="studentsStore.draft.salud.asiste_terapias" class="space-y-sm pl-6">
+                <div class="flex justify-between items-center">
+                  <h4 class="font-bold text-label-sm text-outline">Listado de Terapias</h4>
+                  <button
+                    type="button"
+                    @click="addTerapia"
+                    class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-label-sm font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">add</span>
+                    Añadir Terapia
+                  </button>
+                </div>
+
+                <div v-for="(terapia, idx) in studentsStore.draft.salud.terapias_detalle" :key="idx" class="flex items-center gap-sm bg-surface p-sm border border-outline-variant/30 rounded-input">
+                  <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-sm">
+                    <input
+                      v-model="terapia.tipo"
+                      class="px-3 py-2 bg-surface-container border border-outline-variant rounded-input font-body-md text-label-sm focus:border-primary focus:outline-none dark:text-white"
+                      placeholder="Tipo (Física, Ocupacional, etc.)"
+                    />
+                    <input
+                      v-model="terapia.frecuencia"
+                      class="px-3 py-2 bg-surface-container border border-outline-variant rounded-input font-body-md text-label-sm focus:border-primary focus:outline-none dark:text-white"
+                      placeholder="Frecuencia (Semanal, Quincenal)"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    @click="removeTerapia(idx)"
+                    class="text-error hover:bg-error/10 p-1.5 rounded-full cursor-pointer transition-all"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="flex items-center gap-xs">
+                <input
+                  id="tratamiento-medico"
+                  v-model="studentsStore.draft.salud.tratamiento_medico"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="tratamiento-medico" class="font-label-md text-label-md text-on-surface select-none">¿Recibe algún otro tratamiento médico particular? *</label>
+              </div>
+
+              <div v-if="studentsStore.draft.salud.tratamiento_medico" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">¿Cuál? *</label>
+                <input
+                  v-model="studentsStore.draft.salud.tratamiento_medico_cual"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+
+              <div class="flex items-center gap-xs">
+                <input
+                  id="medicamentos"
+                  v-model="studentsStore.draft.salud.consume_medicamentos"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="medicamentos" class="font-label-md text-label-md text-on-surface select-none">¿Consume medicamentos de control en horario escolar? *</label>
+              </div>
+
+              <div v-if="studentsStore.draft.salud.consume_medicamentos" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">Medicamentos (Nombre, dosis, horario escolar) *</label>
+                <textarea
+                  v-model="studentsStore.draft.salud.medicamentos_detalle"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  rows="2"
+                  placeholder="Dosis e instrucciones para el docente"
+                ></textarea>
+              </div>
+
+              <div class="flex items-center gap-xs">
+                <input
+                  id="productos-apoyo"
+                  v-model="studentsStore.draft.salud.productos_apoyo_movilidad"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="productos-apoyo" class="font-label-md text-label-md text-on-surface select-none">¿Requiere productos de apoyo para la movilidad/comunicación? *</label>
+              </div>
+
+              <div v-if="studentsStore.draft.salud.productos_apoyo_movilidad" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">¿Cuáles? (ej: Silla de ruedas, bastón, audífonos, pictogramas) *</label>
+                <input
+                  v-model="studentsStore.draft.salud.productos_apoyo_cual"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3: ENTORNO HOGAR -->
+          <div v-if="currentStep === 3" class="space-y-md">
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">3. Entorno Hogar y Conformación Familiar</h3>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide">INFORMACIÓN DE LOS PADRES</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Nombre de la Madre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.nombre_madre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Ocupación Madre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.ocupacion_madre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Nivel Educativo Madre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.nivel_educativo_madre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Primaria, Bachillerato, Tec..."
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Nombre del Padre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.nombre_padre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Ocupación Padre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.ocupacion_padre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Nivel Educativo Padre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.nivel_educativo_padre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">CUIDADOR ENCARGADO (SI DIFIERE DE LOS PADRES)</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Nombre del Cuidador</label>
+                <input
+                  v-model="studentsStore.draft.hogar.nombre_cuidador"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-sm">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Parentesco</label>
+                  <input
+                    v-model="studentsStore.draft.hogar.parentesco_cuidador"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                    placeholder="Ej: Abuelo, Tío"
+                  />
+                </div>
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Nivel Educativo</label>
+                  <input
+                    v-model="studentsStore.draft.hogar.nivel_educativo_cuidador"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono Cuidador</label>
+                <input
+                  v-model="studentsStore.draft.hogar.telefono_cuidador"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="tel"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Correo Cuidador</label>
+                <input
+                  v-model="studentsStore.draft.hogar.correo_cuidador"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="email"
+                />
+              </div>
+            </div>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">ENTORNO SOCIAL Y CONVIVENCIA</h4>
+            <div class="space-y-md bg-surface-container-low p-md rounded-xl border border-outline-variant/20">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Número de Hermanos</label>
+                  <input
+                    v-model.number="studentsStore.draft.hogar.numero_hermanos"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="number"
+                    min="0"
+                  />
+                </div>
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Lugar que Ocupa entre hermanos</label>
+                  <input
+                    v-model.number="studentsStore.draft.hogar.lugar_que_ocupa"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="number"
+                    min="1"
+                    placeholder="Ej: 1 (Mayor)"
+                  />
+                </div>
+              </div>
+
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant font-bold">Personas con las que vive el estudiante *</label>
+                <textarea
+                  v-model="studentsStore.draft.hogar.personas_vive_estudiante"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  rows="2"
+                  placeholder="Detalla si vive con mamá, hermanos, abuelos, etc."
+                ></textarea>
+              </div>
+
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">¿Quiénes apoyan la crianza?</label>
+                <input
+                  v-model="studentsStore.draft.hogar.apoyo_crianza"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Mamá y Abuela, etc."
+                />
+              </div>
+
+              <div class="flex items-center gap-xs">
+                <input
+                  id="proteccion-hogar"
+                  v-model="studentsStore.draft.hogar.bajo_proteccion"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="proteccion-hogar" class="font-label-md text-label-md text-on-surface select-none">¿La familia se encuentra bajo medidas especiales de protección?</label>
+              </div>
+
+              <div class="flex items-center gap-xs">
+                <input
+                  id="recibe-subsidio"
+                  v-model="studentsStore.draft.hogar.recibe_subsidio"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="recibe-subsidio" class="font-label-md text-label-md text-on-surface select-none">¿La familia recibe subsidios o ayudas del gobierno? *</label>
+              </div>
+
+              <div v-if="studentsStore.draft.hogar.recibe_subsidio" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">¿Cuál subsidio? (ej: Familias en Acción, Ingreso Solidario) *</label>
+                <input
+                  v-model="studentsStore.draft.hogar.subsidio_cual"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 4: TRAYECTORIA Y MATRÍCULA -->
+          <div v-if="currentStep === 4" class="space-y-md">
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">4. Trayectoria Educativa e Institución Actual</h3>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide">TRAYECTORIA EDUCATIVA PREVIA</h4>
+            <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="flex items-center gap-xs">
+                <input
+                  id="inicial"
+                  v-model="studentsStore.draft.trayectoria.vinculado_educacion_inicial"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="inicial" class="font-label-md text-label-md text-on-surface select-none">¿Estuvo vinculado en educación inicial previa (jardín, CDI)?</label>
+              </div>
+
+              <div v-if="studentsStore.draft.trayectoria.vinculado_educacion_inicial" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">Instituciones / Modalidades previas</label>
+                <input
+                  v-model="studentsStore.draft.trayectoria.educacion_inicial_instituciones"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                  placeholder="Nombre de CDI o Jardín"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Último grado cursado</label>
+                  <input
+                    v-model="studentsStore.draft.trayectoria.ultimo_grado_cursado"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                    placeholder="Ej: Transición, Primero"
+                  />
+                </div>
+                <div class="flex items-center gap-xs pt-8">
+                  <input
+                    id="aprobo"
+                    v-model="studentsStore.draft.trayectoria.aprobo_ultimo_grado"
+                    type="checkbox"
+                    class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                  />
+                  <label for="aprobo" class="font-label-md text-label-md text-on-surface select-none">¿Aprobó el último grado cursado?</label>
+                </div>
+              </div>
+
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Observaciones de la trayectoria (deserción, cambios de escuela, motivos)</label>
+                <textarea
+                  v-model="studentsStore.draft.trayectoria.observaciones_trayectoria"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  rows="2"
+                ></textarea>
+              </div>
+
+              <div class="flex items-center gap-xs">
+                <input
+                  id="informe-ped"
+                  v-model="studentsStore.draft.trayectoria.recibe_informe_pedagogico"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="informe-ped" class="font-label-md text-label-md text-on-surface select-none">¿Se recibe informe pedagógico o PIAR previo de la otra institución?</label>
+              </div>
+
+              <div v-if="studentsStore.draft.trayectoria.recibe_informe_pedagogico" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">Institución de procedencia del informe</label>
+                <input
+                  v-model="studentsStore.draft.trayectoria.institucion_procedencia_informe"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+
+              <div class="flex items-center gap-xs">
+                <input
+                  id="complementarios"
+                  v-model="studentsStore.draft.trayectoria.asiste_programas_complementarios"
+                  type="checkbox"
+                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+                />
+                <label for="complementarios" class="font-label-md text-label-md text-on-surface select-none">¿Asiste a programas complementarios (música, deportes, pintura)?</label>
+              </div>
+
+              <div v-if="studentsStore.draft.trayectoria.asiste_programas_complementarios" class="space-y-xs pl-6">
+                <label class="font-label-md text-label-md text-on-surface-variant">¿Cuáles programas?</label>
+                <input
+                  v-model="studentsStore.draft.trayectoria.programas_complementarios_cuales"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">MATRÍCULA INSTITUCIONAL ACTUAL *</h4>
+            <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Institución Educativa *</label>
+                  <input
+                    v-model="studentsStore.draft.matricula.institucion_educativa"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                  />
+                </div>
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Sede Escolar *</label>
+                  <input
+                    v-model="studentsStore.draft.matricula.sede"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                    placeholder="Ej: Sede Principal, Sede B"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Grado al que ingresa *</label>
+                  <input
+                    v-model="studentsStore.draft.matricula.grado_ingreso"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                    placeholder="Ej: Primero, Cuarto"
+                  />
+                </div>
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Jornada Escolar *</label>
+                  <select
+                    v-model="studentsStore.draft.matricula.jornada"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  >
+                    <option value="">Selecciona jornada...</option>
+                    <option value="mañana">Mañana</option>
+                    <option value="tarde">Tarde</option>
+                    <option value="unica">Única</option>
+                    <option value="nocturna">Nocturna</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Medio de transporte al colegio</label>
+                  <input
+                    v-model="studentsStore.draft.matricula.medio_transporte"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                    placeholder="Ej: Caminando, Ruta, Moto"
+                  />
+                </div>
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Distancia / Tiempo desde el hogar</label>
+                  <input
+                    v-model="studentsStore.draft.matricula.distancia_tiempo_hogar"
+                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    type="text"
+                    placeholder="Ej: 15 minutos, 2 km"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Navigation Controls -->
+          <div class="pt-md border-t border-outline-variant/30 flex justify-between gap-sm">
+            <button
+              v-if="currentStep > 1"
+              @click="prevStep"
+              class="px-lg py-3 bg-surface border border-outline-variant hover:bg-surface-container-low rounded-input font-label-md text-label-md flex items-center gap-xs cursor-pointer transition-all active:scale-95"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+              Anterior
+            </button>
+            <div v-else></div>
+
+            <div class="flex items-center gap-sm">
+              <button
+                v-if="currentStep < 4"
+                @click="nextStep"
+                class="px-lg py-3 bg-primary hover:bg-primary-container text-white font-label-md text-label-md rounded-input shadow-md flex items-center gap-xs cursor-pointer transition-all active:scale-95"
+                type="button"
+              >
+                Siguiente
+                <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+              </button>
+              <button
+                v-else
+                @click="save"
+                :disabled="studentsStore.submitting"
+                class="px-lg py-3 bg-green-700 hover:bg-green-800 text-white font-label-md text-label-md rounded-input shadow-md flex items-center justify-center gap-xs cursor-pointer disabled:opacity-75 disabled:pointer-events-none transition-all"
+                type="button"
+              >
+                <template v-if="studentsStore.submitting">
+                  <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                  Guardando Expediente...
+                </template>
+                <template v-else>
+                  Guardar Registro
+                  <span class="material-symbols-outlined text-[20px]">cloud_upload</span>
+                </template>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<style scoped>
+.star-icon {
+  font-variation-settings: 'FILL' 1;
+}
+input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+</style>

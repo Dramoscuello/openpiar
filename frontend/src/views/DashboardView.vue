@@ -128,20 +128,22 @@ const closeModal = () => {
         
         <nav class="space-y-1">
           <p class="text-label-sm uppercase tracking-wider text-outline mb-4 px-4 select-none">VISTA GENERAL</p>
-          <a
-            class="flex items-center gap-3 px-4 py-3 text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
-            href="#"
+          <RouterLink
+            to="/dashboard"
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
           >
             <span class="material-symbols-outlined">dashboard</span>
             <span class="font-label-md">Dashboard</span>
-          </a>
-          <a
+          </RouterLink>
+          <RouterLink
+            to="/estudiantes"
             class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            href="#"
+            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
           >
             <span class="material-symbols-outlined">group</span>
             <span class="font-label-md">Estudiantes</span>
-          </a>
+          </RouterLink>
           <a
             class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
             href="#"
@@ -163,6 +165,15 @@ const closeModal = () => {
             <span class="material-symbols-outlined">school</span>
             <span class="font-label-md">Currículo</span>
           </a>
+          <RouterLink
+            v-if="authStore.user?.rol === 'directivo'"
+            to="/gestion-escolar"
+            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
+            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
+          >
+            <span class="material-symbols-outlined">domain</span>
+            <span class="font-label-md">Gestión Escolar</span>
+          </RouterLink>
         </nav>
       </div>
 
@@ -195,7 +206,7 @@ const closeModal = () => {
         class="h-20 w-full sticky top-0 z-30 bg-background/85 backdrop-blur-md flex justify-between items-center px-gutter border-b border-outline-variant/30 transition-colors duration-300"
       >
         <!-- Search bar -->
-        <div class="flex-1 max-w-xl">
+        <div class="flex-1 max-w-[576px]">
           <div class="relative flex items-center">
             <span class="material-symbols-outlined absolute left-4 text-outline">search</span>
             <input
@@ -297,7 +308,7 @@ const closeModal = () => {
           <div
             class="lg:col-span-8 bg-brand-periwinkle rounded-xxl p-8 md:p-10 text-white relative overflow-hidden flex items-center shadow-lg shadow-brand-periwinkle/10 min-h-[260px]"
           >
-            <div class="relative z-10 max-w-lg">
+            <div class="relative z-10 max-w-[512px]">
               <h2 class="font-headline-lg text-white text-headline-lg mb-4">
                 Hola, {{ authStore.user?.nombre || 'Docente' }}.
               </h2>

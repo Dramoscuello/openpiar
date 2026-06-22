@@ -39,6 +39,11 @@ from app.adapters.db.models import (  # noqa: F401 — importar para registrar m
     RecomendacionPMIORM,
     TrayectoriaEducativaORM,
     UsuarioORM,
+    SedeORM,
+    AsignaturaORM,
+    GrupoORM,
+    CargaAcademicaORM,
+    docente_sedes
 )
 from app.adapters.db.session import Base
 
