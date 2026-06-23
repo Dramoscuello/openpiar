@@ -315,7 +315,7 @@
                   @click="generarConIA"
                   :disabled="isGeneratingIA || !ajusteForm.area"
                   class="px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-lg flex items-center gap-1.5 hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all cursor-pointer shadow-md hover:shadow-violet-400/30 mr-auto"
-                  title="Generar objetivos, barreras y ajustes automáticamente con Gemini IA"
+                  title="Generar sugerencias de ajustes razonables con Gemini IA basados en las barreras redactadas"
                 >
                   <span class="material-symbols-outlined text-[20px]" :class="{ 'animate-spin': isGeneratingIA }">
                     {{ isGeneratingIA ? 'progress_activity' : 'auto_awesome' }}
@@ -881,6 +881,10 @@ async function generarConIA() {
     showToast('Selecciona un área o asignatura antes de generar con IA.', true)
     return
   }
+  if (!ajusteForm.value.barreras || !ajusteForm.value.barreras.trim()) {
+    showToast('Por favor, escribe las barreras identificadas en el contexto antes de generar los ajustes con IA.', true)
+    return
+  }
 
   isGeneratingIA.value = true
   try {
@@ -911,11 +915,13 @@ async function generarConIA() {
       area: ajusteForm.value.area,
       estudiante_nombre: `${estudiante.value?.nombres || ''} ${estudiante.value?.apellidos || ''}`.trim(),
       grado: estudiante.value?.grado || null,
+      edad: estudiante.value?.edad || null,
       diagnostico_medico: diagnostico,
       gustos_intereses: activePiar.value.caracteristicas?.descripcion_gustos_intereses || null,
       habilidades_fortalezas: activePiar.value.caracteristicas?.descripcion_habilidades || null,
       dba_referencia: dbaTexto,
       ebc_referencia: ebcTexto,
+      barreras_evidenciadas: ajusteForm.value.barreras,
       instrucciones_docente: null
     }
 
@@ -937,11 +943,10 @@ async function generarConIA() {
     }
 
     const data = await res.json()
-    // Solo llenar barreras y ajustes — los objetivos los define el docente
-    ajusteForm.value.barreras = data.barreras_evidenciadas
+    // Solo llenar ajustes sugeridos — las barreras y objetivos son definidos por el docente
     ajusteForm.value.ajustes = data.ajustes_estrategias
 
-    showToast('✨ Barreras y ajustes generados por IA. Revisa y edita antes de guardar.')
+    showToast('✨ Ajustes razonables y estrategias DUA sugeridos por IA. Revisa y edita antes de guardar.')
   } catch (e: any) {
     showToast(e.message || 'Error al generar el plan con IA. Verifica la configuración de Gemini.', true)
   } finally {

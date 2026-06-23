@@ -209,8 +209,8 @@ async def generar_plan_completo_ia(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Genera barreras y ajustes razonables DUA usando Gemini (nuevo SDK google-genai).
-    Los objetivos/propósitos los define el docente — la IA no los toca.
+    Genera ajustes razonables DUA usando Gemini (nuevo SDK google-genai).
+    Los objetivos y las barreras los define el docente; la IA se enfoca en sugerir los ajustes razonables.
     Usa JSON structured output para garantizar texto limpio sin markdown.
     """
     try:
@@ -221,6 +221,8 @@ async def generar_plan_completo_ia(
 
         # --- Construir bloque de perfil del estudiante ---
         perfil_parts = [f"Nombre: {data.estudiante_nombre}"]
+        if data.edad is not None:
+            perfil_parts.append(f"Edad: {data.edad} años")
         if data.grado:
             perfil_parts.append(f"Grado escolar: {data.grado}")
         if data.diagnostico_medico:
@@ -250,53 +252,54 @@ async def generar_plan_completo_ia(
         )
 
         # --- Prompt optimizado con chain-of-thought y contexto de dominio ---
-        # Basado en: Decreto 1421/2017, DUA, y catálogo de ajustes razonables (7 tipos de apoyo)
-        prompt = f"""Eres un especialista en Educación Inclusiva colombiana con profundo conocimiento del Decreto 1421 de 2017 y el Diseño Universal para el Aprendizaje (DUA). Tu función es asistir a docentes en la elaboración del PIAR (Plan Individual de Ajustes Razonables).
+        # Basado en: Decreto 1421/2017, Decreto 1860/1994, Ley 2216/2022 y DUA
+        prompt = f"""Eres un especialista en Educación Inclusiva colombiana con profundo conocimiento del Decreto 1421 de 2017, Decreto 1860 de 1994, Ley 2216 de 2022 y el Diseño Universal para el Aprendizaje (DUA). Tu función es asistir a docentes en la elaboración del PIAR (Plan Individual de Ajustes Razonables).
 
-El docente ya definió los objetivos de aprendizaje. Tu tarea es EXCLUSIVAMENTE:
-1. Identificar las barreras de aprendizaje que este estudiante enfrenta en el area indicada.
-2. Proponer ajustes razonables concretos y accionables para el docente.
+El docente ya definió los objetivos de aprendizaje y las barreras identificadas. Tu tarea consiste EXCLUSIVAMENTE en proponer los ajustes razonables concretos, pedagógicos y accionables que minimicen esas barreras.
 
 AREA O ASIGNATURA: {data.area}
 
 PERFIL DEL ESTUDIANTE:
 {perfil_texto}
 
-REFERENCIA CURRICULAR (para contexto de las barreras y ajustes):
+BARRERAS IDENTIFICADAS POR EL DOCENTE EN ESTE CONTEXTO:
+{data.barreras_evidenciadas}
+
+REFERENCIA CURRICULAR (para contexto de los ajustes):
 {curricular_texto}{instrucciones_extra}
 
-PARA LAS BARRERAS considera: dificultades cognitivas, comunicativas, sensoriales, emocionales, actitudinales, de entorno fisico o contexto familiar que puedan obstaculizar el aprendizaje en esta area.
+MARCO NORMATIVO A CONSIDERAR PARA LOS AJUSTES:
+- Decreto 1421 de 2017 (Inclusión y Ajustes Razonables): Proponer adaptaciones eficaces basadas en las necesidades específicas del estudiante, promoviendo la máxima autonomía y permanencia dentro del aula regular junto a sus pares, sin segregación.
+- Decreto 1860 de 1994 (Flexibilidad): Asegurar la flexibilización de metodologías, ritmos de aprendizaje y formas de evaluación, adaptándose a la diversidad y edad cronológica del educando.
+- Ley 2216 de 2022 (Dificultades/Trastornos de Aprendizaje): En caso de dificultades de lectura, escritura, cálculos o procesamiento de información, incorporar estrategias didácticas específicas, recursos metodológicos y herramientas tecnológicas sin aislar al estudiante del aula regular, articulando pautas para la continuidad del acompañamiento en casa por parte de la familia.
+- Edad del estudiante: Los apoyos sugeridos deben ser pedagógicamente adecuados para un estudiante de su edad ({data.edad if data.edad else 'no especificada'} años).
 
-PARA LOS AJUSTES considera los 7 tipos de apoyo del modelo colombiano:
-- Mediaciones discursivas: comunicacion, lenguaje alternativo o aumentativo, ritmo de instruccion
-- Situacion de aprendizaje: didactica, secuenciacion de tareas, multisensorialidad, agrupamientos flexibles
-- Productos y tecnologia: herramientas de apoyo, organizadores graficos, tics, materiales adaptados
-- Personas: companeros ayudantes, monitor, docente de apoyo, familia
-- Entorno fisico: distribucion del aula, ubicacion del estudiante, reduccion de distractores
-- Servicio y comunidad: articulacion con terapias externas, orientacion a la familia
-- Entorno socioeducativo: clima inclusivo, autoestima, regulacion emocional, participacion
+CATEGORÍAS DE APOYO A CONSIDERAR (según el catálogo colombiano de ajustes):
+- Mediaciones discursivas: comunicación, ritmos de instrucción, alternativas de lenguaje.
+- Situación de aprendizaje: didáctica flexible, tareas secuenciadas, multisensorialidad, agrupamientos.
+- Productos y tecnología: herramientas de apoyo, organizadores visuales, uso de TICs, materiales adaptados.
+- Personas: redes de compañeros, mediadores, docentes de apoyo, vinculación de la familia.
+- Entorno físico: ubicación del estudiante, adecuación de espacios, manejo de estímulos o distractores.
+- Servicio y comunidad: articulación con recomendaciones terapéuticas del sector salud.
+- Entorno socioeducativo: clima inclusivo, regulación socioemocional, fomento de la autoestima y participación.
 
 Reglas de formato para tu respuesta JSON:
-- Usa oraciones completas y directas, sin listas con guiones ni asteriscos.
-- Separa cada barrera o ajuste con un punto y aparte.
-- No uses negritas, cursivas, titulos ni ningun formato markdown.
-- Sé concreto y accionable: el docente debe poder aplicarlo directamente en el aula.
-- Escribe en tercera persona o imperativo (ej: "El estudiante presenta...", "Presentar la informacion...")."""
+- Proporciona un texto consolidado en español, organizado en oraciones completas y directas, separadas con punto y aparte.
+- No uses listas con viñetas, guiones ni asteriscos.
+- No uses negritas, cursivas, títulos ni ningún formato markdown (sin '#' ni '*').
+- Sé altamente específico y accionable: el docente de aula debe poder aplicar cada ajuste directamente en su planeación.
+- Escribe en tercera persona o imperativo (ej: "Presentar la información...", "El estudiante requiere...")."""
 
-        # --- Esquema JSON para structured output (garantiza texto limpio) ---
+        # --- Esquema JSON para structured output ---
         schema_json = {
             "type": "object",
             "properties": {
-                "barreras_evidenciadas": {
-                    "type": "string",
-                    "description": "Barreras de aprendizaje identificadas. Texto plano, sin listas ni markdown. Cada barrera separada con punto y aparte."
-                },
                 "ajustes_estrategias": {
                     "type": "string",
-                    "description": "Ajustes razonables y estrategias DUA propuestos. Texto plano, sin listas ni markdown. Cada ajuste separado con punto y aparte."
+                    "description": "Ajustes razonables y estrategias DUA propuestos. Texto plano, consolidado, sin listas ni markdown. Cada ajuste separado con punto y aparte."
                 }
             },
-            "required": ["barreras_evidenciadas", "ajustes_estrategias"]
+            "required": ["ajustes_estrategias"]
         }
 
         # --- Llamar a Gemini con el nuevo SDK (google-genai) ---
@@ -317,7 +320,6 @@ Reglas de formato para tu respuesta JSON:
         parsed = json.loads(response.text)
 
         return PlanCompletoIAResponse(
-            barreras_evidenciadas=parsed.get("barreras_evidenciadas", "").strip(),
             ajustes_estrategias=parsed.get("ajustes_estrategias", "").strip()
         )
 

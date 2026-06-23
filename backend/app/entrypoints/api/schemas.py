@@ -411,6 +411,7 @@ class GenerarPlanCompletoRequest(BaseModel):
     # Datos del estudiante
     estudiante_nombre: str
     grado: Optional[str] = None
+    edad: Optional[int] = None
     diagnostico_medico: Optional[str] = None
     # Contexto del PIAR
     gustos_intereses: Optional[str] = None
@@ -418,11 +419,12 @@ class GenerarPlanCompletoRequest(BaseModel):
     # Malla curricular de referencia
     dba_referencia: Optional[str] = None
     ebc_referencia: Optional[str] = None
+    # Barreras identificadas (escritas por el docente)
+    barreras_evidenciadas: str
     # Instrucciones adicionales del docente
     instrucciones_docente: Optional[str] = None
 
 
 class PlanCompletoIAResponse(BaseResponse):
-    """Respuesta de la IA: solo barreras y ajustes. Los objetivos los define el docente."""
-    barreras_evidenciadas: str
+    """Respuesta de la IA: solo los ajustes y estrategias DUA. Los objetivos y barreras los define el docente."""
     ajustes_estrategias: str
