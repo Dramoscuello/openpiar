@@ -22,7 +22,8 @@ from app.adapters.db.models import (
     GrupoORM,
     CargaAcademicaORM,
     PeriodoAcademicoORM,
-    GradoORM
+    GradoORM,
+    AreaORM
 )
 from app.entrypoints.api.schemas import (
     PeriodoAcademicoCreate,
@@ -84,12 +85,27 @@ class DocenteResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class AreaCreate(BaseModel):
+    nombre: str
+
+class AreaResponse(BaseModel):
+    id: uuid.UUID
+    nombre: str
+    institucion_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class AsignaturaCreate(BaseModel):
     nombre: str
+    area_id: uuid.UUID
 
 class AsignaturaResponse(BaseModel):
     id: uuid.UUID
     nombre: str
+    area_id: uuid.UUID
+    area_nombre: str
     created_at: datetime
 
     class Config:
@@ -356,6 +372,64 @@ async def delete_docente(
 
 
 # ---------------------------------------------------------------------------
+# Areas Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/areas", response_model=List[AreaResponse])
+async def list_areas(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(AreaORM).order_by(AreaORM.nombre))
+    return result.scalars().all()
+
+@router.post("/areas", response_model=AreaResponse, status_code=status.HTTP_201_CREATED)
+async def create_area(
+    body: AreaCreate,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.adapters.db.models import ConfiguracionSistemaORM
+    inst_result = await db.execute(select(ConfiguracionSistemaORM.id).limit(1))
+    inst_id = inst_result.scalar()
+
+    exists_result = await db.execute(
+        select(AreaORM).where(
+            AreaORM.nombre == body.nombre,
+            AreaORM.institucion_id == inst_id
+        )
+    )
+    if exists_result.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Esta área de aprendizaje ya está registrada."
+        )
+
+    area = AreaORM(nombre=body.nombre, institucion_id=inst_id)
+    db.add(area)
+    await db.commit()
+    await db.refresh(area)
+    return area
+
+@router.delete("/areas/{area_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_area(
+    area_id: uuid.UUID,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(AreaORM).where(AreaORM.id == area_id))
+    area = result.scalars().first()
+    if not area:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El área especificada no existe."
+        )
+    await db.delete(area)
+    await db.commit()
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Asignaturas Endpoints
 # ---------------------------------------------------------------------------
 
@@ -369,15 +443,32 @@ async def list_asignaturas(
         query = (
             select(AsignaturaORM)
             .join(CargaAcademicaORM, AsignaturaORM.id == CargaAcademicaORM.asignatura_id)
+            .join(AsignaturaORM.area)
+            .options(selectinload(AsignaturaORM.area))
             .where(CargaAcademicaORM.docente_id == current_user.id)
-            .order_by(AsignaturaORM.nombre)
+            .order_by(AreaORM.nombre, AsignaturaORM.nombre)
             .distinct()
         )
     else:
-        query = select(AsignaturaORM).order_by(AsignaturaORM.nombre)
+        query = (
+            select(AsignaturaORM)
+            .join(AsignaturaORM.area)
+            .options(selectinload(AsignaturaORM.area))
+            .order_by(AreaORM.nombre, AsignaturaORM.nombre)
+        )
 
     result = await db.execute(query)
-    return result.scalars().all()
+    asigs = result.scalars().all()
+    
+    return [
+        AsignaturaResponse(
+            id=a.id,
+            nombre=a.nombre,
+            area_id=a.area.id,
+            area_nombre=a.area.nombre,
+            created_at=a.created_at
+        ) for a in asigs
+    ]
 
 @router.post("/asignaturas", response_model=AsignaturaResponse, status_code=status.HTTP_201_CREATED)
 async def create_asignatura(
@@ -385,19 +476,47 @@ async def create_asignatura(
     current_user: DirectivoUser,
     db: AsyncSession = Depends(get_db)
 ):
-    # Check uniqueness
-    exists_result = await db.execute(select(AsignaturaORM).where(AsignaturaORM.nombre == body.nombre))
+    # Verify Area exists
+    area_result = await db.execute(select(AreaORM).where(AreaORM.id == body.area_id))
+    area = area_result.scalars().first()
+    if not area:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El área especificada no existe."
+        )
+
+    # Check uniqueness of name under the same area
+    exists_result = await db.execute(
+        select(AsignaturaORM).where(
+            AsignaturaORM.nombre == body.nombre,
+            AsignaturaORM.area_id == body.area_id
+        )
+    )
     if exists_result.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Esta asignatura ya está registrada."
+            detail="Esta asignatura ya está registrada en esta área."
         )
 
-    asignatura = AsignaturaORM(nombre=body.nombre)
+    asignatura = AsignaturaORM(nombre=body.nombre, area_id=body.area_id)
     db.add(asignatura)
     await db.commit()
-    await db.refresh(asignatura)
-    return asignatura
+    
+    # Reload with area
+    result = await db.execute(
+        select(AsignaturaORM)
+        .options(selectinload(AsignaturaORM.area))
+        .where(AsignaturaORM.id == asignatura.id)
+    )
+    a = result.scalars().one()
+    
+    return AsignaturaResponse(
+        id=a.id,
+        nombre=a.nombre,
+        area_id=a.area.id,
+        area_nombre=a.area.nombre,
+        created_at=a.created_at
+    )
 
 @router.put("/asignaturas/{asignatura_id}", response_model=AsignaturaResponse)
 async def update_asignatura(
@@ -414,19 +533,49 @@ async def update_asignatura(
             detail="La asignatura especificada no existe."
         )
 
-    # Check uniqueness if name changed
-    if body.nombre != asignatura.nombre:
-        exists_result = await db.execute(select(AsignaturaORM).where(AsignaturaORM.nombre == body.nombre))
+    # Verify Area exists
+    area_result = await db.execute(select(AreaORM).where(AreaORM.id == body.area_id))
+    area = area_result.scalars().first()
+    if not area:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El área especificada no existe."
+        )
+
+    # Check uniqueness if name or area changed
+    if body.nombre != asignatura.nombre or body.area_id != asignatura.area_id:
+        exists_result = await db.execute(
+            select(AsignaturaORM).where(
+                AsignaturaORM.nombre == body.nombre,
+                AsignaturaORM.area_id == body.area_id,
+                AsignaturaORM.id != asignatura_id
+            )
+        )
         if exists_result.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Esta asignatura ya está registrada."
+                detail="Esta asignatura ya está registrada en esta área."
             )
 
     asignatura.nombre = body.nombre
+    asignatura.area_id = body.area_id
     await db.commit()
-    await db.refresh(asignatura)
-    return asignatura
+    
+    # Reload with area
+    result = await db.execute(
+        select(AsignaturaORM)
+        .options(selectinload(AsignaturaORM.area))
+        .where(AsignaturaORM.id == asignatura_id)
+    )
+    a = result.scalars().one()
+    
+    return AsignaturaResponse(
+        id=a.id,
+        nombre=a.nombre,
+        area_id=a.area.id,
+        area_nombre=a.area.nombre,
+        created_at=a.created_at
+    )
 
 @router.delete("/asignaturas/{asignatura_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_asignatura(
@@ -767,7 +916,7 @@ async def list_carga_academica(
         select(CargaAcademicaORM)
         .options(
             selectinload(CargaAcademicaORM.docente),
-            selectinload(CargaAcademicaORM.asignatura),
+            selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
@@ -854,7 +1003,7 @@ async def create_carga_academica(
         .where(CargaAcademicaORM.id == carga.id)
         .options(
             selectinload(CargaAcademicaORM.docente),
-            selectinload(CargaAcademicaORM.asignatura),
+            selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
@@ -947,7 +1096,7 @@ async def update_carga_academica(
         .where(CargaAcademicaORM.id == carga.id)
         .options(
             selectinload(CargaAcademicaORM.docente),
-            selectinload(CargaAcademicaORM.asignatura),
+            selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)

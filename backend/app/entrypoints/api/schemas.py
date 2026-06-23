@@ -358,7 +358,7 @@ class CaracteristicasEstudianteResponse(CaracteristicasEstudianteCreate, BaseRes
     piar_id: uuid.UUID
 
 class AjusteRazonableCreate(BaseModel):
-    area: Literal['Matemáticas', 'Ciencias', 'Lenguaje', 'Convivencia', 'Socialización', 'Participación', 'Autonomía', 'Autocontrol']
+    area: str = Field(..., min_length=2)
     objetivos_propositos: str = Field(..., min_length=2)
     barreras_evidenciadas: str = Field(..., min_length=2)
     ajustes_estrategias: str = Field(..., min_length=2)

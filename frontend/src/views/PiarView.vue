@@ -615,13 +615,34 @@ const searchResults = ref<any[]>([])
 const isSearchingCurriculum = ref(false)
 
 // Map área de base de datos a área curricular del MEN para optimizar búsqueda
-const AREA_MAP: Record<string, string> = {
-  'Matemáticas': 'Matemáticas',
-  'Lenguaje': 'Lenguaje',
-  'Ciencias': 'Ciencias Naturales',
-  'Convivencia': 'Ciencias Sociales',
-}
-const searchArea = computed(() => AREA_MAP[ajusteForm.value.area] || 'Matemáticas')
+const searchArea = computed(() => {
+  const asig = dbAsignaturas.value.find(a => a.nombre === ajusteForm.value.area)
+  const areaNombre = asig ? asig.area_nombre : ajusteForm.value.area
+  
+  if (!areaNombre) return 'Matemáticas'
+  
+  const clean = areaNombre.toLowerCase()
+  if (clean.includes('matemática') || clean.includes('geometría') || clean.includes('estadística')) {
+    return 'Matemáticas'
+  }
+  if (clean.includes('naturales') || clean.includes('física') || clean.includes('química') || clean.includes('fisicoquímica') || clean.includes('ambiental') || clean.includes('ciencias')) {
+    if (clean.includes('sociales') || clean.includes('historia') || clean.includes('geografía') || clean.includes('convivencia') || clean.includes('ciudadana')) {
+      return 'Ciencias Sociales'
+    }
+    return 'Ciencias Naturales'
+  }
+  if (clean.includes('sociales') || clean.includes('historia') || clean.includes('geografía') || clean.includes('convivencia') || clean.includes('ciudadana')) {
+    return 'Ciencias Sociales'
+  }
+  if (clean.includes('castellana') || clean.includes('español') || clean.includes('lenguaje') || clean.includes('humanidades')) {
+    return 'Lenguaje'
+  }
+  if (clean.includes('inglés') || clean.includes('idiomas')) {
+    return 'Inglés'
+  }
+  
+  return 'Matemáticas' // fallback
+})
 
 // TAB 3: Formulario PMI
 const ACTORES_PMI = ['Familia', 'Docentes', 'Directivos', 'Administrativos', 'Pares'] as const
@@ -656,7 +677,11 @@ onMounted(async () => {
 
 async function cargarEstudiante() {
   try {
-    const res = await fetch(`http://localhost:8000/api/v1/estudiantes/${estudianteId}`)
+    const res = await fetch(`http://localhost:8000/api/v1/estudiantes/${estudianteId}`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
     if (res.ok) {
       estudiante.value = await res.json()
     }
@@ -836,7 +861,11 @@ async function buscarCurriculo() {
     if (searchQuery.value.trim()) {
       url += `&q=${encodeURIComponent(searchQuery.value.trim())}`
     }
-    const res = await fetch(url)
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
     if (res.ok) {
       const data = await res.json()
       searchResults.value = data.items || []

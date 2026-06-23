@@ -501,11 +501,6 @@ class AjusteRazonableORM(Base):
     periodo: Mapped["PeriodoAcademicoORM"] = relationship()
 
     __table_args__ = (
-        CheckConstraint(
-            "area IN ('Matemáticas', 'Ciencias', 'Lenguaje', 'Convivencia', "
-            "'Socialización', 'Participación', 'Autonomía', 'Autocontrol')",
-            name="ck_ajustes_area",
-        ),
         Index("ajustes_razonables_piar_id_idx", piar_id),
     )
 
@@ -682,12 +677,44 @@ class SedeORM(Base):
     )
 
 
+class AreaORM(Base):
+    __tablename__ = "areas"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    institucion_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("configuracion_sistema.id", ondelete="CASCADE"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+
+    # Relaciones
+    asignaturas: Mapped[list["AsignaturaORM"]] = relationship(
+        "AsignaturaORM", back_populates="area", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("nombre", "institucion_id", name="uq_area_nombre_institucion"),
+    )
+
+
 class AsignaturaORM(Base):
     __tablename__ = "asignaturas"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
-    nombre: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    area_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("areas.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+
+    # Relaciones
+    area: Mapped["AreaORM"] = relationship(back_populates="asignaturas")
+
+    @property
+    def area_nombre(self) -> str:
+        return self.area.nombre if self.area else ""
+
+    __table_args__ = (
+        UniqueConstraint("nombre", "area_id", name="uq_asignatura_nombre_area"),
+    )
 
 
 class GradoORM(Base):

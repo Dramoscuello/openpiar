@@ -58,8 +58,54 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Tablas verificadas/creadas con éxito.")
+
+        # Auto-sembrado de áreas y asignaturas si la tabla está vacía
+        import uuid
+        import json
+        from pathlib import Path
+        from sqlalchemy import select
+        from app.adapters.db.session import AsyncSessionLocal
+        from app.adapters.db.models import AreaORM, AsignaturaORM, ConfiguracionSistemaORM
+
+        async with AsyncSessionLocal() as session:
+            areas_exists = await session.execute(select(AreaORM).limit(1))
+            if not areas_exists.scalars().first():
+                logger.info("La tabla de áreas está vacía. Iniciando sembrado automático...")
+                fixture_path = Path(__file__).parent / "fixtures" / "areas_asignaturas.json"
+                if fixture_path.exists():
+                    with open(fixture_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    
+                    # Obtener ID de institución si existe
+                    inst_result = await session.execute(select(ConfiguracionSistemaORM.id).limit(1))
+                    inst_id = inst_result.scalar()
+                    
+                    for item in data:
+                        area_nombre = item["area"]
+                        asignaturas_nombres = item["asignaturas"]
+                        
+                        area = AreaORM(
+                            id=uuid.uuid4(),
+                            nombre=area_nombre,
+                            institucion_id=inst_id
+                        )
+                        session.add(area)
+                        
+                        for asig_nombre in asignaturas_nombres:
+                            asig = AsignaturaORM(
+                                id=uuid.uuid4(),
+                                nombre=asig_nombre,
+                                area_id=area.id
+                            )
+                            session.add(asig)
+                    
+                    await session.commit()
+                    logger.info("✅ Sembrado automático de %d áreas completado.", len(data))
+                else:
+                    logger.error("❌ No se encontró el archivo de fixtures en: %s", fixture_path)
+
     except Exception as exc:
-        logger.error("Error intentando crear tablas en el inicio: %s", exc)
+        logger.error("Error intentando crear/sembrar tablas en el inicio: %s", exc)
 
     yield
     logger.info("🛑 OpenPiar cerrando.")

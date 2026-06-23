@@ -57,7 +57,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Los DBA explicitan los aprendizajes estructurantes para un grado y un área particular.",
     "evidencias": [
       "Identificación de los conocimientos, habilidades y actitudes que son necesarios para el contexto cultural e histórico.",
@@ -68,7 +68,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Los DBA deben ser articulados con enfoques, metodologías, y estrategias definidas en cada establecimiento educativo.",
     "evidencias": [
       "Desarrollo de un plan de área que integre los DBA.",
@@ -79,7 +79,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Naturales",
-    "numero": 3,
+    "numero": 8,
     "enunciado": "Los DBA promueven la consecución de aprendizajes año a año.",
     "evidencias": [
       "Realización de actividades que permitan alcanzar los EBC propuestos.",
@@ -90,7 +90,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Naturales",
-    "numero": 4,
+    "numero": 9,
     "enunciado": "Los DBA son movilizables de un grado a otro en función de los procesos de aprendizaje de los estudiantes.",
     "evidencias": [
       "Adaptación de los DBA a las necesidades individuales de aprendizaje.",
@@ -101,7 +101,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Naturales",
-    "numero": 5,
+    "numero": 10,
     "enunciado": "Los DBA son una estrategia para promover la flexibilidad curricular.",
     "evidencias": [
       "Planificación de actividades de aprendizaje a largo plazo.",
@@ -112,7 +112,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "El enunciado referencia el aprendizaje estructurante para el área.",
     "evidencias": [
       "Indicios claves que muestran el aprendizaje alcanzado."
@@ -148,7 +148,7 @@
   {
     "grado": "1",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende que los seres vivos (plantas y animales) tienen características comunes (se alimentan, respiran, tienen un ciclo de vida, responden al entorno) y los diferencia de los objetos inertes.",
     "evidencias": [
       "Clasifica seres vivos (plantas y animales) de su entorno, según sus características observables (tamaño, cubierta corporal, cantidad y tipo de miembros, forma de raíz, tallo, hojas, flores y frutos) y los diferencia de los objetos inertes, a partir de criterios que tienen que ver con las características básicas de los seres vivos.",
@@ -161,7 +161,7 @@
   {
     "grado": "1",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende que su cuerpo experimenta constantes cambios a lo largo del tiempo y reconoce a partir de su comparación que tiene características similares y diferentes a las de sus padres y compañeros.",
     "evidencias": [
       "Registra cambios físicos ocurridos en su cuerpo durante el crecimiento, tales como peso, talla, longitud de brazos, piernas, pies y manos, así como algunas características que no varían como el color de ojos, piel y cabello.",
@@ -198,7 +198,7 @@
   {
     "grado": "2",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende la relación entre las características físicas de plantas y animales con los ambientes en donde viven, teniendo en cuenta sus necesidades básicas (luz, agua, aire, suelo, nutrientes, desplazamiento y protección).",
     "evidencias": [
       "Representa con dibujos u otros formatos los cambios en el desarrollo de plantas y animales en un período de tiempo, identificando procesos como la germinación, la floración y la aparición de frutos.",
@@ -236,7 +236,7 @@
   {
     "grado": "3",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende la naturaleza (fenómeno de la vibración) y las características del sonido (altura, timbre, intensidad) y que este se propaga en distintos medios (sólidos, líquidos, gaseosos).",
     "evidencias": [
       "Interpreta los resultados de experimentos en los que se analizan los cambios de estado del agua al predecir lo qué ocurrirá con el estado de una sustancia dada una variación de la temperatura.",
@@ -250,7 +250,7 @@
   {
     "grado": "3",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende la influencia de la variación de la temperatura en los cambios de estado de la materia, considerando como ejemplo el caso del agua.",
     "evidencias": [
       "Explica fenómenos cotidianos en los que se pone de manifiesto el cambio de estado del agua a partir de las variaciones de temperatura (la evaporación del agua en el paso de líquido a gas y los vidrios empañados en el paso de gas a líquido, entre otros).",
@@ -261,7 +261,7 @@
   {
     "grado": "3",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Explica la influencia de los factores abióticos (luz, temperatura, suelo y aire) en el desarrollo de los factores bióticos (fauna y flora) de un ecosistema.",
     "evidencias": [
       "Diferencia los factores bióticos (plantas y animales) de los abióticos (luz, agua, temperatura, suelo y aire) de un ecosistema propio de su región.",
@@ -300,7 +300,7 @@
   {
     "grado": "4",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende que el fenómeno del día y la noche se debe a que la Tierra rota sobre su eje y en consecuencia el sol sólo ilumina la mitad de su superficie.",
     "evidencias": [
       "Realiza observaciones de la forma de la Luna y las registra mediante dibujos, explicando cómo varían a lo largo del mes.",
@@ -312,7 +312,7 @@
   {
     "grado": "4",
     "area": "Ciencias Naturales",
-    "numero": 5,
+    "numero": 4,
     "enunciado": "Comprende que existen distintos tipos de mezclas (homogéneas y heterogéneas) que de acuerdo con los materiales que las componen pueden separarse mediante diferentes técnicas (filtración, tamizado, decantación, evaporación).",
     "evidencias": [
       "Clasifica como homogénea o heterogénea una mezcla dada, a partir del número de fases observadas.",
@@ -324,7 +324,7 @@
   {
     "grado": "4",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Comprende que los organismos cumplen distintas funciones en cada uno de los niveles tróficos y que las relaciones entre ellos pueden representarse en cadenas y redes alimenticias.",
     "evidencias": [
       "Identifica los niveles tróficos en cadenas y redes alimenticias y establece la función de cada uno en un ecosistema.",
@@ -336,7 +336,7 @@
   {
     "grado": "4",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Comprende que existen distintos tipos de ecosistemas (terrestres y acuáticos) y que sus características físicas (temperatura, humedad, tipos de suelo, altitud) permiten que habiten en ellos diferentes seres vivos.",
     "evidencias": [
       "Diferencia tipos de ecosistemas (terrestres y acuáticos) correspondientes a distintas ubicaciones geográficas, para establecer sus principales características.",
@@ -363,7 +363,7 @@
   {
     "grado": "5",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Comprende que los sistemas del cuerpo humano están formados por órganos, tejidos y células y que la estructura de cada tipo de célula está relacionada con la función del tejido que forman.",
     "evidencias": [
       "Explica la estructura (órganos, tejidos y células) y las funciones de los sistemas de su cuerpo.",
@@ -400,7 +400,7 @@
   {
     "grado": "6",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "A partir de la información sobre el calentamiento del agua, explica la relación de la temperatura y la presión con el comportamiento de la sustancia y representa la relación del tiempo (t) con la temperatura (T) mediante una gráfica en la que identifica el punto de ebullición.",
     "evidencias": [
       "Diferencia sustancias puras (elementos y compuestos) de mezclas (homogéneas y heterogéneas) en ejemplos de uso cotidiano.",
@@ -411,7 +411,7 @@
   {
     "grado": "6",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende la clasificación de los materiales a partir de grupos de sustancias (elementos y compuestos) y mezclas (homogéneas y heterogéneas).",
     "evidencias": [
       "Explica la importancia de las propiedades del agua como solvente para los ecosistemas y los organismos vivos, dando ejemplos de distintas soluciones acuosas.",
@@ -422,7 +422,7 @@
   {
     "grado": "6",
     "area": "Ciencias Naturales",
-    "numero": 3,
+    "numero": 5,
     "enunciado": "Comprende algunas de las funciones básicas de la célula (transporte de membrana, obtención de energía y división celular) a partir del análisis de su estructura.",
     "evidencias": [
       "Explica el rol de la membrana plasmática en el mantenimiento del equilibrio interno de la célula, y describe la interacción del agua y las partículas (ósmosis y difusión) que entran y salen de la célula mediante el uso de modelos.",
@@ -433,7 +433,7 @@
   {
     "grado": "6",
     "area": "Ciencias Naturales",
-    "numero": 4,
+    "numero": 6,
     "enunciado": "Interpreta modelos sobre los procesos de división celular (mitosis), como mecanismos que permiten explicar la regeneración de tejidos y el crecimiento de los organismos.",
     "evidencias": [
       "Predice qué ocurre a nivel de transporte de membrana, obtención de energía y división celular en caso de daño de alguna de las organelas celulares."
@@ -443,7 +443,7 @@
   {
     "grado": "6",
     "area": "Ciencias Naturales",
-    "numero": 5,
+    "numero": 7,
     "enunciado": "Comprende la clasificación de los organismos en grupos taxonómicos, de acuerdo con el tipo de células que poseen y reconoce la diversidad de especies que constituyen nuestro planeta y las relaciones de parentesco entre ellas.",
     "evidencias": [
       "Identifica organismos (animales o plantas) de su entorno y los clasifica usando gráficos, tablas y otras representaciones siguiendo claves taxonómicas simples.",
@@ -479,7 +479,7 @@
   {
     "grado": "7",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende que en las cadenas y redes tróficas existen flujos de materia y energía, y los relaciona con procesos de nutrición, fotosíntesis y respiración celular.",
     "evidencias": [
       "Explica tipos de nutrición (autótrofa y heterótrofa) en las cadenas y redes tróficas dentro de los ecosistemas.",
@@ -493,7 +493,7 @@
   {
     "grado": "7",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Analiza cómo pudieron verse afectados los ciclos del carbono, nitrógeno y agua.",
     "evidencias": [
       "Explica la causa de muerte de las truchas.",
@@ -528,7 +528,7 @@
   {
     "grado": "8",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende que el comportamiento de un gas ideal está determinado por las relaciones entre Temperatura (T), Presión (P), Volumen (V) y Cantidad de sustancia (n).",
     "evidencias": [
       "Interpreta los resultados de experimentos en los cuales analiza el comportamiento de un gas ideal al variar su temperatura, volumen, presión y cantidad de gas, explicando cómo influyen estas variables en el comportamiento observado.",
@@ -540,7 +540,7 @@
   {
     "grado": "8",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Justifica ¿Cuál es la relación de las variables presión (P), temperatura (T), volumen (V) y cantidad de gas (n) y su respuesta basado en evidencias (resultados experimentales) y referentes teóricos (tipo de enlace de los productos formados).",
     "evidencias": [
       "Analiza relaciones entre sistemas de órganos (excretor, inmune, nervioso, endocrino, óseo y muscular) con los procesos de regulación de las funciones en los seres vivos.",
@@ -554,7 +554,7 @@
   {
     "grado": "8",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Formula conclusiones a partir del análisis de un caso que involucra el crecimiento de poblaciones de organismos en un acuario.",
     "evidencias": [
       "Diferencia los tipos de reproducción en plantas y propone su aplicación de acuerdo con las condiciones del medio donde se realiza.",
@@ -591,7 +591,7 @@
   {
     "grado": "9",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Analiza las relaciones cuantitativas entre solutos y solventes, así como los factores que afectan la formación de soluciones.",
     "evidencias": [
       "Explica qué factores afectan la formación de soluciones a partir de resultados obtenidos en procedimientos de preparación de soluciones de distinto tipo (insaturadas, saturadas y sobresaturadas) en los que modifica variables (temperatura, presión, cantidad de soluto y disolvente).",
@@ -604,7 +604,7 @@
   {
     "grado": "9",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende la forma en que los principios genéticos mendelianos y post-mendelianos explican la herencia y el mejoramiento de las especies existentes.",
     "evidencias": [
       "Predice mediante la aplicación de diferentes mecanismos (probabilidades o punnet) las proporciones de las características heredadas por algunos organismos.",
@@ -617,7 +617,7 @@
   {
     "grado": "9",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Interpreta a partir de modelos la estructura del ADN y la forma como se expresa en los organismos, representando los pasos del proceso de traducción (es decir, de la síntesis de proteínas).",
     "evidencias": [
       "Explica los genotipos, fenotipos y las proporciones de los descendientes del siguiente cruce: TtAaLl x ttaall",
@@ -629,7 +629,7 @@
   {
     "grado": "9",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Explica la forma como se expresa la información genética contenida en el ADN, relacionando su expresión con los fenotipos de los organismos y reconoce su capacidad de modificación a lo largo del tiempo (por mutaciones y otros cambios), como un factor determinante en la generación de diversidad del planeta y en la evolución de las especies.",
     "evidencias": [
       "Analiza el caso de un laboratorio donde un técnico investiga la producción de la insulina y su relación con la información genética del ADN que codifica para el gen de la insulina.",
@@ -640,7 +640,7 @@
   {
     "grado": "9",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Analiza teorías científicas sobre el origen de las especies (selección natural y ancestro común) como modelos científicos que sustentan sus explicaciones desde diferentes evidencias y argumentaciones.",
     "evidencias": [
       "Interpreta la gráfica de la parte superior y la explica utilizando el modelo de selección natural.",
@@ -679,7 +679,7 @@
   {
     "grado": "10",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende que los diferentes mecanismos de reacción química (oxido-reducción, descomposición, neutralización y precipitación) posibilitan la formación de compuestos inorgánicos.",
     "evidencias": [
       "Establece la relación entre la distribución de los electrones en el átomo y el comportamiento químico de los elementos, explicando cómo esta distribución determina la formación de compuestos, dados en ejemplos de elementos de la Tabla Periódica."
@@ -689,7 +689,7 @@
   {
     "grado": "10",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende que la biotecnología conlleva el uso y manipulación de la información genética a través de distintas técnicas (fertilización asistida, clonación reproductiva y terapéutica, modificación genética, terapias génicas), y que tiene implicaciones sociales, bioéticas y ambientales.",
     "evidencias": [
       "Describe distintas técnicas biotecnológicas (fertilización asistida, clonación reproductiva y terapéutica, modificación genética, terapias génicas), explicando cómo funcionan y qué características generan en los organismos desarrollados.",
@@ -701,7 +701,7 @@
   {
     "grado": "10",
     "area": "Ciencias Naturales",
-    "numero": 3,
+    "numero": 5,
     "enunciado": "Balancea ecuaciones químicas dadas por el docente, teniendo en cuenta la ley de conservación de la masa y la conservación de la carga, al determinar cuantitativamente las relaciones molares entre reactivos y productos de una reacción (a partir de sus coeficientes).",
     "evidencias": [
       "Utiliza fórmulas y ecuaciones químicas para representar las reacciones entre compuestos inorgánicos (óxidos, ácidos, hidróxidos, sales) y posteriormente nombrarlos con base en la nomenclatura propuesta por la Unión Internacional de Química Pura y Aplicada (IUPAC)."
@@ -711,7 +711,7 @@
   {
     "grado": "10",
     "area": "Ciencias Naturales",
-    "numero": 4,
+    "numero": 6,
     "enunciado": "Explica a partir de relaciones cuantitativas y reacciones químicas (oxido-reducción, descomposición, neutralización y precipitación) la formación de nuevos compuestos, dando ejemplos de cada tipo de reacción.",
     "evidencias": [
       "Realiza actividades experimentales para analizar los factores que influyen en la formación de compuestos inorgánicos, utilizando cálculos para saber exactamente la cantidad de reactivo necesario para obtener una cantidad de producto o cuánto producto se obtiene de acuerdo a la cantidad de reactivo."
@@ -721,7 +721,7 @@
   {
     "grado": "10",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Explica de qué se trata el proyecto Genoma Humano y cuál ha sido su impacto para la investigación y práctica médica.",
     "evidencias": [
       "Plantea preguntas que posibiliten indagar más acerca de las posturas sobre Genoma Humano.",
@@ -760,7 +760,7 @@
   {
     "grado": "11",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende las relaciones entre corriente y voltaje en circuitos resistivos sencillos en serie, en paralelo y mixtos.",
     "evidencias": [
       "Determina las corrientes y los voltajes en elementos resistivos de un circuito eléctrico utilizando la ley de Ohm.",
@@ -773,7 +773,7 @@
   {
     "grado": "11",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende que los diferentes mecanismos de reacción química (oxidación-reducción, homólisis, heterólisis y pericíclicas) posibilitan la formación de distintos tipos de compuestos orgánicos.",
     "evidencias": [
       "Representa las reacciones químicas entre compuestos orgánicos utilizando fórmulas y ecuaciones químicas y la nomenclatura propuesta por la Unión Internacional de Química Pura y Aplicada (IUPAC).",
@@ -785,7 +785,7 @@
   {
     "grado": "11",
     "area": "Ciencias Naturales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Analiza cuestiones ambientales actuales, como el calentamiento global, contaminación, tala de bosques y minería, desde una visión sistémica (económico, social, ambiental y cultural).",
     "evidencias": [
       "Explica el fenómeno del calentamiento global, identificando sus causas y proponiendo acciones locales y globales para controlarlo.",
@@ -920,7 +920,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 12,
     "enunciado": "Reconocer la importancia de los derechos humanos en la convivencia.",
     "evidencias": [
       "Identifica ejemplos de derechos destacados.",
@@ -931,7 +931,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 13,
     "enunciado": "Participar activamente en la toma de decisiones en el entorno escolar.",
     "evidencias": [
       "Propone ideas en asambleas.",
@@ -942,7 +942,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 3,
+    "numero": 14,
     "enunciado": "Valorar la diversidad cultural presente en su comunidad.",
     "evidencias": [
       "Comparte experiencias culturales.",
@@ -953,7 +953,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 4,
+    "numero": 15,
     "enunciado": "Utilizar el diálogo como herramienta para resolver conflictos.",
     "evidencias": [
       "Escucha a los demás en un conflicto.",
@@ -964,7 +964,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 5,
+    "numero": 16,
     "enunciado": "Identificar símbolos y tradiciones nacionales.",
     "evidencias": [
       "Explica el significado de la bandera.",
@@ -975,7 +975,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 6,
+    "numero": 17,
     "enunciado": "Conocer el funcionamiento de las instituciones democráticas.",
     "evidencias": [
       "Describe el rol de la alcaldía.",
@@ -986,7 +986,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 7,
+    "numero": 18,
     "enunciado": "Describir la importancia de la protección del medio ambiente.",
     "evidencias": [
       "Identifica recursos naturales en riesgo.",
@@ -997,7 +997,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 8,
+    "numero": 19,
     "enunciado": "Promover el respeto y el cuidado por el entorno social y natural.",
     "evidencias": [
       "Realiza actividades de limpieza.",
@@ -1008,7 +1008,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 9,
+    "numero": 20,
     "enunciado": "Participar en actividades comunitarias.",
     "evidencias": [
       "Forma parte de grupos de trabajo en la comunidad.",
@@ -1019,7 +1019,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 10,
+    "numero": 21,
     "enunciado": "Conocer la historia local y su relevancia.",
     "evidencias": [
       "Investiga sobre eventos locales significativos.",
@@ -1030,7 +1030,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 11,
+    "numero": 22,
     "enunciado": "Reconocer el impacto de las acciones individuales en la sociedad.",
     "evidencias": [
       "Reflexiona sobre sus acciones.",
@@ -1041,7 +1041,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 23,
     "enunciado": "Identifica situaciones de conflicto en su entorno y propone soluciones.",
     "evidencias": [
       "Participa en discusiones sobre problemas sociales.",
@@ -1052,7 +1052,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 24,
     "enunciado": "Reconoce la diversidad cultural de su comunidad y la valora.",
     "evidencias": [
       "Describen costumbres y tradiciones de su entorno.",
@@ -1063,7 +1063,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 3,
+    "numero": 25,
     "enunciado": "Comprende los derechos y deberes que tiene como ciudadano.",
     "evidencias": [
       "Participa en la elaboración de normas de convivencia.",
@@ -1074,7 +1074,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 26,
     "enunciado": "La educación de calidad es un derecho fundamental y social que debe ser garantizado para todos.",
     "evidencias": [
       "Desarrolla conocimientos sobre los derechos humanos.",
@@ -1086,7 +1086,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 27,
     "enunciado": "Los DBA son un conjunto de aprendizajes estructurantes que han de aprender los estudiantes.",
     "evidencias": [
       "Identifica aprendizajes clave en su formación.",
@@ -1098,7 +1098,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 3,
+    "numero": 28,
     "enunciado": "La participación de la comunidad educativa es fundamental en la construcción de los DBA.",
     "evidencias": [
       "Asiste a mesas de discusión y foros.",
@@ -1110,7 +1110,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 29,
     "enunciado": "El enunciado referencia el aprendizaje estructurante para el área.",
     "evidencias": [
       "El aprendizaje es estructurante para el desarrollo de competencias.",
@@ -1122,7 +1122,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 30,
     "enunciado": "Las evidencias expresan indicios claves que muestran a los maestros si se está alcanzando el aprendizaje expresado en el enunciado.",
     "evidencias": [
       "Observaciones directas del estudiante durante actividades.",
@@ -1134,7 +1134,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 3,
+    "numero": 31,
     "enunciado": "Los DBA buscan ser de fácil comprensión tanto para docentes como para padres de familia y otros actores claves del ámbito educativo.",
     "evidencias": [
       "Materias explicadas con lenguaje claro y accesible.",
@@ -1146,7 +1146,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 4,
+    "numero": 32,
     "enunciado": "Los DBA están numerados pero esto no define un orden de trabajo en el aula.",
     "evidencias": [
       "Planificaciones que incorporan diferentes DBA en diversas secuencias.",
@@ -1158,7 +1158,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 5,
+    "numero": 33,
     "enunciado": "El profesor podrá -según los aprendizajes- desarrollar experiencias que aporten al alcance de varios de los aprendizajes propuestos por los DBA simultáneamente.",
     "evidencias": [
       "Actividades interdisciplinarias.",
@@ -1170,7 +1170,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 6,
+    "numero": 34,
     "enunciado": "Las evidencias de aprendizaje le sirven de referencia al maestro para hacer el aprendizaje observable.",
     "evidencias": [
       "Registro de observaciones de clase.",
@@ -1181,7 +1181,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 7,
+    "numero": 35,
     "enunciado": "Los ejemplos muestran lo que el niño debe estar en capacidad de hacer al alcanzar los aprendizajes enunciados según su edad y momento de desarrollo.",
     "evidencias": [
       "Actividades alineadas con el desarrollo del niño.",
@@ -1192,7 +1192,7 @@
   {
     "grado": "sin grado",
     "area": "Ciencias Sociales",
-    "numero": 8,
+    "numero": 36,
     "enunciado": "Los ejemplos pueden ser contextualizados de acuerdo con lo que el docente considere pertinente para sus estudiantes según su región, características étnicas y demás elementos determinantes.",
     "evidencias": [
       "Adaptación de contenidos para reflejar la diversidad cultural.",
@@ -1239,7 +1239,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Recuerda las fechas de los cumpleaños de sus padres, hermanos, amigos y compañeros de clase más cercanos, diferenciando las edades entre ellos.",
     "evidencias": [
       "Reconoce su individualidad y su pertenencia a los diferentes grupos sociales."
@@ -1249,7 +1249,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Expresa algunas características físicas y emocionales que lo hacen un ser único.",
     "evidencias": [
       "Compara similitudes y diferencias entre sus gustos, costumbres y formas de comunicarse, con los demás integrantes del salón de clase."
@@ -1259,7 +1259,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 3,
+    "numero": 6,
     "enunciado": "Reconoce de sí mismo, de sus compañeros y de sus familiares aquellas cualidades que le ayudan a estar mejor entre los demás.",
     "evidencias": [
       "Relata los principales acontecimientos sociales ocurridos en el aula de clase, por ejemplo, el inicio de la vida escolar, la celebración del día de los niños, las izadas de bandera o la celebración de cumpleaños, entre otros, diferenciando el antes y el ahora."
@@ -1269,7 +1269,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 4,
+    "numero": 7,
     "enunciado": "Señala las transformaciones recientes observadas en el entorno físico de su comunidad y el para qué se realizaron.",
     "evidencias": [
       "Describe aquellas organizaciones sociales a las que pertenece en su comunidad: familia, colegio y vecindario."
@@ -1279,7 +1279,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 5,
+    "numero": 8,
     "enunciado": "Plantea preguntas acerca de sucesos destacados que han tenido lugar en su comunidad.",
     "evidencias": [
       "Reconoce las costumbres y tradiciones culturales de su comunidad mediante los relatos de los abuelos y personas mayores del barrio, vereda o lugar donde vive."
@@ -1289,7 +1289,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 9,
     "enunciado": "Participa en la construcción de acuerdos básicos sobre normas para el logro de metas comunes en su contexto cercano (compañeros y familia) y se compromete con su cumplimiento.",
     "evidencias": [
       "Presenta sus ideas, intereses y sentimientos frente a las normas establecidas en la familia, en el salón de clase y otros espacios.",
@@ -1300,7 +1300,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 10,
     "enunciado": "Comprende cambios en las formas de habitar de los grupos humanos, desde el reconocimiento de los tipos de vivienda que se encuentran en el contexto de su barrio, vereda o lugar donde vive.",
     "evidencias": [
       "Señala los lugares de procedencia de su familia y comprende cómo llegaron a su vivienda actual.",
@@ -1313,7 +1313,7 @@
   {
     "grado": "1",
     "area": "Ciencias Sociales",
-    "numero": 8,
+    "numero": 11,
     "enunciado": "Establece relaciones de convivencia desde el reconocimiento y el respeto de sí mismo y de los demás.",
     "evidencias": [
       "Expresa el valor de sí mismo y de cada uno de los integrantes de la clase, explicando aquello que los diferencia y los identifica: el género, la procedencia, la edad, las ideas y creencias, entre otras.",
@@ -1389,7 +1389,7 @@
   {
     "grado": "2",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Compara las características de las viviendas de su municipio, vereda o lugar donde vive con las de otros lugares.",
     "evidencias": [
       "Reconoce características de las viviendas rurales y urbanas a partir de los materiales utilizados para su construcción.",
@@ -1402,7 +1402,7 @@
   {
     "grado": "2",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Reconoce la organización territorial en su municipio, desde: comunas, corregimientos, veredas, localidades y territorios indígenas.",
     "evidencias": [
       "Identifica el croquis de su municipio y lo diferencia entre los demás municipios del departamento.",
@@ -1414,7 +1414,7 @@
   {
     "grado": "2",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Diferencia la organización de grupos pequeños como la familia, salón de clase, colegio con las de los grupos más grandes como resguardo, territorios afrocolombianos y municipio.",
     "evidencias": [
       "Describe diversas características de los grupos humanos (etnia, edad, religión, género) y explica aquello que más le gusta de sus compañeros y lo que pudiera cambiarse para mejorar la convivencia en el grupo.",
@@ -1425,7 +1425,7 @@
   {
     "grado": "2",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Expresa sus sentimientos cuando es discriminado o aceptado en una actividad escolar y reconoce la importancia que tiene conocer y aceptar a las personas.",
     "evidencias": [
       "Identifica las acciones que generan discriminación en su entorno y sabe a quién acudir para pedir ayuda y protección.",
@@ -1462,7 +1462,7 @@
   {
     "grado": "3",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Explica las acciones humanas que han incidido en las transformaciones del territorio asociadas al número de habitantes e infraestructura, en su departamento, municipio, resguardo o lugar donde vive.",
     "evidencias": [
       "Identifica en su entorno algunos objetos, herramientas, aparatos, construcciones y documentos que brindan información acerca del pasado de su región.",
@@ -1475,7 +1475,7 @@
   {
     "grado": "3",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende el legado de los grupos humanos en la gastronomía, la música y el paisaje de la región, municipio, resguardo o lugar donde vive.",
     "evidencias": [
       "Reconoce los cambios y/o permanencias que se presentan en espacios como la escuela, la plaza principal y el mercado, entre otros.",
@@ -1488,7 +1488,7 @@
   {
     "grado": "3",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Comprende la importancia del tiempo en la organización de las actividades sociales, económicas y culturales en su comunidad.",
     "evidencias": [
       "Describe el tiempo dedicado en su familia a actividades como trabajar, estudiar, viajar, jugar, practicar deporte y leer.",
@@ -1502,7 +1502,7 @@
   {
     "grado": "3",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Analiza las contribuciones de los grupos humanos que habitan en su departamento, municipio o lugar donde vive, a partir de sus características culturales: lengua, organización social, tipo de vivienda, cosmovisión y uso del suelo.",
     "evidencias": [
       "Caracteriza aquellos grupos humanos que habitan en su región (afrodescendientes, raizales, blancos, indígenas, gitanos y/o mestizos).",
@@ -1514,7 +1514,7 @@
   {
     "grado": "3",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Comprende la importancia de participar en las decisiones de su comunidad cercana (institución educativa) mediante la elección del gobierno escolar.",
     "evidencias": [
       "Diferencia los órganos y las funciones del poder público que tiene el departamento (gobernador, diputados y jueces) de los que tiene el municipio y los resguardos.",
@@ -1527,7 +1527,7 @@
   {
     "grado": "3",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Comprende la estructura y el funcionamiento democrático a nivel del departamento como entidad política, administrativa y jurídica.",
     "evidencias": [
       "Explica la importancia del gobierno departamental en el mejoramiento de las condiciones de vida de los ciudadanos, en cuanto a educación, obras públicas, salud y recreación.",
@@ -1565,7 +1565,7 @@
   {
     "grado": "4",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende las razones de algunos cambios socioculturales en Colombia, motivados en los últimos años por el uso de la tecnología.",
     "evidencias": [
       "Explica cómo era la vida de los pueblos cuando no existía la energía eléctrica, el acueducto, el alcantarillado y el servicio de teléfono, entre otros.",
@@ -1578,7 +1578,7 @@
   {
     "grado": "4",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Analiza las características de las culturas ancestrales que a la llegada de los españoles, habitaban el territorio nacional.",
     "evidencias": [
       "Reconoce los diferentes pueblos indígenas pertenecientes a las familias lingüísticas que habitaban el territorio colombiano (Chibcha, Caribe y Arawak) y los ubica espacialmente.",
@@ -1591,7 +1591,7 @@
   {
     "grado": "4",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Evalúa la diversidad étnica y cultural del pueblo colombiano desde el reconocimiento de los grupos humanos existentes en el país: afrodescendientes, raizales, mestizos, indígenas y blancos.",
     "evidencias": [
       "Diferencia las ramas del poder público (Legislativa, Ejecutiva y Judicial), sus funciones e importancia en el equilibrio de poderes.",
@@ -1606,7 +1606,7 @@
   {
     "grado": "4",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Comprende la importancia de la división de poderes en una democracia y la forma como funciona en Colombia.",
     "evidencias": [
       "Describe el papel de los órganos de control (procuraduría, contraloría y la defensoría del pueblo), para el funcionamiento de la democracia y el equilibrio de poderes.",
@@ -1617,7 +1617,7 @@
   {
     "grado": "4",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Analiza los derechos que protegen la niñez y los deberes que deben cumplirse en una sociedad democrática para el desarrollo de una sana convivencia.",
     "evidencias": [
       "Identifica las necesidades básicas de todo ser humano (vivienda, alimentación, salud, educación y empleo) y explica si se satisfacen en su comunidad.",
@@ -1630,7 +1630,7 @@
   {
     "grado": "4",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Evalúa la importancia de satisfacer las necesidades básicas para el bienestar individual, familiar y colectivo.",
     "evidencias": [
       "Clasifica en orden de importancia las necesidades básicas que presentan los habitantes del territorio colombiano en la actualidad.",
@@ -1668,7 +1668,7 @@
   {
     "grado": "5",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende que los cambios en la comunicación originados por los avances tecnológicos han generado transformaciones en la forma como se relacionan las personas en la sociedad actual.",
     "evidencias": [
       "Compara el papel de las organizaciones políticas y administrativas como el Consejo Supremo de Indias, la Casa de Contratación de Sevilla, la Real Audiencia, los Cabildos, la Real Hacienda y el Virreinato con las actuales instituciones en Colombia.",
@@ -1685,7 +1685,7 @@
   {
     "grado": "5",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Analiza el origen y consolidación de Colombia como república y sus cambios políticos, económicos y sociales.",
     "evidencias": [
       "Plantea preguntas sobre los antecedentes que influenciaron el proceso de independencia de Colombia (revolución de los comuneros, invasiones napoleónicas, entre otras).",
@@ -1701,7 +1701,7 @@
   {
     "grado": "5",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Analiza los cambios ocurridos en la sociedad colombiana en la primera mitad del siglo XX, asociados a la expansión de la industria y el establecimiento de nuevas redes de comunicación.",
     "evidencias": [
       "Explica los cambios sociales y tecnológicos (radio, prensa escrita, telares y ferrocarriles) que se dieron en Colombia en la primera mitad del siglo XX y su incidencia en la reconfiguración de actividades económicas y sociales en el país."
@@ -1711,7 +1711,7 @@
   {
     "grado": "5",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Comprende que en la sociedad colombiana existen derechos, deberes, principios y acciones para orientar y regular la convivencia de las personas.",
     "evidencias": [
       "Explica las instituciones que defienden los Derechos Humanos y organizan proyectos en la comunidad (cabildos, juntas de acción comunal y juntas administradoras locales).",
@@ -1724,7 +1724,7 @@
   {
     "grado": "5",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Analiza el papel de las organizaciones sociales en la preservación y el reconocimiento de los Derechos Humanos.",
     "evidencias": [
       "Describe los beneficios o ventajas que conlleva vivir en un Estado democrático a través del estudio de la Constitución de 1991.",
@@ -1762,7 +1762,7 @@
   {
     "grado": "6",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Analiza los aspectos centrales del proceso de hominización y del desarrollo tecnológico surgieron las primeras ciudades y el papel de la agricultura y el comercio para la expansión de estas.",
     "evidencias": [
       "Diferencia las características fisiológicas y anatómicas presentes en los australopithecus, homo habilis, homo erectus, homo neanderthalensis y homo sapiens sapiens, reconociendo los factores que incidieron en estos cambios.",
@@ -1775,7 +1775,7 @@
   {
     "grado": "6",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Analiza cómo en las sociedades antiguas surgieron las primeras ciudades y el papel de los ríos en la construcción de estas.",
     "evidencias": [
       "Relaciona el origen de la agricultura con el desarrollo de las sociedades antiguas y la aparición de elementos que permanecen en la actualidad (canales de riego, la escritura, el ladrillo).",
@@ -1788,7 +1788,7 @@
   {
     "grado": "6",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Analiza los legados que las sociedades americanas prehispánicas dejaron en diversos campos.",
     "evidencias": [
       "Representa y sitúa en un mapa los espacios geográficos en que se desarrollaron sociedades prehispánicas como mayas, aztecas, incas, chibchas u otros grupos ancestrales.",
@@ -1801,7 +1801,7 @@
   {
     "grado": "6",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Analiza las distintas formas de gobierno ejercidas en la antigüedad y las compara con el ejercicio del poder político en el mundo contemporáneo.",
     "evidencias": [
       "Reconoce algunas formas de gobierno que se desarrollaron en las sociedades antiguas (tiranía, aristocracia, monarquía, teocracia, democracia ateniense) e identifica aquellas que permanecen en la actualidad.",
@@ -1814,7 +1814,7 @@
   {
     "grado": "6",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Analiza cómo en el escenario político democrático entran en juego intereses desde diferentes sectores sociales, políticos y económicos, los cuales deben ser dirimidos por los ciudadanos.",
     "evidencias": [
       "Describe el origen de la ciudadanía, los cambios que ha tenido en el tiempo y su significado actual.",
@@ -1827,7 +1827,7 @@
   {
     "grado": "6",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Comprende que en una sociedad democrática no es aceptable ninguna forma de discriminación por origen étnico, creencias religiosas, género, discapacidad y/o apariencia física.",
     "evidencias": [
       "Reconoce que las personas tenemos derecho a no ser discriminadas, a la luz de la Declaración Universal de los Derechos Humanos y de la Constitución Nacional de Colombia de 1991.",
@@ -1853,7 +1853,7 @@
   {
     "grado": "7",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Interpreta las relaciones entre el crecimiento de la población, el desarrollo de los centros urbanos y las problemáticas sociales.",
     "evidencias": [
       "Reconoce y utiliza conceptos propios de la geografía urbana (desarrollo, crecimiento, conurbación, área metropolitana y planificación urbana) a partir de la observación directa de estos fenómenos en su contexto.",
@@ -1866,7 +1866,7 @@
   {
     "grado": "7",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 3,
     "enunciado": "Analiza la influencia del imperio romano en la cultura de occidente y los aportes en diversos campos como la literatura, las leyes, la ingeniería y la vida cotidiana.",
     "evidencias": [
       "Reconoce el imperio romano como un sistema político, militar y económico que ejerció control territorial sobre gran parte de Europa y que influyó en la cultura latinoamericana.",
@@ -1905,7 +1905,7 @@
   {
     "grado": "7",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Evalúa las causas y consecuencias de los procesos de Conquista y colonización europea en América.",
     "evidencias": [
       "Describe los procesos de Conquista y colonización en América, llevados a cabo por españoles, portugueses, ingleses, franceses y holandeses.",
@@ -1918,7 +1918,7 @@
   {
     "grado": "7",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Comprende la responsabilidad que tiene una sociedad democrática para evitar la violación de los derechos fundamentales de sus ciudadanos.",
     "evidencias": [
       "Compara la Declaración Universal de los Derechos Humanos con los derechos fundamentales enunciados en la Constitución.",
@@ -1931,7 +1931,7 @@
   {
     "grado": "7",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Aplica procesos y técnicas de mediación de conflictos en pro del establecimiento de una cultura de la paz.",
     "evidencias": [
       "Identifica las consecuencias de los conflictos en la vida cotidiana de las personas y plantea acciones para resolverlos de manera negociada.",
@@ -1970,7 +1970,7 @@
   {
     "grado": "8",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Analiza los cambios sociales, económicos, políticos y culturales generados por el surgimiento y consolidación del capitalismo en Europa y las razones por las cuales este sigue siendo un sistema económico vigente.",
     "evidencias": [
       "Describe las transformaciones que se produjeron en Europa a finales del siglo XVIII y durante el siglo XIX a partir del desarrollo del comercio y la industria dando paso al surgimiento y consolidación del capitalismo.",
@@ -1983,7 +1983,7 @@
   {
     "grado": "8",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Analiza los procesos de expansión territorial desarrollados por Europa durante el siglo XIX y las nuevas manifestaciones imperialistas observadas en las sociedades contemporáneas.",
     "evidencias": [
       "Describe la expansión y distribución territorial de los imperios europeos en Asia y África durante el siglo XIX e interpreta mapas temáticos.",
@@ -1996,7 +1996,7 @@
   {
     "grado": "8",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Comprende cómo se produjeron los procesos de independencia de las colonias americanas durante los siglos XVIII y XIX y sus implicaciones para las sociedades contemporáneas.",
     "evidencias": [
       "Describe la influencia política y económica de las revoluciones Francesa e Industrial en los procesos de independencia de las colonias americanas.",
@@ -2009,7 +2009,7 @@
   {
     "grado": "8",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Evalúa el impacto producido por los avances tecnológicos en el desarrollo social y económico de Colombia en el siglo XIX.",
     "evidencias": [
       "Describe el papel del telégrafo, el correo, el ferrocarril, el barco de vapor, la industria textil y la electricidad en el desarrollo económico de Colombia.",
@@ -2073,7 +2073,7 @@
   {
     "grado": "9",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Analiza las crisis económicas dadas en la Colombia contemporánea y sus repercusiones en la vida cotidiana de las personas.",
     "evidencias": [
       "Caracteriza a través de estudios de caso algunas crisis económicas en Colombia (sustitución de importaciones, financiera e hipotecaria [UPAC], ruptura del pacto internacional del café, crisis internacional del petróleo).",
@@ -2086,7 +2086,7 @@
   {
     "grado": "9",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Analiza los cambios sociales, políticos, económicos y culturales en Colombia en el siglo XX y su impacto en la vida de los habitantes del país.",
     "evidencias": [
       "Explica los cambios del proceso de modernización en Colombia en la primera mitad del siglo XX: construcción de vías de comunicación, urbanización y desarrollo industrial.",
@@ -2099,7 +2099,7 @@
   {
     "grado": "9",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Evalúa cómo las sociedades democráticas en un Estado social de Derecho tienen el deber de proteger y promover los derechos fundamentales de los ciudadanos.",
     "evidencias": [
       "Identifica los derechos constitucionales fundamentales, los derechos sociales, económicos y culturales y los derechos colectivos y del ambiente.",
@@ -2112,7 +2112,7 @@
   {
     "grado": "9",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Comprende el papel de las mujeres en los cambios sociales, políticos, económicos y culturales en el mundo y la igualdad de derechos que han adquirido en los últimos años.",
     "evidencias": [
       "Identifica la participación de las mujeres en la historia de Colombia en el ámbito político, académico, cultural, industrial y financiero.",
@@ -2125,7 +2125,7 @@
   {
     "grado": "9",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Evalúa cómo todo conflicto puede solucionarse mediante acuerdos en que las personas ponen de su parte para superar las diferencias.",
     "evidencias": [
       "Explica las consecuencias de aquellas acciones que pueden causar sufrimiento a otras personas.",
@@ -2138,7 +2138,7 @@
   {
     "grado": "9",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Comprende el impacto social del crecimiento económico desigual que se da en las diferentes regiones del país.",
     "evidencias": [
       "Reconoce cómo las condiciones geográficas regionales pueden influir en la construcción o no de infraestructuras y por ende en el crecimiento económico.",
@@ -2177,7 +2177,7 @@
   {
     "grado": "10",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende que existen multitud de culturas y una sola humanidad en el mundo y que entre ellas se presenta la discriminación y exclusión de algunos grupos, lo cual dificulta el bienestar de todos.",
     "evidencias": [
       "Describe las características demográficas, económicas, sociales, políticas y culturales de las sociedades actuales, en el marco de una sociedad de la información y bajo el paradigma de la globalización.",
@@ -2192,7 +2192,7 @@
   {
     "grado": "10",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Interpreta el papel que cumplen los organismos internacionales como formas de alianza y organización entre los Estados y que responden a los intereses entre los países.",
     "evidencias": [
       "Reconoce el papel de los organismos multilaterales en la formulación de políticas económicas, jurídicas, ambientales y educativas para los países que hacen parte de estas organizaciones.",
@@ -2203,7 +2203,7 @@
   {
     "grado": "10",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Analiza los conflictos bélicos presentes en las sociedades contemporáneas, sus causas y consecuencias así como su incidencia en la vida cotidiana de los pueblos.",
     "evidencias": [
       "Reconoce los avances militares, tecnológicos y científicos que las potencias utilizaron durante las dos Guerras Mundiales y otros conflictos acaecidos en el siglo XX y asume una posición crítica frente a estos.",
@@ -2242,7 +2242,7 @@
   {
     "grado": "11",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Analiza las consecuencias políticas, económicas y sociales de algunos conflictos geopolíticos desde finales del siglo XX hasta la actualidad a nivel mundial.",
     "evidencias": [
       "Características de conflictos geopolíticos contemporáneos ocurridos en distintos continentes por la disputa de recursos naturales, intereses económicos, ideológicos y religiosos.",
@@ -2257,7 +2257,7 @@
   {
     "grado": "11",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Analiza la globalización como un proceso que redefine el concepto de territorio, las dinámicas de los mercados, las gobernanzas nacionales y las identidades locales.",
     "evidencias": [
       "Reconoce las características de la globalización económica y política en el mundo contemporáneo y las tensiones que ha generado en las comunidades nacionales.",
@@ -2326,7 +2326,7 @@
   {
     "grado": "sin grado",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "El enunciado referencia el aprendizaje estructurante para el área.",
     "evidencias": [
       "Indicios claves que muestran si se está alcanzando el aprendizaje expresado."
@@ -2336,7 +2336,7 @@
   {
     "grado": "sin grado",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Los DBA buscan ser de fácil comprensión tanto para docentes como para padres de familia.",
     "evidencias": [
       "Facilidad de comprensión para todos los actores educativos."
@@ -2346,7 +2346,7 @@
   {
     "grado": "sin grado",
     "area": "Lenguaje",
-    "numero": 3,
+    "numero": 10,
     "enunciado": "Los DBA están numerados pero esto no define un orden de trabajo en el aula.",
     "evidencias": [
       "Los aprendizajes propuestos no tienen que cumplirse en un orden específico."
@@ -2356,7 +2356,7 @@
   {
     "grado": "sin grado",
     "area": "Lenguaje",
-    "numero": 4,
+    "numero": 11,
     "enunciado": "El profesor podrá desarrollar experiencias que aporten al alcance de varios aprendizajes simultáneamente.",
     "evidencias": [
       "Experiencias educativas que integran múltiples aprendizajes."
@@ -2366,7 +2366,7 @@
   {
     "grado": "sin grado",
     "area": "Lenguaje",
-    "numero": 5,
+    "numero": 12,
     "enunciado": "Las evidencias de aprendizaje le sirven de referencia al maestro para hacer el aprendizaje observable.",
     "evidencias": [
       "Indicadores observables que permiten medir el aprendizaje."
@@ -2376,7 +2376,7 @@
   {
     "grado": "sin grado",
     "area": "Lenguaje",
-    "numero": 6,
+    "numero": 13,
     "enunciado": "Los ejemplos muestran lo que el niño debe estar en capacidad de hacer al alcanzar los aprendizajes.",
     "evidencias": [
       "Evidencias que reflejan la apropiación del aprendizaje."
@@ -2386,7 +2386,7 @@
   {
     "grado": "sin grado",
     "area": "Lenguaje",
-    "numero": 7,
+    "numero": 14,
     "enunciado": "Los ejemplos pueden ser contextualizados de acuerdo con lo que el docente considere pertinente.",
     "evidencias": [
       "Adaptación de ejemplos a las características de los estudiantes."
@@ -2413,7 +2413,7 @@
   {
     "grado": "1",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Reconoce en los textos literarios la posibilidad de desarrollar su capacidad creativa y lúdica.",
     "evidencias": [
       "Escucha o lee adivinanzas, anagramas, retahílas, pregones y acrósticos que hacen parte de su entorno cultural.",
@@ -2426,7 +2426,7 @@
   {
     "grado": "1",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 3,
     "enunciado": "Interpreta textos literarios como parte de su iniciación en la comprensión de textos.",
     "evidencias": [
       "Comparte sus impresiones sobre los textos literarios y las relaciona con situaciones que se dan en los contextos donde vive.",
@@ -2439,7 +2439,7 @@
   {
     "grado": "1",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Reconoce las temáticas presentes en los mensajes que escucha, a partir de la diferenciación de los sonidos que componen las palabras.",
     "evidencias": [
       "Comprende las temáticas tratadas en diferentes textos que escucha.",
@@ -2451,7 +2451,7 @@
   {
     "grado": "1",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Interpreta diversos textos a partir de la lectura de palabras sencillas y de las imágenes que contienen.",
     "evidencias": [
       "Comprende el propósito de los textos que lee, apoyándose en sus títulos, imágenes e ilustraciones.",
@@ -2465,7 +2465,7 @@
   {
     "grado": "1",
     "area": "Lenguaje",
-    "numero": 7,
+    "numero": 6,
     "enunciado": "Enuncia textos orales de diferente índole sobre temas de su interés o sugeridos por otros.",
     "evidencias": [
       "Emplea palabras adecuadas según la situación comunicativa en sus conversaciones y diálogos.",
@@ -2478,7 +2478,7 @@
   {
     "grado": "1",
     "area": "Lenguaje",
-    "numero": 8,
+    "numero": 7,
     "enunciado": "Escribe palabras que le permiten comunicar sus ideas, preferencias y aprendizajes.",
     "evidencias": [
       "Construye textos cortos para relatar, comunicar ideas o sugerencias y hacer peticiones al interior del contexto en el que interactúa.",
@@ -2517,7 +2517,7 @@
   {
     "grado": "2",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Identifica algunos elementos constitutivos de textos literarios como personajes, espacios y acciones.",
     "evidencias": [
       "Reconstruye las acciones y los espacios donde se desarrolla la narración y atribuye nuevos perfiles a los personajes.",
@@ -2531,7 +2531,7 @@
   {
     "grado": "2",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Comprende diversos textos literarios a partir de sus propias vivencias.",
     "evidencias": [
       "Elabora hipótesis predictivas del contenido de textos literarios.",
@@ -2569,7 +2569,7 @@
   {
     "grado": "2",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Expresa sus ideas atendiendo a las características del contexto comunicativo en que las enuncia (interlocutores, temas, lugares).",
     "evidencias": [
       "Selecciona el tipo de texto que quiere escribir de acuerdo con lo que pretende comunicar.",
@@ -2612,7 +2612,7 @@
   {
     "grado": "3",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Reconoce algunas características de los textos narrativos, tales como el concepto de narrador y estructura narrativa, a partir de la recreación y disfrute de los mismos.",
     "evidencias": [
       "Comprende las características de un texto, cuyo propósito es narrar un hecho o expresar ideas, sentimientos o emociones.",
@@ -2627,7 +2627,7 @@
   {
     "grado": "3",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Escribe textos literarios coherentes, atendiendo a las características textuales e integrando sus saberes e intereses.",
     "evidencias": [
       "Crea personajes para sus historias y describe cómo son, dónde viven, qué problemas deben enfrentar y cómo los solucionan.",
@@ -2639,7 +2639,7 @@
   {
     "grado": "3",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Identifica el papel del emisor y el receptor y contextualiza el contenido y la estructura de sus propósitos comunicativos en una situación específica.",
     "evidencias": [
       "Asocia la intención comunicativa con el contexto en el que se producen los enunciados y el rol que desempeñan los interlocutores.",
@@ -2656,7 +2656,7 @@
   {
     "grado": "3",
     "area": "Lenguaje",
-    "numero": 7,
+    "numero": 6,
     "enunciado": "Produce textos orales breves de diferente tipo ajustando el volumen, el tono de la voz, los movimientos corporales y los gestos, al tema y a la situación comunicativa.",
     "evidencias": [
       "Escribe diversos tipos de texto (como cartas, afiches, pancartas, plegables, cuentos, entre otros) para expresar sus opiniones frente a una problemática de su entorno local.",
@@ -2674,7 +2674,7 @@
   {
     "grado": "3",
     "area": "Lenguaje",
-    "numero": 8,
+    "numero": 7,
     "enunciado": "Produce textos verbales y no verbales en los que tiene en cuenta aspectos gramaticales y ortográficos.",
     "evidencias": [
       "Diseña textos que le permiten comunicar un mensaje de manera efectiva:",
@@ -2736,7 +2736,7 @@
   {
     "grado": "4",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Interpreta el tono del discurso de su interlocutor.",
     "evidencias": [
       "Nota el tono y el estado de ánimo del emisor a partir del ritmo, las pausas y la velocidad de su discurso."
@@ -2746,7 +2746,7 @@
   {
     "grado": "4",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Organiza la información que encuentra en los textos que lee, utilizando técnicas para el procesamiento de la información que le facilitan el proceso de compresión e interpretación textual.",
     "evidencias": [
       "Identifica la estructura de los textos que lee de acuerdo con su intención comunicativa.",
@@ -2757,7 +2757,7 @@
   {
     "grado": "4",
     "area": "Lenguaje",
-    "numero": 3,
+    "numero": 7,
     "enunciado": "Comprende los temas tratados en espacios de discusión y los incorpora en su discurso para apoyarlos o criticarlos.",
     "evidencias": [
       "Comprende la intención comunicativa de diferentes tipos de texto.",
@@ -2769,7 +2769,7 @@
   {
     "grado": "4",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Participa en espacios de discusión en los que adapta sus emisiones a los requerimientos de la situación comunicativa.",
     "evidencias": [
       "Participa en espacios de discusión grupal, como: conversatorios, exposiciones y tertulias, teniendo en cuenta la temática y la intencionalidad.",
@@ -2782,7 +2782,7 @@
   {
     "grado": "4",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Produce textos atiendo a elementos como el tipo de público al que va dirigido, el contexto de circulación, sus saberes previos y la diversidad de formatos de la que dispone para su presentación.",
     "evidencias": [
       "Define la tipología textual que empleará en la producción de un escrito a partir del análisis del propósito comunicativo.",
@@ -2822,7 +2822,7 @@
   {
     "grado": "5",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Comprende los roles que asumen los personajes en las obras literarias y su relación con la temática y la época en las que estas se desarrollan.",
     "evidencias": [
       "Expresa en sus escritos y enunciaciones la experiencia literaria que ha consolidado a partir de los textos con los que se relaciona.",
@@ -2835,7 +2835,7 @@
   {
     "grado": "5",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Reconoce en la lectura de los distintos géneros literarios diferentes posibilidades de recrear y ampliar su visión de mundo.",
     "evidencias": [
       "Conoce diferentes culturas a partir de la lectura de textos literarios.",
@@ -2846,7 +2846,7 @@
   {
     "grado": "5",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Comprende el sentido global de los mensajes, a partir de la relación entre la información explícita e implícita.",
     "evidencias": [
       "Asume una postura crítica y respetuosa frente a los mensajes que circulan en su medio.",
@@ -2858,7 +2858,7 @@
   {
     "grado": "5",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Identifica la intención comunicativa de los textos con los que interactúa a partir del análisis de su contenido y estructura.",
     "evidencias": [
       "Reconoce la función social de los textos que lee y las visiones de mundo que proponen.",
@@ -2870,7 +2870,7 @@
   {
     "grado": "5",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Construye textos orales atendiendo a los contextos de uso, a los posibles interlocutores y a las líneas temáticas pertinentes con el propósito comunicativo en el que se enmarca el discurso.",
     "evidencias": [
       "Establece relaciones de coherencia entre los conceptos a tratar, el tipo de texto a utilizar y la intención comunicativa que media su producción.",
@@ -2886,7 +2886,7 @@
   {
     "grado": "5",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Produce textos verbales y no verbales a partir de los planes textuales que elabora según la tipología a desarrollar.",
     "evidencias": [],
     "ejemplos": ""
@@ -2894,7 +2894,7 @@
   {
     "grado": "6",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 1,
     "enunciado": "Utiliza la información ofrecida por los medios de comunicación, teniendo en cuenta el mensaje, los interlocutores, la intencionalidad y el contexto de producción, para participar en los procesos comunicativos de su entorno.",
     "evidencias": [
       "Utiliza los organizadores gráficos para procesar la información que encuentra en diferentes fuentes.",
@@ -2909,7 +2909,7 @@
   {
     "grado": "6",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Reconoce las obras literarias como una posibilidad de circulación del conocimiento y de desarrollo de su imaginación.",
     "evidencias": [
       "Reconoce que en las obras literarias se recrea la cultura propia de diferentes regiones.",
@@ -2923,7 +2923,7 @@
   {
     "grado": "6",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 3,
     "enunciado": "Identifica algunas expresiones de diferentes regiones y contextos en las obras literarias.",
     "evidencias": [
       "Comprende el sentido que tienen algunas expresiones populares al interior de las obras literarias.",
@@ -2935,7 +2935,7 @@
   {
     "grado": "6",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Interpreta obras de la tradición popular.",
     "evidencias": [
       "Reconoce el componente cultural en coplas, trovas y refranes.",
@@ -2952,7 +2952,7 @@
   {
     "grado": "6",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Produce discursos orales y los adecúa a las circunstancias del contexto: el público, la intención comunicativa y el tema a desarrollar.",
     "evidencias": [
       "Analiza el público a quien se dirige y las exigencias propias del contexto para producir textos orales.",
@@ -2965,7 +2965,7 @@
   {
     "grado": "6",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Produce diversos tipos de texto atendiendo a los destinatarios, al medio en que se escribirá y a los propósitos comunicativos.",
     "evidencias": [
       "Elige, entre diversos tipos de texto, aquel que mejor se adecúa al propósito comunicativo del texto que debe escribir.",
@@ -3004,7 +3004,7 @@
   {
     "grado": "7",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Establece conexiones entre los elementos presentes en la literatura y los hechos históricos, culturales y sociales en los que se han producido.",
     "evidencias": [
       "Reconoce en los géneros literarios las visiones de mundo que imprimen los seres humanos en sus interacciones sociales.",
@@ -3017,7 +3017,7 @@
   {
     "grado": "7",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Clasifica las producciones literarias a partir del análisis de su contenido y estructura en diferentes géneros literarios.",
     "evidencias": [
       "Categoriza las temáticas de los textos literarios con los que interactúa y en función de ello establece el género al que pertenecen.",
@@ -3028,7 +3028,7 @@
   {
     "grado": "7",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Comprende discursos orales producidos con un objetivo determinado en diversos contextos sociales y escolares.",
     "evidencias": [
       "Escucha los discursos orales de su entorno para deducir los propósitos comunicativos de un interlocutor.",
@@ -3041,7 +3041,7 @@
   {
     "grado": "7",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Interpreta textos informativos, expositivos, narrativos, líricos, argumentativos y descriptivos, y da cuenta de sus características formales y no formales.",
     "evidencias": [
       "Identifica y caracteriza al posible destinatario del texto a partir del tratamiento de la temática.",
@@ -3054,7 +3054,7 @@
   {
     "grado": "7",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Construye narraciones orales, para lo cual produce textos verbales y no verbales.",
     "evidencias": [
       "Define la estructura y el contenido de una producción oral, atendiendo a la necesidad comunicativa de narrar en un contexto particular.",
@@ -3068,7 +3068,7 @@
   {
     "grado": "7",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Desarrolla en sus textos un único tema central, alrededor del cual organiza una serie de subtemas.",
     "evidencias": [
       "Sabe cómo emplear diversos tipos de texto atendiendo al propósito comunicativo.",
@@ -3094,7 +3094,7 @@
   {
     "grado": "8",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Reconoce en las producciones literarias aspectos referidos a la estructura formal del género y a la identidad cultural que recrea.",
     "evidencias": [
       "Identifica las estrategias narrativas del autor para relatar su perspectiva sobre lo que ha ocurrido en una región.",
@@ -3107,7 +3107,7 @@
   {
     "grado": "8",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 3,
     "enunciado": "Comprende que el género lírico es una construcción mediada por la musicalidad, la rima y el uso de figuras retóricas, que permiten recrear una idea, un sentimiento o una situación.",
     "evidencias": [
       "Relaciona los textos que lee con producciones artísticas en las que se presentan rimas, acompañamientos musicales o imágenes.",
@@ -3120,7 +3120,7 @@
   {
     "grado": "8",
     "area": "Lenguaje",
-    "numero": 5,
+    "numero": 4,
     "enunciado": "Escucha con atención a sus compañeros en diálogos informales y predice los contenidos de la comunicación.",
     "evidencias": [
       "Participa en espacios discursivos que se dan en la cotidianidad de la escuela con el propósito de conocer las posturas de sus compañeros frente a diversos temas.",
@@ -3132,7 +3132,7 @@
   {
     "grado": "8",
     "area": "Lenguaje",
-    "numero": 6,
+    "numero": 5,
     "enunciado": "Infiere múltiples sentidos en los textos que lee y los relaciona con los conceptos macro del texto y con sus contextos de producción y circulación.",
     "evidencias": [
       "Identifica y caracteriza las voces que hablan en el texto.",
@@ -3144,7 +3144,7 @@
   {
     "grado": "8",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Reconstruye en sus intervenciones el sentido de los textos desde la relación existente entre la temática, los interlocutores y el contexto histórico-cultural.",
     "evidencias": [
       "Estructura los textos que compone, para lo cual elige entre las diferentes formas que puede asumir la expresión (narración, explicación, descripción, argumentación) y su adecuación al ámbito de uso.",
@@ -3184,7 +3184,7 @@
   {
     "grado": "9",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Analiza el lenguaje literario como una manifestación artística que permite crear ficciones y expresar pensamientos o emociones.",
     "evidencias": [
       "Identifica estrategias narrativas relacionadas con el abordaje de hechos históricos o problemáticas reales, en obras literarias o en producciones cinematográficas.",
@@ -3197,7 +3197,7 @@
   {
     "grado": "9",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Compara los formatos de obras literarias y de producciones audiovisuales con el propósito de analizar elementos propios de la narración.",
     "evidencias": [
       "Relación su interpretación de una obra literaria con las visiones de mundo vigentes en una época y/o movimiento literario.",
@@ -3235,7 +3235,7 @@
   {
     "grado": "9",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Produce textos orales, a partir del empleo de diversas estrategias para exponer sus argumentos.",
     "evidencias": [
       "Argumenta las posturas y sugerencias que plantea, en el momento de proponer alternativas para resolver un problema.",
@@ -3249,7 +3249,7 @@
   {
     "grado": "9",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Produce textos verbales y no verbales, a partir de los planes textuales que elabora, y siguiendo procedimientos sistemáticos de corrección lingüística.",
     "evidencias": [
       "Evalúa el rol que debe cumplir como enunciador de un texto, según el propósito elegido y la situación comunicativa particular.",
@@ -3286,7 +3286,7 @@
   {
     "grado": "10",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Caracteriza la literatura en un momento particular de la historia desde el acercamiento a sus principales exponentes, textos, temáticas y recursos estilísticos.",
     "evidencias": [
       "Amplía su visión de las corrientes literarias mediante el conocimiento de las manifestaciones artísticas.",
@@ -3300,7 +3300,7 @@
   {
     "grado": "10",
     "area": "Lenguaje",
-    "numero": 5,
+    "numero": 4,
     "enunciado": "Participa en discursos orales en los que evalúa aspectos relacionados con la progresión temática, manejo de la voz, tono, estilo y puntos de vista sobre temas sociales, culturales, políticos y científicos.",
     "evidencias": [
       "Deduce referentes sociales, culturales o ideológicos presentes en las voces que hablan en el texto y argumenta su posición al respecto.",
@@ -3313,7 +3313,7 @@
   {
     "grado": "10",
     "area": "Lenguaje",
-    "numero": 6,
+    "numero": 5,
     "enunciado": "Comprende diversos tipos de texto, asumiendo una actitud crítica y argumentando sus puntos de vista frente a lo leído.",
     "evidencias": [
       "Evalúa textos escritos teniendo en cuenta el plan de contenido, las relaciones de sentido y las estrategias discursivas empleadas.",
@@ -3326,7 +3326,7 @@
   {
     "grado": "10",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Produce textos orales como ponencias, comentarios, relatorías o entrevistas, atendiendo a la progresión temática, a los interlocutores, al propósito y a la situación comunicativa.",
     "evidencias": [
       "Divulga información científica sobre temas de su interés, mediante textos que motivan a sus compañeros a conocer dichas temáticas.",
@@ -3367,7 +3367,7 @@
   {
     "grado": "11",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Determina los textos que desea leer y la manera en que abordará su comprensión, con base en sus experiencias de formación.",
     "evidencias": [
       "Determina en los textos literarios las expresiones que pueden incidir tanto en las concepciones políticas, religiosas y culturales, como en la construcción de ciudadanía.",
@@ -3379,7 +3379,7 @@
   {
     "grado": "11",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Identifica, en las producciones literarias clásicas, diferentes temas que le permiten establecer comparaciones con las visiones de mundo de otras épocas.",
     "evidencias": [
       "Asume una postura frente a la vigencia de las obras literarias clásicas.",
@@ -3392,7 +3392,7 @@
   {
     "grado": "11",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Comprende que los argumentos de sus interlocutores involucran procesos de comprensión, crítica y proposición.",
     "evidencias": [
       "Descripción de la situación comunicativa: roles y características de los participantes, definición del contexto situacional, canal y códigos empleados.",
@@ -3410,7 +3410,7 @@
   {
     "grado": "11",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Compara diversos tipos de texto, con capacidad crítica y argumentativa para establecer relaciones entre temáticas, características y los múltiples contextos en los que fueron producidos.",
     "evidencias": [
       "Enfatiza la importancia académica de un tema de su interés personal.",
@@ -3423,7 +3423,7 @@
   {
     "grado": "11",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Expresa por medio de producciones orales, un texto o la obra de un autor.",
     "evidencias": [
       "Hace referencia a los contenidos de otros textos en sus producciones orales.",
@@ -3436,7 +3436,7 @@
   {
     "grado": "11",
     "area": "Lenguaje",
-    "numero": 5,
+    "numero": 8,
     "enunciado": "Produce textos académicos a partir de procedimientos sistemáticos de corrección lingüística, atendiendo al tipo de texto y al contexto comunicativo.",
     "evidencias": [
       "Evalúa la adecuación del texto en relación con su rol como enunciatario, las estrategias discursivas utilizadas y la visión de mundo que proyecta en su escrito.",
@@ -3507,7 +3507,7 @@
   {
     "grado": "1",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Utiliza las características posicionales del Sistema de Numeración Decimal (SND) para establecer relaciones entre cantidades y comparar números.",
     "evidencias": [
       "Identifica la forma en la que se usan menos billetes y encuentra una regla para saberlo rápidamente.",
@@ -3573,7 +3573,7 @@
   {
     "grado": "1",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Describe cualitativamente situaciones para identificar el cambio y la variación usando gestos, dibujos, diagramas, medios gráficos y simbólicos.",
     "evidencias": [
       "Identifica y nombra diferencias entre objetos o grupos de objetos.",
@@ -3610,7 +3610,7 @@
   {
     "grado": "1",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Escribe una frase sencilla para responder preguntas tales como: ¿cuántos niños prefieren el helado de sabor de fresa?, ¿cuántos de uva?, etc., y ¿cuántos helados se deben comprar en total?, ¿cuál es el sabor más escogido por los niños del curso 1A?",
     "evidencias": [],
     "ejemplos": null
@@ -3641,7 +3641,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Reconoce y establece relaciones entre expresiones numéricas (hay más, hay menos, hay la misma cantidad) y describe el tipo de operaciones que debe realizarse para que a pesar de cambiar los valores numéricos, la relación se conserve.",
     "evidencias": [
       "Escribe algunos números en los espacios vacíos para lograr que se cumpla la relación.",
@@ -3654,7 +3654,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Utiliza el Sistema de Numeración Decimal para comparar, ordenar y establecer diferentes relaciones entre dos o más secuencias de números con ayuda de diferentes recursos.",
     "evidencias": [
       "Compara y ordena números de menor a mayor y viceversa a través de recursos como calculadora, aplicación, material gráfico, diagramas de colecciones, etc."
@@ -3664,7 +3664,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 5,
     "enunciado": "Propone ejemplos y comunica de forma oral y escrita las condiciones que puede establecer para conservar una relación (mayor que, menor que) cuando se aplican algunas operaciones a ellos.",
     "evidencias": [],
     "ejemplos": null
@@ -3672,7 +3672,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Compara y explica características que se pueden medir, en el proceso de resolución de problemas relativos a longitud, superficie, velocidad, peso o duración de los eventos.",
     "evidencias": [
       "Utiliza instrumentos y unidades de medición apropiados para medir magnitudes diferentes.",
@@ -3685,7 +3685,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Analiza diferentes situaciones en las que se comparan objetos según magnitudes y describe estrategias para calcular la distancia recorrida por un auto que se mueve a cierta velocidad constante durante un intervalo de tiempo.",
     "evidencias": [
       "Compara eventos según su duración, para ello utiliza relojes convencionales."
@@ -3695,7 +3695,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 8,
     "enunciado": "Estima la cantidad de tela que se gastaría en un vestido, la longitud de una cinta para cubrir el borde de una mesa; busca longitudes cercanas a un metro o pesos cercanos a un kilogramo e identifica otros objetos que podrían tener esa longitud o ese peso.",
     "evidencias": [
       "Realiza mediciones con instrumentos y unidades no convencionales, como pasos, cuadrados o rectángulos, cuartas, metros, entre otros."
@@ -3705,7 +3705,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 9,
     "enunciado": "Señala la pareja de relojes correspondiente a la hora de llegada de los niños hasta el conejo y explica la respuesta.",
     "evidencias": [
       "Reconoce las figuras geométricas según el número de lados.",
@@ -3717,7 +3717,7 @@
   {
     "grado": "2",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Andrés escribe una carta a Sofía en la que describe detalladamente la habitación de Andrés y los objetos que hay en ella.",
     "evidencias": [
       "Estudia si la descripción que hace Andrés es correcta, justifica su respuesta y propone afirmaciones que la completan."
@@ -3727,7 +3727,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 10,
     "enunciado": "Clasifica, describe y representa objetos del entorno a partir de sus propiedades geométricas para establecer relaciones entre las formas bidimensionales y tridimensionales.",
     "evidencias": [
       "Reconoce las figuras geométricas según el número de lados.",
@@ -3739,7 +3739,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Describe desplazamientos y referencia la posición de un objeto mediante nociones de horizontalidad, verticalidad, paralelismo y perpendicularidad en la solución de problemas.",
     "evidencias": [
       "Establece relaciones de reversibilidad entre la suma y la resta.",
@@ -3753,7 +3753,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 12,
     "enunciado": "Propone e identifica patrones y utiliza propiedades de los números y de las operaciones para calcular valores desconocidos en expresiones aritméticas.",
     "evidencias": [
       "Utiliza diferentes procedimientos para calcular un valor desconocido.",
@@ -3768,7 +3768,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 9,
+    "numero": 13,
     "enunciado": "Opera sobre secuencias numéricas para encontrar números u operaciones faltantes utilizando las propiedades de las operaciones en contextos escolares o extraescolares.",
     "evidencias": [
       "Utiliza las propiedades de las operaciones para encontrar números desconocidos en igualdades numéricas.",
@@ -3781,7 +3781,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 10,
+    "numero": 14,
     "enunciado": "Clasifica y organiza datos, los representa utilizando tablas de conteo, pictogramas con escalas y gráficos de puntos, comunica los resultados obtenidos para responder preguntas sencillas.",
     "evidencias": [
       "Identifica la equivalencia de fichas u objetos con el valor de la variable.",
@@ -3794,7 +3794,7 @@
   {
     "grado": "2",
     "area": "Matemáticas",
-    "numero": 11,
+    "numero": 15,
     "enunciado": "Explica, a partir de la experiencia, la posibilidad de ocurrencia o no de un evento cotidiano y el resultado lo utiliza para predecir la ocurrencia de otros eventos.",
     "evidencias": [
       "Diferencia situaciones cotidianas cuyo resultado puede ser incierto de aquellas cuyo resultado es conocido o seguro.",
@@ -3822,7 +3822,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Establece comparaciones entre cantidades y expresiones que involucran operaciones y relaciones aditivas y multiplicativas y sus representaciones numéricas.",
     "evidencias": [
       "Realiza mediciones de un mismo objeto con otros de diferente tamaño y establece equivalencias entre ellas.",
@@ -3836,7 +3836,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Describe y argumenta posibles relaciones entre los valores del área y el perímetro de figuras planas (especialmente cuadriláteros).",
     "evidencias": [
       "La moneda de un cuarto de peso, ¿a cuántos centavos equivaldría?",
@@ -3851,7 +3851,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Toma decisiones sobre la magnitud a medir (área, longitud) según la necesidad de una situación.",
     "evidencias": [
       "Realiza recubrimientos de superficies con diferentes figuras planas.",
@@ -3863,7 +3863,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Realiza estimaciones y mediciones de volumen, capacidad, longitud, área, peso de objetos y la duración de eventos como parte del proceso para resolver diferentes problemas.",
     "evidencias": [
       "Relaciona objetos de su entorno con formas bidimensionales y tridimensionales, nombra y describe sus elementos.",
@@ -3877,7 +3877,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Describe y representa formas bidimensionales y tridimensionales de acuerdo con las propiedades geométricas.",
     "evidencias": [
       "Clasifica y representa formas bidimensionales y tridimensionales tomando en cuenta sus características geométricas comunes y describe el criterio utilizado.",
@@ -3888,7 +3888,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Formula y resuelve problemas que se relacionan con la posición, la dirección y el movimiento de objetos en el entorno.",
     "evidencias": [
       "Localiza objetos o personas a partir de la descripción o representación de una trayectoria y construye representaciones pictóricas para describir sus relaciones.",
@@ -3901,7 +3901,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Describe y representa los aspectos que cambian y permanecen constantes en secuencias y en otras situaciones de variación.",
     "evidencias": [
       "Describe de manera cualitativa situaciones de cambio y variación utilizando lenguaje natural, gestos, dibujos y gráficas.",
@@ -3913,7 +3913,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Argumenta sobre situaciones numéricas, geométricas y enunciados verbales en los que aparecen datos desconocidos para definir sus posibles valores según el contexto.",
     "evidencias": [
       "Propone soluciones con base en los datos a pesar de no conocer el número.",
@@ -3925,7 +3925,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 10,
     "enunciado": "Analiza e interpreta información que ofrecen las tablas y los gráficos de acuerdo con el contexto.",
     "evidencias": [
       "Identifica la moda a partir de datos que se presentan en gráficos y tablas.",
@@ -3936,7 +3936,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 11,
     "enunciado": "Lee e interpreta información contenida en tablas de frecuencia, gráficos de barras y/o pictogramas con escala, para formular y resolver preguntas de situaciones de su entorno.",
     "evidencias": [
       "Identifica las características de la población y halla su tamaño a partir de diferentes representaciones estadísticas.",
@@ -3947,7 +3947,7 @@
   {
     "grado": "3",
     "area": "Matemáticas",
-    "numero": 11,
+    "numero": 12,
     "enunciado": "Plantea y resuelve preguntas sobre la posibilidad de ocurrencia de situaciones aleatorias cotidianas y cuantifica la posibilidad de ocurrencia de eventos simples en una escala cualitativa (mayor, menor e igual).",
     "evidencias": [
       "Formula y resuelve preguntas que involucran expresiones que jerarquizan la posibilidad de ocurrencia de un evento, por ejemplo: imposible, menos posible, igualmente posible, más posible, seguro.",
@@ -3987,7 +3987,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Utiliza y justifica algoritmos estandarizados y no estandarizados para realizar operaciones aditivas con representaciones decimales provenientes de fraccionarios cuyas expresiones tengan denominador 10, 100, etc.",
     "evidencias": [
       "Identifica y construye fracciones equivalentes a una fracción dada.",
@@ -4001,7 +4001,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Argumenta sobre la importancia y necesidad de medir algunas magnitudes como densidad, dureza, viscosidad, masa, capacidad, etc.",
     "evidencias": [
       "Caracteriza y compara atributos medibles de los objetos (densidad, dureza, viscosidad, masa, capacidad de los recipientes, temperatura) con respecto a procedimientos, instrumentos y unidades de medición; y con respecto a las necesidades a las que responden."
@@ -4011,7 +4011,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Reconoce que para medir la capacidad y la masa se hacen comparaciones con la capacidad de recipientes de diferentes tamaños y con paquetes de diferentes masas, respectivamente (litros, centilitros, galón, botella, etc. para capacidad, gramos, kilogramos, libras, arrobas, etc. para masa).",
     "evidencias": [
       "Compara la información brindada en los empaques de dos o más productos para tomar decisiones, cuando la información no es suficiente.",
@@ -4022,7 +4022,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 6,
     "enunciado": "Diferencia los atributos medibles como capacidad, masa, volumen, entre otros, a partir de los procedimientos e instrumentos empleados para medirlos y los usos de cada uno en la solución de problemas.",
     "evidencias": [],
     "ejemplos": null
@@ -4030,7 +4030,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 4,
+    "numero": 7,
     "enunciado": "Identifica unidades y los instrumentos para medir masa y capacidad, y establece relaciones entre ellos.",
     "evidencias": [],
     "ejemplos": null
@@ -4038,7 +4038,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 5,
+    "numero": 8,
     "enunciado": "Describe procesos para medir capacidades de un recipiente o el peso de un objeto o producto.",
     "evidencias": [],
     "ejemplos": null
@@ -4046,7 +4046,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 5,
+    "numero": 9,
     "enunciado": "Elige instrumentos y unidades estandarizadas y no estandarizadas para estimar y medir longitud, área, volumen, capacidad, peso y masa, duración, rapidez, temperatura, y a partir de ellos hace los cálculos necesarios para resolver problemas.",
     "evidencias": [
       "Expresa una misma medida en diferentes unidades, establece equivalencias entre ellas y toma decisiones de la unidad más conveniente según las necesidades de la situación.",
@@ -4058,7 +4058,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 6,
+    "numero": 10,
     "enunciado": "Identifica, describe y representa figuras bidimensionales y tridimensionales, y establece relaciones entre ellas.",
     "evidencias": [
       "Arma, desarma y crea formas bidimensionales y tridimensionales.",
@@ -4069,7 +4069,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Francisco quiere poner la fotografía en su habitación para recordar sus vacaciones, pero debe disminuir el tamaño de la imagen. Escoge la imagen que representa una reducción de la foto, justifica y describe el procedimiento realizado para seleccionar la imagen.",
     "evidencias": [
       "Aplica movimientos a figuras en el plano.",
@@ -4082,7 +4082,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 12,
     "enunciado": "Identifica los movimientos realizados a una figura en el plano respecto a una posición o eje (rotación, traslación y simetría) y las modificaciones que pueden sufrir las formas (ampliación-reducción).",
     "evidencias": [],
     "ejemplos": null
@@ -4090,7 +4090,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 8,
+    "numero": 13,
     "enunciado": "Identifica, documenta e interpreta variaciones de dependencia entre cantidades en diferentes fenómenos y los representa por medio de gráficas.",
     "evidencias": [
       "Comunica en forma verbal y pictórica las regularidades observadas en una secuencia.",
@@ -4103,7 +4103,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 9,
+    "numero": 14,
     "enunciado": "Identifica patrones en secuencias (aditivas o multiplicativas) y los utiliza para establecer generalizaciones aritméticas o algebraicas.",
     "evidencias": [
       "Establece diferentes estrategias para calcular los siguientes elementos en una secuencia.",
@@ -4114,7 +4114,7 @@
   {
     "grado": "4",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 15,
     "enunciado": "Comprende y explica, usando vocabulario adecuado, la diferencia entre una situación aleatoria y una determinística y predice, en una situación de la vida cotidiana, la presencia o no del azar.",
     "evidencias": [
       "Elabora encuestas sencillas para obtener la información pertinente para responder la pregunta.",
@@ -4158,7 +4158,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Al dividir de forma diferente la cuadrícula explora si es posible encontrar otra manera de representar el mismo producto.",
     "evidencias": [
       "Compara y ordena números fraccionarios a 3.",
@@ -4171,7 +4171,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Justifica relaciones entre superficie y volumen, perímetro y área de diferentes figuras, y elige las unidades apropiadas según el tipo de medición.",
     "evidencias": [
       "Determina las medidas reales de una figura a partir de un registro gráfico (un plano).",
@@ -4185,7 +4185,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Compara diferentes figuras a partir de las medidas de sus lados.",
     "evidencias": [
       "Calcula las medidas de los lados de una figura a partir de su área.",
@@ -4197,7 +4197,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Reconoce diferentes distribuciones de plantillas de un cuerpo en una superficie, las formas en que pueden acoplarse o encajar, lee la información que presenta la plantilla del cuerpo o su representación en un plano.",
     "evidencias": [
       "Empaca las tarjetas, les ponen un hilo decorativo en todo el borde.",
@@ -4211,7 +4211,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Relaciona objetos tridimensionales y sus propiedades con sus respectivos desarrollos planos.",
     "evidencias": [
       "Reconoce relaciones intra e interfigurales.",
@@ -4224,7 +4224,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Resuelve y propone situaciones en las que es necesario describir y localizar la posición que permita ir de un sitio a otro.",
     "evidencias": [
       "Da instrucciones para seguir una trayectoria.",
@@ -4237,7 +4237,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Localiza puntos en un mapa a partir de coordenadas cartesianas.",
     "evidencias": [
       "Interpreta los elementos de un sistema de referencia (ejes, cuadrantes, coordenadas).",
@@ -4250,7 +4250,7 @@
   {
     "grado": "5",
     "area": "Matemáticas",
-    "numero": 9,
+    "numero": 10,
     "enunciado": "Utiliza operaciones no convencionales y encuentra propiedades y resuelve ecuaciones en donde están involucradas.",
     "evidencias": [
       "Analiza la información presentada y comunica los resultados.",
@@ -4321,7 +4321,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Reconoce y establece diferentes relaciones (orden y equivalencia) entre elementos de diversos dominios numéricos y los utiliza para argumentar procedimientos sencillos.",
     "evidencias": [
       "Determina criterios de comparación para establecer relaciones de orden entre dos o más números.",
@@ -4333,7 +4333,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Describe diferentes procedimientos o acciones que le permitan conocer el valor de x y pone a prueba esos procedimientos.",
     "evidencias": [
       "Calcula el desplazamiento del corcho si inicialmente está en la raya -23 y después aparece en la raya marcada con -45.",
@@ -4344,7 +4344,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 5,
     "enunciado": "Utiliza y explica diferentes estrategias (desarrollo de la forma o plantillas) e instrumentos (regla, compás o software) para la construcción de figuras planas y cuerpos.",
     "evidencias": [
       "Construye plantillas para cuerpos geométricos dadas sus medidas.",
@@ -4355,7 +4355,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Utiliza la regla no graduada y el compás para dibujar las plantillas de cuerpos geométricos cuando se tienen sus medidas.",
     "evidencias": [
       "Decide acerca de las estrategias para determinar qué tan pertinente es la estimación y analiza las causas de error en procesos de medición y estimación."
@@ -4365,7 +4365,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Estima el resultado de una medición sin realizarla, de acuerdo con un referente previo y aplica el proceso de estimación elegido y valora el resultado de acuerdo con los datos y contexto de un problema.",
     "evidencias": [
       "Estima la medida de longitudes, áreas, volúmenes, masas, pesos y ángulos en presencia o no de los objetos y decide sobre la conveniencia de los instrumentos a utilizar, según las necesidades de la situación."
@@ -4375,7 +4375,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 8,
     "enunciado": "Selecciona de los moldes que se muestran en la figura los que se podrían utilizar para construir, con regla y compás, los forros respectivos y determina cómo calcular la cantidad de papel que se requiere para elaborar cada forro, si se conocen las medidas de las aristas de cada cuerpo.",
     "evidencias": [
       "Utiliza el transportador para medir los ángulos y compara esas medidas con las de la estimación, explica las estrategias utilizadas en ambos casos."
@@ -4385,7 +4385,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 4,
+    "numero": 9,
     "enunciado": "Encuentra el de mayor volumen y explica la respuesta.",
     "evidencias": [],
     "ejemplos": null
@@ -4393,7 +4393,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 5,
+    "numero": 10,
     "enunciado": "Propone y desarrolla estrategias de estimación, medición y cálculo de diferentes cantidades (ángulos, longitudes, áreas, volúmenes, etc.) para resolver problemas.",
     "evidencias": [],
     "ejemplos": null
@@ -4401,7 +4401,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Representa y construye formas bidimensionales y tridimensionales con el apoyo en instrumentos de medida apropiados.",
     "evidencias": [
       "Diferencia las propiedades geométricas de las figuras y cuerpos geométricos.",
@@ -4415,7 +4415,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 12,
     "enunciado": "Reconoce el plano cartesiano como un sistema bidimensional que permite ubicar puntos como sistema de referencia gráfico o geográfico.",
     "evidencias": [
       "Localiza, describe y representa la posición y la trayectoria de un objeto en un plano cartesiano.",
@@ -4427,7 +4427,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 13,
     "enunciado": "Identifica y analiza propiedades de covariación directa e inversa entre variables, en contextos numéricos, geométricos y cotidianos y las representa mediante gráficas.",
     "evidencias": [
       "Propone patrones de comportamiento numéricos y expresa verbalmente o por escrito los procedimientos matemáticos.",
@@ -4439,7 +4439,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 9,
+    "numero": 14,
     "enunciado": "Opera sobre números desconocidos y encuentra las operaciones apropiadas en un contexto para resolver problemas.",
     "evidencias": [
       "Utiliza las operaciones y sus inversas en problemas de cálculo numérico.",
@@ -4451,7 +4451,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 10,
+    "numero": 15,
     "enunciado": "Interpreta información estadística presentada en diversas fuentes de información, la analiza y la usa para plantear y resolver preguntas que sean de su interés.",
     "evidencias": [
       "Lee y extrae la información estadística publicada en diversas fuentes.",
@@ -4465,7 +4465,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 11,
+    "numero": 16,
     "enunciado": "Compara características compartidas por dos o más poblaciones o características diferentes dentro de una misma población para lo cual seleccionan muestras, utiliza representaciones gráficas adecuadas y analiza los resultados obtenidos usando conjuntamente las medidas de tendencia central y el rango.",
     "evidencias": [
       "Comprende la diferencia entre la muestra y la población.",
@@ -4477,7 +4477,7 @@
   {
     "grado": "6",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 17,
     "enunciado": "A partir de la información previamente obtenida en repeticiones de experimentos aleatorios sencillos, compara las frecuencias esperadas con las frecuencias observadas.",
     "evidencias": [
       "Enumera los posibles resultados de un experimento aleatorio sencillo.",
@@ -4515,7 +4515,7 @@
   {
     "grado": "7",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Utiliza diferentes relaciones, operaciones y representaciones en los números racionales para argumentar y solucionar problemas en los que aparecen cantidades desconocidas.",
     "evidencias": [
       "Realiza operaciones para calcular el número decimal que representa una fracción y viceversa.",
@@ -4531,7 +4531,7 @@
   {
     "grado": "7",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Utiliza escalas apropiadas para representar e interpretar planos, mapas y maquetas con diferentes unidades.",
     "evidencias": [
       "Identifica los tipos de escalas y selecciona la adecuada para la elaboración de planos de acuerdo al formato o espacio disponible para dibujar.",
@@ -4543,7 +4543,7 @@
   {
     "grado": "7",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Observa objetos tridimensionales desde diferentes puntos de vista, los representa según su ubicación y los reconoce cuando se transforman mediante rotaciones, traslaciones.",
     "evidencias": [
       "Establece relaciones entre la posición y las vistas de un objeto.",
@@ -4580,7 +4580,7 @@
   {
     "grado": "7",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Plantea preguntas para realizar estudios estadísticos en los que representa información cada estanque y compara el comportamiento mediante histogramas, polígonos de frecuencia, gráficos de línea entre otros; identifica variaciones, relaciones o tendencias para dar respuesta a las preguntas planteadas.",
     "evidencias": [
       "Usa el principio multiplicativo en situaciones aleatorias sencillas y lo representa con tablas o diagramas de árbol.",
@@ -4594,7 +4594,7 @@
   {
     "grado": "7",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Encuentra e interpreta las medidas de tendencia central y el rango en datos agrupados, empleando herramientas tecnológicas cuando sea posible.",
     "evidencias": [
       "Elabora tablas o diagramas de árbol para representar las distintas maneras en que un experimento aleatorio puede suceder.",
@@ -4606,7 +4606,7 @@
   {
     "grado": "7",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 10,
     "enunciado": "Elabora un diagrama de árbol para representar las posibles elecciones de menú.",
     "evidencias": [
       "El estudiante elabora un diagrama de árbol que muestra claramente las opciones de menú disponibles.",
@@ -4639,7 +4639,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Reconoce los diferentes usos y significados de las operaciones (convencionales y no convencionales) y del signo igual (relación de equivalencia e igualdad condicionada) y los utiliza para argumentar equivalencias entre expresiones algebraicas y resolver sistemas de ecuaciones.",
     "evidencias": [
       "Reconoce el uso del signo igual como relación de equivalencia de expresiones algebraicas en los números reales.",
@@ -4651,7 +4651,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Describe atributos medibles de diferentes sólidos y explica relaciones entre ellos por medio del lenguaje algebraico.",
     "evidencias": [
       "Utiliza lenguaje algebraico para representar el volumen de un prisma en términos de sus aristas.",
@@ -4664,7 +4664,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Identifica la posibilidad del error en la medición del volumen haciendo aproximaciones pertinentes.",
     "evidencias": [
       "Estima medidas de volumen con unidades estandarizadas y no estandarizadas.",
@@ -4675,7 +4675,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Explora y crea estrategias para calcular el volumen de cuerpos regulares e irregulares.",
     "evidencias": [
       "Compara el volumen calculado con el volumen de cada una de ellas.",
@@ -4686,7 +4686,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 7,
     "enunciado": "Asocia la forma del objeto irregular formada por una composición de figuras regulares, utiliza estas figuras para calcular el volumen del objeto irregular con una aproximación razonable.",
     "evidencias": [
       "Encuentra las razones aritméticas entre los diferentes volúmenes de las cajas y la expresión general para el volumen y el área exterior total."
@@ -4696,7 +4696,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 4,
+    "numero": 8,
     "enunciado": "Utiliza y explica diferentes estrategias para encontrar el volumen de objetos regulares e irregulares en la solución de problemas en las matemáticas y en otras ciencias.",
     "evidencias": [],
     "ejemplos": null
@@ -4704,7 +4704,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 9,
     "enunciado": "Identifica relaciones de congruencia y semejanza entre las formas geométricas que configuran el diseño de un objeto.",
     "evidencias": [
       "Utiliza criterios para argumentar la congruencia de dos triángulos.",
@@ -4717,7 +4717,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 10,
     "enunciado": "Identifica propiedades de figuras geométricas a partir de teoremas y las aplica en situaciones reales.",
     "evidencias": [
       "Describe teoremas y argumenta su validez a través de diferentes recursos (Software, tangram, papel, entre otros).",
@@ -4731,7 +4731,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Identifica y analiza relaciones entre propiedades de las gráficas y propiedades de expresiones algebraicas y relaciona la variación y covariación con los comportamientos gráficos, numéricos y características de las expresiones algebraicas en situaciones de modelación.",
     "evidencias": [
       "Opera con formas simbólicas que representan números y encuentra valores desconocidos en ecuaciones numéricas.",
@@ -4747,7 +4747,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 10,
+    "numero": 12,
     "enunciado": "Propone relaciones o modelos funcionales numéricamente una solución y elabora un modelo algebraico de las longitudes de las rutas posibles.",
     "evidencias": [
       "Identifica y analiza propiedades de covariación entre variables en contextos numéricos, geométricos y cotidianos.",
@@ -4758,7 +4758,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 11,
+    "numero": 13,
     "enunciado": "Interpreta información presentada en tablas de frecuencia y gráficos cuyos datos están agrupados en intervalos y decide cuál es la medida de tendencia central que mejor representa el comportamiento de dicho conjunto.",
     "evidencias": [
       "Toma decisiones informadas en exploraciones numéricas, algebraicas o gráficas de los modelos matemáticos usados.",
@@ -4773,7 +4773,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 14,
     "enunciado": "Identifica y enumera los resultados favorables de ocurrencia de un evento indicado.",
     "evidencias": [
       "Identifica y enumera el espacio muestral de un experimento aleatorio."
@@ -4783,7 +4783,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 15,
     "enunciado": "Asigna la probabilidad de la ocurrencia de un evento usando valores entre 0 y 1.",
     "evidencias": [
       "Utiliza al menos dos procedimientos diferentes para calcular la probabilidad y justifica la igualdad de los resultados."
@@ -4793,7 +4793,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 16,
     "enunciado": "Reconoce cuando dos eventos son o no mutuamente excluyentes y les asigna la probabilidad usando la regla de la adición.",
     "evidencias": [
       "Determina la probabilidad de que un estudiante del curso tenga 1 o 2 hermanos.",
@@ -4804,7 +4804,7 @@
   {
     "grado": "8",
     "area": "Matemáticas",
-    "numero": 4,
+    "numero": 17,
     "enunciado": "Hace predicciones sobre la posibilidad de ocurrencia de un evento compuesto e interpreta la predicción a partir del uso de propiedades básicas de la probabilidad.",
     "evidencias": [
       "Lee y compara la información presentada en cada gráfica.",
@@ -4840,7 +4840,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Encuentra los valores de x, para los cuales la gráfica de la función f(x) está entre las gráficas de las funciones g(x) y h(x).",
     "evidencias": [
       "Escribe la respuesta utilizando intervalos.",
@@ -4852,7 +4852,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Describe la manera en que fue construida la espiral a partir de los lados y áreas de los cuadrados.",
     "evidencias": [
       "Completa la tabla al iniciar con el lado, el perímetro y el área del cuadrado más pequeño.",
@@ -4863,7 +4863,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 5,
     "enunciado": "Analiza procesos infinitos y resuelve problemas utilizando los números reales, sus operaciones, relaciones y representaciones.",
     "evidencias": [
       "Encuentra las relaciones y propiedades que determinan la formación de secuencias numéricas.",
@@ -4874,7 +4874,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Identifica y utiliza relaciones entre el volumen y la capacidad de algunos cuerpos redondos (cilindro, cono y esfera) con referencia a las situaciones escolares y extraescolares.",
     "evidencias": [
       "Estima la capacidad de objetos con superficies redondas.",
@@ -4887,7 +4887,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Utiliza teoremas, propiedades y relaciones geométricas (teorema de Thales y el teorema de Pitágoras) para proponer y justificar estrategias de medición y cálculo de longitudes.",
     "evidencias": [
       "Describe y justifica procesos de medición de longitudes.",
@@ -4901,7 +4901,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Reconoce regularidades en formas bidimensionales y tridimensionales.",
     "evidencias": [
       "Reconoce regularidades en formas bidimensionales y tridimensionales.",
@@ -4914,7 +4914,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 9,
     "enunciado": "Interpreta el espacio de manera analítica a partir de relaciones geométricas que se establecen en las trayectorias y desplazamientos de los cuerpos en diferentes situaciones.",
     "evidencias": [
       "Describe verbalmente procesos de trayectorias y de desplazamiento.",
@@ -4925,7 +4925,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 10,
     "enunciado": "Utiliza expresiones numéricas, algebraicas o gráficas para hacer descripciones de situaciones concretas y tomar decisiones con base en su interpretación.",
     "evidencias": [
       "Opera con formas simbólicas que representan cantidades.",
@@ -4937,7 +4937,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Valida las conjeturas y explica sus conclusiones.",
     "evidencias": [],
     "ejemplos": null
@@ -4945,7 +4945,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 12,
     "enunciado": "Interpreta expresiones numéricas y toma decisiones con base en su interpretación.",
     "evidencias": [],
     "ejemplos": "Encuentra de manera sistemática el número total de rectángulos que se pueden formar en un tablero de 8 x 8 como el de la figura, considerando que los cuadrados son casos particulares de rectángulos."
@@ -4953,7 +4953,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 3,
+    "numero": 13,
     "enunciado": "Utiliza procesos inductivos y lenguaje simbólico o algebraico para formular, proponer y resolver conjeturas en la solución de problemas numéricos, geométricos, métricos, en situaciones cotidianas y no cotidianas.",
     "evidencias": [
       "Efectúa exploraciones, organiza los resultados de las mismas y propone patrones de comportamiento.",
@@ -4964,7 +4964,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 14,
     "enunciado": "Propone un diseño estadístico adecuado para resolver una pregunta que indaga por la comparación sobre las distribuciones de dos grupos de datos, para lo cual usa comprensivamente diagramas de caja, medidas de tendencia central, de variación y de localización.",
     "evidencias": [
       "Define el método para recolectar los datos (encuestas, observación o experimento simple) e identifica la población y el tamaño de la muestra del estudio.",
@@ -4977,7 +4977,7 @@
   {
     "grado": "9",
     "area": "Matemáticas",
-    "numero": 11,
+    "numero": 15,
     "enunciado": "Encuentra el número de posibles resultados de experimentos aleatorios, con reemplazo y sin reemplazo, usando técnicas de conteo adecuadas, y argumenta la selección realizada en el contexto de la situación abordada. Encuentra la probabilidad de eventos aleatorios compuestos.",
     "evidencias": [
       "Diferencia experimentos aleatorios realizados con reemplazo, de experimentos aleatorios realizados sin reemplazo.",
@@ -5017,7 +5017,7 @@
   {
     "grado": "10",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Resuelve problemas que involucran el cambio de radio, de la rapidez de cambio del radio, el cambio de las áreas y la rapidez del cambio de área.",
     "evidencias": [
       "Reconoce la relación funcional entre variables asociadas a problemas.",
@@ -5030,7 +5030,7 @@
   {
     "grado": "10",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Comprende y utiliza funciones para modelar fenómenos periódicos y justifica las soluciones.",
     "evidencias": [
       "Representa en un plano cartesiano el movimiento que realiza una marca en las franjas del disco, cuando éste se hace girar. El centro del disco está en (0, 0).",
@@ -5045,7 +5045,7 @@
   {
     "grado": "10",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Utiliza las expresiones simbólicas de las cónicas y propone los rangos de variación para obtener una gráfica requerida.",
     "evidencias": [
       "Localiza objetos geométricos en el plano cartesiano.",
@@ -5081,7 +5081,7 @@
   {
     "grado": "10",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Selecciona muestras aleatorias en poblaciones grandes para inferir el comportamiento de las variables en estudio.",
     "evidencias": [
       "Define la población de la cual va a extraer las muestras.",
@@ -5095,7 +5095,7 @@
   {
     "grado": "10",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 9,
     "enunciado": "Comprende y explica el carácter relativo de las medidas de tendencias central y de dispersión, junto con algunas de sus propiedades, y la necesidad de complementar una medida con otra para obtener mejores lecturas de los datos.",
     "evidencias": [
       "Encuentra las medidas de tendencia central y de dispersión, usando, cuando sea posible, herramientas tecnológicas. Encuentra la medida que mejor representa los datos, justifica su elección y decide cuál es la marca con mayor durabilidad.",
@@ -5109,7 +5109,7 @@
   {
     "grado": "10",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 10,
     "enunciado": "Propone y realiza experimentos aleatorios en contextos de las ciencias naturales o sociales y predice la ocurrencia de eventos, en casos para los cuales el espacio muestral es indeterminado.",
     "evidencias": [
       "Plantea o identifica una pregunta cuya solución requiera de la realización de un experimento aleatorio.",
@@ -5123,7 +5123,7 @@
   {
     "grado": "10",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Describir un método para calcular la probabilidad de eventos.",
     "evidencias": [
       "Identificar la muestra adecuada para un estudio",
@@ -5159,7 +5159,7 @@
   {
     "grado": "11",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 3,
     "enunciado": "Argumenta sobre la resolución de inecuaciones y su relación con las operaciones algebraicas.",
     "evidencias": [
       "Discute el significado y las unidades del número -4,9.",
@@ -5172,7 +5172,7 @@
   {
     "grado": "11",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Utiliza conceptos de velocidades y aceleración en el análisis del movimiento de un objeto lanzado.",
     "evidencias": [
       "Reconoce magnitudes definidas como razones entre otras magnitudes.",
@@ -5186,7 +5186,7 @@
   {
     "grado": "11",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Interpreta y diseña técnicas para hacer mediciones con niveles crecientes de precisión.",
     "evidencias": [
       "Interpreta la rapidez como una razón de cambio entre dos cantidades.",
@@ -5201,7 +5201,7 @@
   {
     "grado": "11",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Interpreta la noción de derivada como razón de cambio y como valor de la pendiente de la tangente a una curva y desarrolla métodos para hallar las derivadas de algunas funciones básicas en contextos matemáticos y no matemáticos.",
     "evidencias": [
       "Reconoce y utiliza distintos sistemas de coordenadas para modelar.",
@@ -5215,7 +5215,7 @@
   {
     "grado": "11",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Usa propiedades y modelos funcionales para analizar situaciones y establecer relaciones funcionales entre variables que permiten estudiar la variación en situaciones intraescolares y extraescolares.",
     "evidencias": [
       "Utiliza la derivada para estudiar la variación y relaciona características de la derivada con características de la función.",
@@ -5229,7 +5229,7 @@
   {
     "grado": "11",
     "area": "Matemáticas",
-    "numero": 9,
+    "numero": 8,
     "enunciado": "Plantea y resuelve situaciones problemáticas del contexto real y/o matemático que implican el estudio estadístico para comprobar si se puede demostrar que existe una relación entre la estatura y la longitud de los huesos largos entre los seres humanos.",
     "evidencias": [
       "En situaciones matemáticas plantea preguntas que indagan por la correlación o la asociación entre variables.",
@@ -5243,7 +5243,7 @@
   {
     "grado": "11",
     "area": "Matemáticas",
-    "numero": 10,
+    "numero": 9,
     "enunciado": "Plantea y resuelve problemas en los que se reconoce cuando dos eventos son o no independientes y usa la probabilidad condicional para comprobarlo.",
     "evidencias": [
       "Propone problemas a estudiar en variedad de situaciones aleatorias.",
@@ -5264,7 +5264,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 1,
     "enunciado": "Las niñas y los niños son comunicadores activos de sus ideas, sentimientos y emociones; expresan, imaginan y representan su realidad.",
     "evidencias": [],
     "ejemplos": null
@@ -5272,7 +5272,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 3,
+    "numero": 1,
     "enunciado": "Las niñas y los niños disfrutan aprender; exploran y se relacionan con el mundo para comprenderlo y construirlo.",
     "evidencias": [],
     "ejemplos": null
@@ -5280,7 +5280,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Permitir que las niñas y los niños vivan diversas maneras de aprender según su contexto y cultura.",
     "evidencias": [
       "Participa en actividades que reflejan su cultura y contexto.",
@@ -5292,7 +5292,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 2,
+    "numero": 3,
     "enunciado": "Facilitar experiencias de aprendizaje que fomenten la confianza y autonomía de los niños y niñas.",
     "evidencias": [
       "Muestra iniciativa para participar en actividades grupales.",
@@ -5304,7 +5304,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 3,
+    "numero": 4,
     "enunciado": "Promover la construcción de identidad y libre expresión.",
     "evidencias": [
       "Participa en actividades artísticas donde expresa su identidad.",
@@ -5316,7 +5316,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 4,
+    "numero": 5,
     "enunciado": "Fomentar la curiosidad y el pensamiento crítico en el aprendizaje.",
     "evidencias": [
       "Realiza preguntas sobre el mundo que lo rodea.",
@@ -5328,7 +5328,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 5,
+    "numero": 6,
     "enunciado": "Facilitar la relación de los aprendizajes con el desarrollo integral del niño.",
     "evidencias": [
       "Participa activamente en proyectos que integran diferentes áreas de conocimiento.",
@@ -5340,7 +5340,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 6,
+    "numero": 7,
     "enunciado": "Valorar y visibilizar los diferentes aspectos del desarrollo integral del niño.",
     "evidencias": [
       "Reconoce sus avances en diferentes áreas de aprendizaje.",
@@ -5352,7 +5352,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Las niñas y los niños pueden aprender a partir de la mediación pedagógica.",
     "evidencias": [
       "Participan en actividades de aprendizaje grupal.",
@@ -5363,7 +5363,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Las evidencias muestran posibles manifestaciones del aprendizaje.",
     "evidencias": [
       "Demuestran curiosidad al explorar su entorno.",
@@ -5374,7 +5374,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 3,
+    "numero": 10,
     "enunciado": "El aprendizaje se construye y vivencia de manera integral.",
     "evidencias": [
       "Conectan experiencias previas con nuevas enseñanzas.",
@@ -5385,7 +5385,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 4,
+    "numero": 11,
     "enunciado": "La maestra debe integrar los intereses de los niños para un aprendizaje significativo.",
     "evidencias": [
       "Diseña actividades que consideran los intereses de los estudiantes.",
@@ -5396,7 +5396,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 2,
     "enunciado": "Toma decisiones frente a algunas situaciones cotidianas.",
     "evidencias": [],
     "ejemplos": null
@@ -5404,7 +5404,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 1,
     "enunciado": "Se apropia de hábitos y prácticas para el cuidado personal y de su entorno.",
     "evidencias": [],
     "ejemplos": null
@@ -5412,7 +5412,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Naturales",
-    "numero": 3,
+    "numero": 2,
     "enunciado": "Identifica y valora las características corporales y emocionales en sí mismo y en los demás.",
     "evidencias": [],
     "ejemplos": null
@@ -5420,7 +5420,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 4,
+    "numero": 3,
     "enunciado": "Reconoce que es parte de una familia, de una comunidad y un territorio con costumbres, valores y tradiciones.",
     "evidencias": [],
     "ejemplos": null
@@ -5428,7 +5428,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 5,
+    "numero": 4,
     "enunciado": "Participa en la construcción colectiva de acuerdos, objetivos y proyectos comunes.",
     "evidencias": [],
     "ejemplos": null
@@ -5436,7 +5436,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 6,
+    "numero": 5,
     "enunciado": "Demuestra consideración y respeto al relacionarse con otros.",
     "evidencias": [],
     "ejemplos": null
@@ -5444,7 +5444,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 7,
+    "numero": 2,
     "enunciado": "Expresa y representa lo que observa, siente, piensa e imagina, a través del juego, la música, el dibujo y la expresión corporal.",
     "evidencias": [],
     "ejemplos": null
@@ -5452,7 +5452,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 8,
+    "numero": 3,
     "enunciado": "Identifica las relaciones sonoras en el lenguaje oral.",
     "evidencias": [],
     "ejemplos": null
@@ -5460,7 +5460,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 9,
+    "numero": 4,
     "enunciado": "Establece relaciones e interpreta imágenes, letras, objetos, personajes que encuentra en distintos tipos de textos.",
     "evidencias": [],
     "ejemplos": null
@@ -5468,7 +5468,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 10,
+    "numero": 5,
     "enunciado": "Expresa ideas, intereses y emociones a través de sus propias grafías y formas semejantes a las letras convencionales en formatos con diferentes intenciones comunicativas.",
     "evidencias": [],
     "ejemplos": null
@@ -5484,7 +5484,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Establece relaciones entre las causas y consecuencias de los acontecimientos que le suceden a él o a su alrededor.",
     "evidencias": [],
     "ejemplos": null
@@ -5492,7 +5492,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 3,
+    "numero": 12,
     "enunciado": "Usa diferentes herramientas y objetos con variadas posibilidades.",
     "evidencias": [],
     "ejemplos": null
@@ -5500,7 +5500,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 4,
+    "numero": 13,
     "enunciado": "Las niñas y los niños disfrutan aprender; exploran y se relacionan con el mundo para comprenderlo y construirlo.",
     "evidencias": [],
     "ejemplos": null
@@ -5508,7 +5508,7 @@
   {
     "grado": "transicion",
     "area": "Matemáticas",
-    "numero": 5,
+    "numero": 2,
     "enunciado": "Construye nociones de espacio, tiempo y medida a través de experiencias cotidianas.",
     "evidencias": [],
     "ejemplos": null
@@ -5516,7 +5516,7 @@
   {
     "grado": "transicion",
     "area": "Matemáticas",
-    "numero": 6,
+    "numero": 3,
     "enunciado": "Compara, ordena, clasifica objetos e identifica patrones de acuerdo con diferentes criterios.",
     "evidencias": [],
     "ejemplos": null
@@ -5524,7 +5524,7 @@
   {
     "grado": "transicion",
     "area": "Matemáticas",
-    "numero": 7,
+    "numero": 4,
     "enunciado": "Determina la cantidad de objetos que conforman una colección, al establecer relaciones de correspondencia y acciones de juntar y separar.",
     "evidencias": [],
     "ejemplos": null
@@ -5532,7 +5532,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 1,
+    "numero": 14,
     "enunciado": "Participar activamente en el proceso de aprendizaje.",
     "evidencias": [
       "Realizar preguntas sobre su entorno.",
@@ -5544,7 +5544,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 7,
     "enunciado": "Reconocer y valorar el entorno social y cultural.",
     "evidencias": [
       "Identificar a las personas en su comunidad.",
@@ -5568,7 +5568,7 @@
   {
     "grado": "transicion",
     "area": "Matemáticas",
-    "numero": 4,
+    "numero": 5,
     "enunciado": "Desarrollar nociones básicas de cantidad y espacio.",
     "evidencias": [
       "Contar objetos en su entorno.",
@@ -5580,7 +5580,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 5,
+    "numero": 6,
     "enunciado": "Comunicarse efectivamente a través de diferentes medios.",
     "evidencias": [
       "Utilizar vocabulario adecuado en conversaciones.",
@@ -5592,7 +5592,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Toma decisiones frente a algunas situaciones cotidianas.",
     "evidencias": [
       "Explica las razones por las que hace una elección.",
@@ -5606,7 +5606,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 4,
     "enunciado": "Se apropia de hábitos y prácticas para el cuidado personal y de su entorno.",
     "evidencias": [
       "Muestra independencia en la realización de prácticas de higiene y alimentación saludables.",
@@ -5618,7 +5618,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 9,
     "enunciado": "Identifica y valora las características corporales y emocionales en sí mismo y en los demás.",
     "evidencias": [
       "Menciona algunas similitudes y diferencias que encuentra entre él y sus compañeros.",
@@ -5630,7 +5630,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 10,
     "enunciado": "Reconoce que es parte de una familia, de una comunidad y un territorio con costumbres, valores y tradiciones.",
     "evidencias": [
       "Identifica características del lugar donde vive.",
@@ -5643,7 +5643,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 11,
     "enunciado": "Participa en la construcción colectiva de acuerdos, objetivos y proyectos comunes.",
     "evidencias": [
       "Comprende que una misma situación puede generar reacciones diferentes en las personas.",
@@ -5656,7 +5656,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Naturales",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Demuestra consideración y respeto al relacionarse con otros.",
     "evidencias": [
       "Asume actitudes colaborativas y solidarias en las actividades en las que participa.",
@@ -5667,7 +5667,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Expresa y representa lo que observa, siente, piensa e imagina, a través del juego, la música, el dibujo y la expresión corporal.",
     "evidencias": [
       "Identifica palabras que riman en juegos con la música, las rondas, la poesía.",
@@ -5682,7 +5682,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Establece relaciones e interpreta imágenes, letras, objetos, personajes que encuentra en distintos tipos de textos.",
     "evidencias": [
       "Lee imágenes, hace preguntas, formula ideas y crea historias a propósito de lo que percibe en diferentes registros (textos escritos, pinturas, aplicaciones, páginas web, entre otros).",
@@ -5695,7 +5695,7 @@
   {
     "grado": "transicion",
     "area": "Lenguaje",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Expresa ideas, intereses y emociones a través de sus propias grafías y formas semejantes a las letras convencionales en formatos con diferentes intenciones comunicativas.",
     "evidencias": [
       "Se interesa por saber cómo se escriben las palabras que escucha.",
@@ -5707,7 +5707,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 1,
+    "numero": 12,
     "enunciado": "Crea situaciones y propone alternativas de solución a problemas cotidianos a partir de sus conocimientos e imaginación.",
     "evidencias": [
       "Observa y hace registros gráficos, sonoros o audiovisuales para explicar lo que sucede.",
@@ -5720,7 +5720,7 @@
   {
     "grado": "transicion",
     "area": "Ciencias Sociales",
-    "numero": 2,
+    "numero": 13,
     "enunciado": "Establece relaciones entre las causas y consecuencias de los acontecimientos que le suceden a él o a su alrededor.",
     "evidencias": [
       "Realiza preguntas de temas que son de su interés.",
@@ -5732,7 +5732,7 @@
   {
     "grado": "transicion",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 6,
     "enunciado": "Construye nociones de espacio, tiempo y medida a través de experiencias cotidianas.",
     "evidencias": [
       "Mide objetos utilizando patrones de medida no convencionales (número de pasos que hay entre un lugar y otro, la palma de la mano, lanas, cordones, recipientes, entre otros).",
@@ -5745,7 +5745,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 2,
+    "numero": 15,
     "enunciado": "Usa diferentes herramientas y objetos con variadas posibilidades.",
     "evidencias": [
       "Arma, desarma y transforma objetos de su entorno para descubrir, comprender su funcionamiento y darle otros usos según sus intereses o necesidades.",
@@ -5757,7 +5757,7 @@
   {
     "grado": "transicion",
     "area": "Matemáticas",
-    "numero": 1,
+    "numero": 7,
     "enunciado": "Compara, ordena, clasifica objetos e identifica patrones de acuerdo con diferentes criterios.",
     "evidencias": [
       "Identifica el patrón que conforma una secuencia (pollo-gato-pollo) y puede continuarla (pollo-gato-pollo-gato).",
@@ -5769,7 +5769,7 @@
   {
     "grado": "transicion",
     "area": "Matemáticas",
-    "numero": 2,
+    "numero": 8,
     "enunciado": "Determina la cantidad de objetos que conforman una colección, al establecer relaciones de correspondencia y acciones de juntar y separar.",
     "evidencias": [
       "Determina cuántos objetos conforman una colección a partir de: la percepción global, la enumeración y la correspondencia uno a uno.",
@@ -5781,7 +5781,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 1,
+    "numero": 16,
     "enunciado": "Comprender y expresarse a través del lenguaje de manera oral, escrita y visual.",
     "evidencias": [
       "Usar vocabulario adecuado en situaciones cotidianas.",
@@ -5793,7 +5793,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 2,
+    "numero": 17,
     "enunciado": "Realizar operaciones básicas de adición y sustracción.",
     "evidencias": [
       "Resolver problemas simples con objetos reales.",
@@ -5805,7 +5805,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 3,
+    "numero": 18,
     "enunciado": "Explorar el entorno natural y social y hacer preguntas sobre él.",
     "evidencias": [
       "Hacer observaciones de plantas y animales en el entorno.",
@@ -5817,7 +5817,7 @@
   {
     "grado": "transicion",
     "area": "Sin clasificar",
-    "numero": 4,
+    "numero": 19,
     "enunciado": "Desarrollar habilidades para trabajar en grupo y respetar normas.",
     "evidencias": [
       "Participar en actividades grupales respetando a los demás.",
@@ -5866,7 +5866,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Responde preguntas sencillas sobre información personal básica, como su nombre, edad, familia y compañeros de clase.",
     "evidencias": [
       "Identificación de información personal en conversaciones.",
@@ -5877,7 +5877,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 5,
     "enunciado": "Reconoce instrucciones sencillas relacionadas con su entorno inmediato, y responde a ellas de manera no verbal.",
     "evidencias": [
       "Asocia imágenes con sonidos de palabras relacionadas con su casa y salón de clases."
@@ -5887,7 +5887,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 6,
     "enunciado": "Identifica, repite y utiliza palabras asociadas con su entorno inmediato (casa y salón de clase).",
     "evidencias": [],
     "ejemplos": null
@@ -5895,7 +5895,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 7,
     "enunciado": "Comprende y responde preguntas muy sencillas sobre sus datos personales, tales como su nombre, edad y su familia.",
     "evidencias": [
       "Ejemplo: Rosita, what is this? A table.",
@@ -5907,7 +5907,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 8,
     "enunciado": "Menciona algunas cualidades físicas propias y de las personas que le rodean a través de palabras y frases previamente estudiadas.",
     "evidencias": [
       "Menciona características como color de pelo, altura, etc."
@@ -5917,7 +5917,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 9,
     "enunciado": "Comprende y responde a instrucciones sobre tareas escolares básicas, de manera verbal y no verbal.",
     "evidencias": [
       "Responde preguntas basadas en instrucciones dadas verbalmente.",
@@ -5928,7 +5928,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 10,
     "enunciado": "Organiza la secuencia de eventos principales en una historia corta y sencilla, sobre temas familiares, usando imágenes, después de haberla leído o escuchado.",
     "evidencias": [
       "Coloca imágenes en el orden correcto de la historia.",
@@ -5939,7 +5939,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 4,
+    "numero": 11,
     "enunciado": "Responde preguntas sencillas sobre información personal básica, como su nombre, edad, familia y compañeros de clase.",
     "evidencias": [
       "Responde a preguntas como \"How old are you?\" y \"What is your name?\".",
@@ -5950,7 +5950,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 12,
     "enunciado": "Expresa ideas sencillas sobre temas estudiados, usando palabras y frases.",
     "evidencias": [
       "Cuenta una historia sencilla sobre temas familiares a partir de ilustraciones y palabras conocidas.",
@@ -5961,7 +5961,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 13,
     "enunciado": "Comprende la secuencia de una historia corta y sencilla sobre temas familiares.",
     "evidencias": [
       "Identifica los eventos en una historia a partir de ilustraciones y un vocabulario conocido.",
@@ -5972,7 +5972,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 14,
     "enunciado": "Intercambia información personal como su nombre, edad y procedencia con compañeros y profesores, usando frases sencillas.",
     "evidencias": [
       "Utiliza preguntas y respuestas sobre información personal siguiendo modelos provistos por el docente.",
@@ -5983,7 +5983,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 4,
+    "numero": 15,
     "enunciado": "Menciona aspectos culturales propios de su entorno, usando vocabulario y expresiones conocidas.",
     "evidencias": [
       "Fomenta un diálogo sobre la cultura local usando frases simples.",
@@ -5994,7 +5994,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 16,
     "enunciado": "Describe, de manera oral y escrita, objetos, lugares, personas y comunidades, usando oraciones simples.",
     "evidencias": [
       "Hablar o escribir sobre su barrio y lo que allí encuentra."
@@ -6004,7 +6004,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 17,
     "enunciado": "Comprende y describe algunos detalles en textos cortos y sencillos sobre temas familiares, a partir de imágenes y frases conocidas.",
     "evidencias": [
       "Responde, de manera oral o escrita, preguntas sencillas sobre textos descriptivos cortos y alusivos a temas conocidos y de clase."
@@ -6014,7 +6014,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 18,
     "enunciado": "Intercambia ideas y opiniones sencillas con compañeros y profesores, siguiendo modelos o a través de imágenes.",
     "evidencias": [
       "Respuestas a preguntas sobre rutinas o preferencias individuales."
@@ -6024,7 +6024,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 19,
     "enunciado": "Comprende la idea general y algunos detalles en un texto informativo corto y sencillo sobre temas conocidos y de interés.",
     "evidencias": [
       "Identifica la idea principal y detalles en un texto",
@@ -6036,7 +6036,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 20,
     "enunciado": "Pregunta y responde, de forma oral o escrita, interrogantes relacionados con el 'quién, cuándo y dónde', después de leer o escuchar un texto corto y sencillo siempre que el tema le sea conocido.",
     "evidencias": [
       "Formula preguntas simples relacionadas con el texto",
@@ -6047,7 +6047,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 21,
     "enunciado": "Intercambia opiniones sencillas sobre un tema de interés, a través de oraciones simples y conocidas.",
     "evidencias": [
       "Participa en diálogos sencillos expresando opiniones",
@@ -6058,7 +6058,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 4,
+    "numero": 22,
     "enunciado": "Compara características básicas de personas, objetos y lugares de su escuela y comunidad, a través de oraciones simples.",
     "evidencias": [
       "Realiza comparaciones utilizando oraciones simples",
@@ -6069,7 +6069,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 23,
     "enunciado": "Comprende información general y específica en un texto narrativo corto sobre temas conocidos y de interés.",
     "evidencias": [
       "Puede comprender un texto narrativo simple.",
@@ -6080,7 +6080,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 24,
     "enunciado": "Produce un texto narrativo oral y/o escrito, corto y sencillo, que responde al '¿qué?, ¿quién?, ¿cuándo? y ¿dónde?' de un evento o anécdota.",
     "evidencias": [
       "Redacta un texto personal o de su comunidad.",
@@ -6091,7 +6091,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 25,
     "enunciado": "Intercambia información sobre hábitos, gustos y preferencias acerca de temas conocidos, siguiendo modelos provistos por el profesor.",
     "evidencias": [
       "Participa en diálogos sobre hábitos diarios.",
@@ -6102,7 +6102,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 4,
+    "numero": 26,
     "enunciado": "Explica causas y consecuencias de una situación a través de oraciones simples de manera oral y escrita siguiendo un modelo establecido.",
     "evidencias": [
       "Elabora oraciones que vinculan causas y consecuencias.",
@@ -6191,7 +6191,7 @@
   {
     "grado": "6",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Responde a preguntas relacionadas con el “qué, quién y cuándo” después de leer o escuchar un texto corto y sencillo, siempre y cuando el tema esté relacionado con eventos que le son familiares.",
     "evidencias": [
       "Responde preguntas como '¿Qué es el Carnaval de Barranquilla?'.",
@@ -6203,7 +6203,7 @@
   {
     "grado": "6",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Escribe información personal básica en formatos preestablecidos que solicitan datos como nombre, edad, fecha de nacimiento, género, nacionalidad, dirección, teléfono, etc.",
     "evidencias": [
       "Llena los datos de un carnet de identificación.",
@@ -6215,7 +6215,7 @@
   {
     "grado": "6",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 6,
     "enunciado": "Comprende el tema e información general de un texto corto y sencillo, valiéndose de ayudas tales como imágenes, títulos y palabras clave.",
     "evidencias": [
       "Identifica el tema general de un texto.",
@@ -6260,7 +6260,7 @@
   {
     "grado": "7",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Reconoce información específica relacionada con objetos, personas y acciones cuando le son conocidos sobre temas relacionados con su entorno cotidiano.",
     "evidencias": [
       "Recibe instrucciones, recomendaciones y sugerencias.",
@@ -6272,7 +6272,7 @@
   {
     "grado": "7",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Describe acciones relacionadas con un tema de su entorno familiar o escolar.",
     "evidencias": [
       "Usa oraciones sencillas",
@@ -6443,7 +6443,7 @@
   {
     "grado": "10",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 4,
     "enunciado": "Produce mensajes escritos, tales como cartas y correos electrónicos, claros y bien estructurados teniendo en cuenta el contexto en el que tienen lugar.",
     "evidencias": [
       "Utiliza vocabulario y estructuras de texto requeridas de manera natural y coherente.",
@@ -6455,7 +6455,7 @@
   {
     "grado": "10",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 5,
     "enunciado": "Sostiene conversaciones espontáneas y sencillas acerca de temas que son de su conocimiento, interés personal o académico.",
     "evidencias": [
       "Selecciona expresiones apropiadas para iniciar, mantener y cerrar una conversación.",
@@ -6467,7 +6467,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 27,
     "enunciado": "Identifica el propósito de textos orales y escritos de mediana longitud relacionados con temas de interés general y de su entorno académico y la comparte con otros.",
     "evidencias": [
       "Utiliza su conocimiento acerca de la estructura de los textos.",
@@ -6479,7 +6479,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 28,
     "enunciado": "Explica tanto en forma oral como escrita las causas y los efectos, así como el problema y la solución de una situación.",
     "evidencias": [
       "Define la relación entre las ideas que quiere explicar.",
@@ -6491,7 +6491,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 3,
+    "numero": 29,
     "enunciado": "Reconoce la opinión del autor(a) en textos orales y escritos de mediana longitud que se relacionan con su contexto escolar y académico.",
     "evidencias": [
       "Hace uso tanto de su conocimiento previo del tema como de la estructura del texto.",
@@ -6502,7 +6502,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 30,
     "enunciado": "Redacta textos argumentativos con una estructura clara y sencilla sobre temas académicos.",
     "evidencias": [
       "Sigue modelos y un proceso de planeación, escritura, revisión y edición.",
@@ -6514,7 +6514,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 31,
     "enunciado": "Expresa de manera oral y escrita su posición acerca de un tema conocido teniendo en cuenta a quién está dirigido el texto.",
     "evidencias": [
       "Define el tono del mensaje de acuerdo con el contexto o la cercanía con su audiencia (formal o informal).",
@@ -6525,7 +6525,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 1,
+    "numero": 32,
     "enunciado": "Expresa de manera oral su punto de vista acerca de un tema controversial previamente estudiado.",
     "evidencias": [
       "Consulta fuentes confiables.",
@@ -6538,7 +6538,7 @@
   {
     "grado": "11",
     "area": "Inglés",
-    "numero": 2,
+    "numero": 33,
     "enunciado": "Narra de manera oral o escrita experiencias personales o historias conocidas.",
     "evidencias": [
       "Brinda detalles de las situaciones, los lugares, las personas y las acciones.",

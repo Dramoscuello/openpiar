@@ -18,6 +18,7 @@ const successMsg = ref<string | null>(null)
 const sedes = ref<any[]>([])
 const docentes = ref<any[]>([])
 const grados = ref<any[]>([])
+const areas = ref<any[]>([])
 const asignaturas = ref<any[]>([])
 const grupos = ref<any[]>([])
 const cargas = ref<any[]>([])
@@ -27,6 +28,7 @@ const periodos = ref<any[]>([])
 const showSedeModal = ref(false)
 const showDocenteModal = ref(false)
 const showGradoModal = ref(false)
+const showAreaModal = ref(false)
 const showAsignaturaModal = ref(false)
 const showGrupoModal = ref(false)
 const showCargaModal = ref(false)
@@ -36,7 +38,9 @@ const showPeriodoModal = ref(false)
 const sedeForm = ref({ nombre: '', direccion: '', telefono: '' })
 const docenteForm = ref({ email: '', password: '', nombre: '', apellido: '', rol: 'docente_aula', cargo: 'Docente', sede_ids: [] as string[] })
 const gradoForm = ref({ nombre: '' })
-const asignaturaForm = ref({ nombre: '' })
+const areaForm = ref({ nombre: '' })
+const customAreaName = ref('')
+const asignaturaForm = ref({ nombre: '', area_id: '' })
 const grupoForm = ref({ nombre: '', grado_id: '', sede_id: '', director_id: '' })
 const cargaForm = ref({ docente_id: '', asignatura_id: '', grupo_ids: [] as string[] })
 const periodoForm = ref({ nombre: '', fecha_inicio: '', fecha_fin: '' })
@@ -83,10 +87,11 @@ const loadData = async () => {
     const headers = { 'Authorization': `Bearer ${authStore.token}` }
     
     // Fetch all in parallel
-    const [sedesRes, docentesRes, gradosRes, asignaturasRes, gruposRes, cargasRes, periodosRes] = await Promise.all([
+    const [sedesRes, docentesRes, gradosRes, areasRes, asignaturasRes, gruposRes, cargasRes, periodosRes] = await Promise.all([
       fetch('/api/v1/gestion/sedes', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/docentes', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/grados', { headers }).then(r => r.ok ? r.json() : []),
+      fetch('/api/v1/gestion/areas', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/asignaturas', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/grupos', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/carga-academica', { headers }).then(r => r.ok ? r.json() : []),
@@ -96,6 +101,7 @@ const loadData = async () => {
     sedes.value = sedesRes
     docentes.value = docentesRes
     grados.value = gradosRes
+    areas.value = areasRes
     asignaturas.value = asignaturasRes
     grupos.value = gruposRes
     cargas.value = cargasRes
@@ -183,16 +189,124 @@ const openEditDocente = (docente: any) => {
   showDocenteModal.value = true
 }
 
+const STANDARD_AREAS_SUBJECTS: Record<string, string[]> = {
+  "Ciencias Naturales y Educación Ambiental": ["Ciencias Naturales", "Física", "Química", "Procesos Fisicoquímicos"],
+  "Matemáticas": ["Matemáticas", "Geometría", "Estadística"],
+  "Ciencias Sociales": ["Ciencias Sociales", "Historia", "Geografía"],
+  "Humanidades, Lengua Castellana e Idiomas Extranjeros": ["Humanidades / Lengua Castellana (Español)", "Inglés"],
+  "Educación Física, Recreación y Deportes": ["Educación Física"],
+  "Educación Artística y Cultural": ["Educación Artística y Cultural"],
+  "Educación Ética y en Valores Humanos": ["Ética y Valores"],
+  "Educación Religiosa": ["Educación Religiosa"],
+  "Tecnología e Informática": ["Tecnología e Informática"],
+  "Filosofía": ["Filosofía"],
+  "Ciencias Económicas y Políticas": ["Ciencias Económicas y Políticas"]
+}
+
+const selectedStandardSubject = ref('')
+const recommendedSubjects = ref<string[]>([])
+const hasStandardSubjects = ref(false)
+
+const availableGradosOptions = computed(() => {
+  const standardGrados = ['Pre-jardín', 'Jardín', 'Preescolar', '1°', '2°', '3°', '4°', '5°', '6°', '7°', '8°', '9°', '10°', '11°']
+  const existingNames = new Set(grados.value.map(g => g.nombre))
+  return standardGrados.filter(name => !existingNames.has(name))
+})
+
+const availableAreasOptions = computed(() => {
+  const standardAreas = [
+    'Ciencias Naturales y Educación Ambiental',
+    'Matemáticas',
+    'Ciencias Sociales',
+    'Humanidades, Lengua Castellana e Idiomas Extranjeros',
+    'Educación Física, Recreación y Deportes',
+    'Educación Artística y Cultural',
+    'Educación Ética y en Valores Humanos',
+    'Educación Religiosa',
+    'Tecnología e Informática',
+    'Filosofía',
+    'Ciencias Económicas y Políticas'
+  ]
+  const existingNames = new Set(areas.value.map(a => a.nombre))
+  return standardAreas.filter(name => !existingNames.has(name))
+})
+
+const onAreaChange = () => {
+  const selectedArea = areas.value.find(ar => ar.id === asignaturaForm.value.area_id)
+  if (selectedArea && STANDARD_AREAS_SUBJECTS[selectedArea.nombre]) {
+    const allSubjects = STANDARD_AREAS_SUBJECTS[selectedArea.nombre] || []
+    
+    // Filter out subjects already registered in this area
+    const existingSubsInArea = new Set(
+      asignaturas.value
+        .filter(asig => asig.area_id === selectedArea.id)
+        .map(asig => asig.nombre)
+    )
+    
+    recommendedSubjects.value = allSubjects.filter(sub => !existingSubsInArea.has(sub))
+    hasStandardSubjects.value = true
+    selectedStandardSubject.value = ''
+    asignaturaForm.value.nombre = ''
+  } else {
+    recommendedSubjects.value = []
+    hasStandardSubjects.value = false
+    selectedStandardSubject.value = '__CUSTOM__'
+  }
+}
+
+const onStandardSubjectChange = () => {
+  if (selectedStandardSubject.value !== '__CUSTOM__') {
+    asignaturaForm.value.nombre = selectedStandardSubject.value
+  } else {
+    asignaturaForm.value.nombre = ''
+  }
+}
+
 const openNewAsignatura = () => {
   editingId.value = null
-  asignaturaForm.value = { nombre: '' }
+  asignaturaForm.value = { nombre: '', area_id: '' }
+  selectedStandardSubject.value = ''
+  recommendedSubjects.value = []
+  hasStandardSubjects.value = false
   showAsignaturaModal.value = true
 }
 
 const openEditAsignatura = (asignatura: any) => {
   editingId.value = asignatura.id
-  asignaturaForm.value = { nombre: asignatura.nombre }
+  asignaturaForm.value = { nombre: asignatura.nombre, area_id: asignatura.area_id }
+  
+  const selectedArea = areas.value.find(ar => ar.id === asignatura.area_id)
+  if (selectedArea && STANDARD_AREAS_SUBJECTS[selectedArea.nombre]) {
+    const allSubjects = STANDARD_AREAS_SUBJECTS[selectedArea.nombre] || []
+    
+    // Existing subjects in the area, except the current one being edited
+    const existingSubsInArea = new Set(
+      asignaturas.value
+        .filter(asig => asig.area_id === selectedArea.id && asig.id !== asignatura.id)
+        .map(asig => asig.nombre)
+    )
+    
+    recommendedSubjects.value = allSubjects.filter(sub => !existingSubsInArea.has(sub))
+    hasStandardSubjects.value = true
+    
+    if (recommendedSubjects.value.includes(asignatura.nombre)) {
+      selectedStandardSubject.value = asignatura.nombre
+    } else {
+      selectedStandardSubject.value = '__CUSTOM__'
+    }
+  } else {
+    recommendedSubjects.value = []
+    hasStandardSubjects.value = false
+    selectedStandardSubject.value = '__CUSTOM__'
+  }
   showAsignaturaModal.value = true
+}
+
+const openNewArea = () => {
+  editingId.value = null
+  areaForm.value = { nombre: '' }
+  customAreaName.value = ''
+  showAreaModal.value = true
 }
 
 const openNewGrado = () => {
@@ -350,8 +464,8 @@ const submitDocente = async () => {
 }
 
 const submitAsignatura = async () => {
-  if (!asignaturaForm.value.nombre) {
-    errorMsg.value = 'El nombre de la asignatura es obligatorio.'
+  if (!asignaturaForm.value.nombre || !asignaturaForm.value.area_id) {
+    errorMsg.value = 'El nombre de la asignatura y el área son obligatorios.'
     return
   }
   errorMsg.value = null
@@ -379,14 +493,54 @@ const submitAsignatura = async () => {
       cargas.value.forEach(c => {
         if (c.asignatura.id === editingId.value) {
           c.asignatura.nombre = data.nombre
+          c.asignatura.area_id = data.area_id
+          c.asignatura.area_nombre = data.area_nombre
         }
       })
     } else {
       asignaturas.value.push(data)
     }
     showAsignaturaModal.value = false
-    asignaturaForm.value = { nombre: '' }
+    asignaturaForm.value = { nombre: '', area_id: '' }
     successMsg.value = isEdit ? 'Asignatura actualizada exitosamente.' : 'Asignatura registrada exitosamente.'
+  } catch (err: any) {
+    errorMsg.value = err.message
+  }
+}
+
+const submitArea = async () => {
+  const nombreFinal = areaForm.value.nombre === '__CUSTOM__' ? customAreaName.value : areaForm.value.nombre
+  if (!nombreFinal) {
+    errorMsg.value = 'El nombre del área es obligatorio.'
+    return
+  }
+  errorMsg.value = null
+  successMsg.value = null
+  try {
+    const isEdit = editingId.value !== null
+    const url = isEdit ? `/api/v1/gestion/areas/${editingId.value}` : '/api/v1/gestion/areas'
+    const method = isEdit ? 'PUT' : 'POST'
+    
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({ nombre: nombreFinal })
+    })
+    const data = await handleResponse(res, isEdit ? 'Error al actualizar área' : 'Error al registrar área')
+    
+    if (isEdit) {
+      const idx = areas.value.findIndex(a => a.id === editingId.value)
+      if (idx !== -1) areas.value[idx] = data
+    } else {
+      areas.value.push(data)
+    }
+    showAreaModal.value = false
+    areaForm.value = { nombre: '' }
+    customAreaName.value = ''
+    successMsg.value = isEdit ? 'Área de aprendizaje actualizada exitosamente.' : 'Área de aprendizaje registrada exitosamente.'
   } catch (err: any) {
     errorMsg.value = err.message
   }
@@ -557,7 +711,7 @@ const submitCarga = async () => {
 const confirmDeleteEntity = ref<{
   id: string;
   name: string;
-  type: 'sede' | 'docente' | 'grado' | 'asignatura' | 'grupo' | 'carga' | 'periodo';
+  type: 'sede' | 'docente' | 'grado' | 'area' | 'asignatura' | 'grupo' | 'carga' | 'periodo';
   title: string;
   warningText: string;
 } | null>(null)
@@ -567,7 +721,7 @@ const deletingEntity = ref(false)
 const promptDelete = (
   id: string,
   name: string,
-  type: 'sede' | 'docente' | 'grado' | 'asignatura' | 'grupo' | 'carga' | 'periodo',
+  type: 'sede' | 'docente' | 'grado' | 'area' | 'asignatura' | 'grupo' | 'carga' | 'periodo',
   title: string,
   warningText: string
 ) => {
@@ -587,6 +741,7 @@ const confirmDeleteAction = async () => {
   if (type === 'sede') await deleteSede(id, name, true)
   else if (type === 'docente') await deleteDocente(id, name, true)
   else if (type === 'grado') await deleteGrado(id, name, true)
+  else if (type === 'area') await deleteArea(id, name, true)
   else if (type === 'asignatura') await deleteAsignatura(id, name, true)
   else if (type === 'grupo') await deleteGrupo(id, name, true)
   else if (type === 'carga') await deleteCarga(id, true)
@@ -817,6 +972,36 @@ const deleteAsignatura = async (id: string, nombre: string, confirmed: boolean =
   }
 }
 
+const deleteArea = async (id: string, nombre: string, confirmed: boolean = false) => {
+  if (!confirmed) {
+    promptDelete(id, nombre, 'area', 'Eliminar área', 'Se eliminarán todas las asignaturas asociadas a esta área de aprendizaje y sus correspondientes cargas académicas.')
+    return
+  }
+  errorMsg.value = null
+  successMsg.value = null
+  try {
+    const res = await fetch(`/api/v1/gestion/areas/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    if (!res.ok) {
+      let detail = 'No se pudo eliminar el área'
+      try {
+        const data = await res.json()
+        detail = data.detail || detail
+      } catch (_) {}
+      throw new Error(detail)
+    }
+    
+    areas.value = areas.value.filter(a => a.id !== id)
+    asignaturas.value = asignaturas.value.filter(a => a.area_id !== id)
+    cargas.value = cargas.value.filter(c => c.asignatura.area_id !== id)
+    successMsg.value = 'Área de aprendizaje eliminada exitosamente junto con sus datos relacionados.'
+  } catch (err: any) {
+    errorMsg.value = err.message
+  }
+}
+
 const deleteGrupo = async (id: string, nombreCompleto: string, confirmed: boolean = false) => {
   if (!confirmed) {
     promptDelete(id, nombreCompleto, 'grupo', 'Eliminar grupo/grado', 'Se eliminarán todas las cargas académicas vinculadas. Los estudiantes asignados a este grupo quedarán sin grupo (no serán eliminados).')
@@ -1007,6 +1192,13 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             Grados
           </button>
           <button
+            @click="activeTab = 'areas'"
+            class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
+            :class="activeTab === 'areas' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
+          >
+            Áreas
+          </button>
+          <button
             @click="activeTab = 'grupos'"
             class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
             :class="activeTab === 'grupos' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
@@ -1174,12 +1366,14 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               <thead>
                 <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
                   <th class="py-4 px-md">Nombre de la Asignatura</th>
+                  <th class="py-4 px-md">Área de Aprendizaje</th>
                   <th class="py-4 px-md text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-outline-variant/20 text-body-md text-on-surface">
                 <tr v-for="a in asignaturas" :key="a.id" class="hover:bg-surface-container-low/40">
-                  <td class="py-4 px-md font-bold">{{ a.nombre }}</td>
+                  <td class="py-4 px-md font-semibold text-primary">{{ a.nombre }}</td>
+                  <td class="py-4 px-md text-on-surface-variant">{{ a.area_nombre }}</td>
                   <td class="py-4 px-md text-right flex justify-end gap-xs">
                     <button
                       @click="openEditAsignatura(a)"
@@ -1198,7 +1392,53 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
                   </td>
                 </tr>
                 <tr v-if="asignaturas.length === 0">
-                  <td colspan="2" class="py-8 text-center text-outline">No hay asignaturas registradas.</td>
+                  <td colspan="3" class="py-8 text-center text-outline">No hay asignaturas registradas.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: AREAS -->
+        <div v-if="activeTab === 'areas'" class="space-y-md">
+          <div class="flex justify-between items-center">
+            <h3 class="font-headline-md text-[20px]">Áreas de Aprendizaje</h3>
+            <button
+              @click="openNewArea()"
+              class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[20px]">category</span>
+              Nueva Área
+            </button>
+          </div>
+
+          <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl overflow-hidden shadow-sm transition-colors duration-300">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
+                  <th class="py-4 px-md">Nombre de la Área</th>
+                  <th class="py-4 px-md">Fecha Registro</th>
+                  <th class="py-4 px-md text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20 text-body-md">
+                <tr v-if="areas.length === 0">
+                  <td colspan="3" class="py-8 text-center text-outline">
+                    No hay áreas de aprendizaje registradas. Registra una para poder crear asignaturas.
+                  </td>
+                </tr>
+                <tr v-else v-for="ar in areas" :key="ar.id" class="hover:bg-surface-container-low/50 transition-colors">
+                  <td class="py-4 px-md font-medium text-on-surface">{{ ar.nombre }}</td>
+                  <td class="py-4 px-md text-on-surface-variant">{{ new Date(ar.created_at).toLocaleDateString() }}</td>
+                  <td class="py-4 px-md text-right">
+                    <button
+                      @click="promptDelete(ar.id, ar.nombre, 'area', 'Eliminar área de aprendizaje', 'Se eliminarán todas las asignaturas vinculadas a esta área y sus cargas académicas relacionadas.')"
+                      class="text-outline hover:text-error transition-colors p-1 cursor-pointer"
+                      title="Eliminar"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -1618,14 +1858,83 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           {{ isEditing ? 'Editar Asignatura / Materia' : 'Nueva Asignatura / Materia' }}
         </h3>
         <div class="space-y-sm">
+          <!-- Selector de Área -->
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Nombre de la Asignatura *</label>
-            <input v-model="asignaturaForm.nombre" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white" type="text" placeholder="Ej: Matemáticas" />
+            <label class="font-label-md text-label-md text-on-surface-variant">Área de Aprendizaje *</label>
+            <select
+              v-model="asignaturaForm.area_id"
+              @change="onAreaChange"
+              class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white"
+            >
+              <option value="" disabled>Selecciona un área...</option>
+              <option v-if="areas.length === 0" disabled value="">No hay áreas registradas. Créalas primero.</option>
+              <option v-for="ar in areas" :key="ar.id" :value="ar.id">{{ ar.nombre }}</option>
+            </select>
+          </div>
+
+          <!-- Selector de Asignatura Estándar o Personalizada -->
+          <div v-if="asignaturaForm.area_id" class="space-y-xs">
+            <label class="font-label-md text-label-md text-on-surface-variant">Asignatura *</label>
+            
+            <select
+              v-if="hasStandardSubjects"
+              v-model="selectedStandardSubject"
+              @change="onStandardSubjectChange"
+              class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white mb-xs"
+            >
+              <option value="" disabled>Selecciona una asignatura recomendada...</option>
+              <option v-for="sub in recommendedSubjects" :key="sub" :value="sub">{{ sub }}</option>
+              <option value="__CUSTOM__" class="text-primary font-bold">+ Crear asignatura personalizada...</option>
+            </select>
+
+            <input
+              v-if="!hasStandardSubjects || selectedStandardSubject === '__CUSTOM__'"
+              v-model="asignaturaForm.nombre"
+              class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white"
+              type="text"
+              placeholder="Nombre de la asignatura (ej: Robótica, Alemán)"
+            />
           </div>
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showAsignaturaModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitAsignatura" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar Asignatura' : 'Guardar Asignatura' }}</button>
+          <button @click="submitAsignatura" :disabled="!asignaturaForm.nombre || !asignaturaForm.area_id" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">{{ isEditing ? 'Guardar' : 'Guardar' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: AREA -->
+    <div v-if="showAreaModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
+        <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
+          <span class="material-symbols-outlined">category</span>
+          {{ isEditing ? 'Editar Área' : 'Registrar Nueva Área' }}
+        </h3>
+        <div class="space-y-sm">
+          <div class="space-y-xs">
+            <label class="font-label-md text-label-md text-on-surface-variant">Selecciona el Área *</label>
+            
+            <select
+              v-model="areaForm.nombre"
+              class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white mb-xs"
+            >
+              <option value="" disabled>Selecciona una área estándar...</option>
+              <option v-for="val in availableAreasOptions" :key="val" :value="val">{{ val }}</option>
+              <option value="__CUSTOM__" class="text-primary font-bold">+ Crear área personalizada...</option>
+            </select>
+
+            <input
+              v-if="areaForm.nombre === '__CUSTOM__'"
+              type="text"
+              v-model="customAreaName"
+              class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white"
+              placeholder="Nombre del área personalizada (ej: Robótica)"
+            />
+          </div>
+        </div>
+        <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
+          <button @click="showAreaModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
+          <button @click="submitArea" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Guardar Área</button>
         </div>
       </div>
     </div>
@@ -1643,7 +1952,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             <label class="font-label-md text-label-md text-on-surface-variant">Selecciona el Grado *</label>
             <select v-model="gradoForm.nombre" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white">
               <option value="" disabled>Selecciona un grado estándar...</option>
-              <option v-for="val in ['Pre-jardín', 'Jardín', 'Preescolar', '1°', '2°', '3°', '4°', '5°', '6°', '7°', '8°', '9°', '10°', '11°']" :key="val" :value="val">{{ val }}</option>
+              <option v-for="val in availableGradosOptions" :key="val" :value="val">{{ val }}</option>
             </select>
           </div>
         </div>

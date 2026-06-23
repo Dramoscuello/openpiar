@@ -1,0 +1,76 @@
+[
+  {
+    "area": "Ciencias Naturales y Educación Ambiental",
+    "asignaturas": [
+      "Ciencias Naturales",
+      "Física",
+      "Química",
+      "Procesos Fisicoquímicos"
+    ]
+  },
+  {
+    "area": "Matemáticas",
+    "asignaturas": [
+      "Matemáticas",
+      "Geometría",
+      "Estadística"
+    ]
+  },
+  {
+    "area": "Ciencias Sociales",
+    "asignaturas": [
+      "Ciencias Sociales",
+      "Historia",
+      "Geografía"
+    ]
+  },
+  {
+    "area": "Humanidades, Lengua Castellana e Idiomas Extranjeros",
+    "asignaturas": [
+      "Humanidades / Lengua Castellana (Español)",
+      "Inglés"
+    ]
+  },
+  {
+    "area": "Educación Física, Recreación y Deportes",
+    "asignaturas": [
+      "Educación Física"
+    ]
+  },
+  {
+    "area": "Educación Artística y Cultural",
+    "asignaturas": [
+      "Educación Artística y Cultural"
+    ]
+  },
+  {
+    "area": "Educación Ética y en Valores Humanos",
+    "asignaturas": [
+      "Ética y Valores"
+    ]
+  },
+  {
+    "area": "Educación Religiosa",
+    "asignaturas": [
+      "Educación Religiosa"
+    ]
+  },
+  {
+    "area": "Tecnología e Informática",
+    "asignaturas": [
+      "Tecnología e Informática"
+    ]
+  },
+  {
+    "area": "Filosofía",
+    "asignaturas": [
+      "Filosofía"
+    ]
+  },
+  {
+    "area": "Ciencias Económicas y Políticas",
+    "asignaturas": [
+      "Ciencias Económicas y Políticas"
+    ]
+  }
+]
