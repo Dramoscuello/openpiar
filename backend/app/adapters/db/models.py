@@ -483,7 +483,11 @@ class AjusteRazonableORM(Base):
         ForeignKey("piars.id", ondelete="CASCADE"),
         nullable=False,
     )
-    trimestre: Mapped[int] = mapped_column(Integer, nullable=False)
+    periodo_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("periodos_academicos.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     area: Mapped[str] = mapped_column(Text, nullable=False)
     objetivos_propositos: Mapped[str] = mapped_column(Text, nullable=False)
     barreras_evidenciadas: Mapped[str] = mapped_column(Text, nullable=False)
@@ -494,9 +498,9 @@ class AjusteRazonableORM(Base):
     )
 
     piar: Mapped["PiarORM"] = relationship(back_populates="ajustes_razonables")
+    periodo: Mapped["PeriodoAcademicoORM"] = relationship()
 
     __table_args__ = (
-        CheckConstraint("trimestre IN (1, 2, 3)", name="ck_ajustes_trimestre"),
         CheckConstraint(
             "area IN ('Matemáticas', 'Ciencias', 'Lenguaje', 'Convivencia', "
             "'Socialización', 'Participación', 'Autonomía', 'Autocontrol')",

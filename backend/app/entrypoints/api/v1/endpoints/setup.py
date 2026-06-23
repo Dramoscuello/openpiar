@@ -10,7 +10,7 @@ excepto las rutas de este router.
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -148,7 +148,9 @@ async def configurar_sistema(
         correo_contacto=body.correo_contacto,
         nombre_rector=body.nombre_rector,
         gemini_api_key=body.gemini_api_key,
-        pei_valores_principios={},
+        pei_nombre_archivo=body.pei_nombre_archivo,
+        pei_modelo_pedagogico=body.pei_modelo_pedagogico,
+        pei_valores_principios=body.pei_valores_principios,
         setup_completado=True,
     )
     db.add(config)
@@ -176,15 +178,18 @@ async def configurar_sistema(
     summary="Subir PDF del PEI institucional",
     description=(
         "Sube el Proyecto Educativo Institucional en PDF. "
-        "En segundo plano, Gemini extrae el modelo pedagógico y los valores "
-        "institucionales para personalizar las sugerencias del agente DUA."
+        "Gemini extrae sincrónicamente el modelo pedagógico y los valores "
+        "institucionales y los devuelve al frontend."
     ),
 )
 async def upload_pei(
     file: UploadFile,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
+    gemini_api_key: str = Form(...),
 ) -> dict:
+    import io
+    import pdfplumber
+    from app.adapters.ai.gemini_adapter import GeminiAgentAdapter
+
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -199,38 +204,7 @@ async def upload_pei(
             detail="El PDF no puede superar 50 MB.",
         )
 
-    # Encolar procesamiento async en segundo plano
-    background_tasks.add_task(
-        _procesar_pei_background,
-        contenido=contenido,
-        nombre_archivo=file.filename,
-    )
-
-    return {
-        "message": (
-            "PEI recibido correctamente. El perfil pedagógico será "
-            "extraído en segundo plano y estará disponible en minutos."
-        ),
-        "nombre_archivo": file.filename,
-    }
-
-
-async def _procesar_pei_background(contenido: bytes, nombre_archivo: str) -> None:
-    """
-    Tarea de fondo: extrae texto del PDF del PEI y lo envía a Gemini
-    para construir el perfil pedagógico de la institución.
-    """
     try:
-        import io
-
-        import pdfplumber
-
-        from app.adapters.ai.gemini_adapter import GeminiAgentAdapter
-        from app.adapters.db.session import AsyncSessionLocal
-        from app.core.config import get_settings
-
-        settings = get_settings()
-
         # Extraer texto del PDF
         with pdfplumber.open(io.BytesIO(contenido)) as pdf:
             texto = "\n".join(
@@ -238,28 +212,24 @@ async def _procesar_pei_background(contenido: bytes, nombre_archivo: str) -> Non
             )
 
         if not texto.strip():
-            logger.warning("No se pudo extraer texto del PEI: %s", nombre_archivo)
-            return
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No se pudo extraer texto del PEI. Asegúrate de que no sea una imagen escaneada.",
+            )
 
-        # Obtener API Key desde configuración
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(ConfiguracionSistemaORM).limit(1))
-            config = result.scalars().first()
-            if not config or not config.gemini_api_key:
-                logger.warning("Sin Gemini API Key para procesar PEI.")
-                return
+        # Llamar al agente Gemini con la API Key proporcionada
+        agente = GeminiAgentAdapter(api_key=gemini_api_key)
+        perfil = await agente.extraer_perfil_pei(texto)
 
-            # Llamar al agente Gemini
-            agente = GeminiAgentAdapter(api_key=config.gemini_api_key)
-            perfil = await agente.extraer_perfil_pei(texto)
-
-            # Guardar en BD
-            config.pei_nombre_archivo = nombre_archivo
-            config.pei_modelo_pedagogico = perfil.get("modelo_pedagogico", "")
-            config.pei_valores_principios = perfil
-            await session.commit()
-
-        logger.info("PEI procesado exitosamente: %s", nombre_archivo)
+        return {
+            "message": "PEI procesado exitosamente.",
+            "nombre_archivo": file.filename,
+            "perfil_extraido": perfil
+        }
 
     except Exception as exc:
-        logger.error("Error procesando PEI en background: %s", exc)
+        logger.error("Error procesando PEI: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al analizar el PEI con IA: {str(exc)}"
+        )

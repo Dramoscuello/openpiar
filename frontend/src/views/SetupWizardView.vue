@@ -22,7 +22,13 @@ const nombreRector = ref('')
 // Step 2: Gemini
 const geminiApiKey = ref('')
 
-// Step 3: Administrador
+// Step 3: PEI
+const peiFile = ref<File | null>(null)
+const isUploadingPei = ref(false)
+const peiUploadError = ref<string | null>(null)
+const peiData = ref<any>(null)
+
+// Step 4: Administrador
 const adminNombre = ref('')
 const adminApellido = ref('')
 const adminCargo = ref('')
@@ -57,9 +63,67 @@ const nextStep = () => {
       return
     }
   }
+
+  if (currentStep.value === 2) {
+    if (!geminiApiKey.value) {
+      errorMessage.value = 'Recomendamos configurar la API Key de Gemini para que el Asistente funcione en el siguiente paso al leer el PEI.'
+      // Not returning here to allow skipping if they really want to, but for PEI it will fail.
+    }
+  }
+  
+  if (currentStep.value === 3) {
+    // Si estamos en el paso 3 y presionan siguiente sin subir archivo, podemos dejarlos pasar
+    // pero perderán la capacidad de IA inicial.
+    // Para simplificar, permitimos omitir.
+  }
   
   errorMessage.value = null
   currentStep.value++
+}
+
+const handleFileUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    peiFile.value = target.files[0] || null
+  }
+}
+
+const uploadPEI = async () => {
+  if (!peiFile.value) {
+    peiUploadError.value = 'Por favor selecciona un archivo PDF.'
+    return
+  }
+  if (!geminiApiKey.value) {
+    peiUploadError.value = 'Necesitas haber ingresado tu API Key de Gemini en el paso anterior para procesar el PEI con IA.'
+    return
+  }
+  
+  isUploadingPei.value = true
+  peiUploadError.value = null
+  
+  const formData = new FormData()
+  formData.append('file', peiFile.value)
+  formData.append('gemini_api_key', geminiApiKey.value)
+  
+  try {
+    const response = await fetch('/api/v1/setup/upload-pei', {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (!response.ok) {
+      const err = await response.json()
+      throw new Error(err.detail || 'Error al procesar el archivo PEI.')
+    }
+    
+    peiData.value = await response.json()
+    // Avanzar automáticamente al paso 4 cuando el PEI se lee con éxito
+    currentStep.value++
+  } catch (e: any) {
+    peiUploadError.value = e.message
+  } finally {
+    isUploadingPei.value = false
+  }
 }
 
 const prevStep = () => {
@@ -69,7 +133,7 @@ const prevStep = () => {
 
 // Submission
 const handleConfigure = async () => {
-  if (currentStep.value !== 3) return
+  if (currentStep.value !== 4) return
   
   if (!adminNombre.value || !adminApellido.value || !adminCargo.value || !adminEmail.value || !adminPassword.value) {
     errorMessage.value = 'Por favor, completa todos los campos del administrador.'
@@ -104,6 +168,9 @@ const handleConfigure = async () => {
         correo_contacto: correoContacto.value || null,
         nombre_rector: nombreRector.value || null,
         gemini_api_key: geminiApiKey.value || null,
+        pei_nombre_archivo: peiData.value?.nombre_archivo || null,
+        pei_modelo_pedagogico: peiData.value?.perfil_extraido?.modelo_pedagogico || null,
+        pei_valores_principios: peiData.value?.perfil_extraido || {},
         admin_email: adminEmail.value,
         admin_password: adminPassword.value,
         admin_nombre: adminNombre.value,
@@ -167,6 +234,13 @@ const handleConfigure = async () => {
             :class="currentStep >= 3 ? 'bg-white text-primary font-bold' : 'bg-primary-container text-primary-fixed-dim'"
           >
             3
+          </div>
+          <div class="w-8 h-[2px] bg-primary-container"></div>
+          <div
+            class="w-8 h-8 rounded-full flex items-center justify-center font-label-md text-label-md"
+            :class="currentStep >= 4 ? 'bg-white text-primary font-bold' : 'bg-primary-container text-primary-fixed-dim'"
+          >
+            4
           </div>
         </div>
       </header>
@@ -311,8 +385,57 @@ const handleConfigure = async () => {
           </div>
         </div>
 
-        <!-- STEP 3: ADMINISTRADOR -->
+        <!-- STEP 3: PEI UPLOAD -->
         <div v-if="currentStep === 3" class="space-y-md">
+          <div>
+            <h2 class="font-headline-md text-headline-md text-on-surface">Proyecto Educativo Institucional (PEI)</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">Sube el documento oficial de tu colegio en PDF para que Gemini extraiga automáticamente los valores y el modelo pedagógico.</p>
+          </div>
+
+          <div class="bg-surface-container border-2 border-dashed border-outline-variant rounded-xl p-xl flex flex-col items-center justify-center text-center">
+            <span class="material-symbols-outlined text-6xl text-primary mb-sm">upload_file</span>
+            
+            <label for="pei-upload" class="cursor-pointer bg-primary text-on-primary font-bold py-3 px-6 rounded-full hover:bg-primary/90 transition-colors inline-flex items-center gap-xs shadow-sm">
+              <span class="material-symbols-outlined text-[20px]">file_upload</span>
+              Seleccionar documento
+            </label>
+            <input 
+              id="pei-upload"
+              type="file" 
+              accept=".pdf" 
+              @change="handleFileUpload"
+              class="hidden"
+            />
+            
+            <p v-if="peiFile" class="mt-md text-label-md font-bold text-on-surface flex items-center gap-xs">
+              <span class="material-symbols-outlined text-[18px] text-[#166534]">check_circle</span>
+              {{ peiFile.name }}
+            </p>
+            <p v-else class="mt-md text-label-sm text-on-surface-variant">Solo formato PDF. Máximo 30 páginas serán leídas.</p>
+          </div>
+
+          <!-- Error del PEI -->
+          <div v-if="peiUploadError" class="p-sm bg-error-container text-on-error-container rounded-lg flex items-start gap-xs">
+            <span class="material-symbols-outlined text-[20px] text-error">error</span>
+            <p class="text-body-sm font-bold">{{ peiUploadError }}</p>
+          </div>
+
+          <!-- Botón de extracción -->
+          <div class="flex justify-center mt-md">
+            <button
+              @click="uploadPEI"
+              :disabled="!peiFile || isUploadingPei"
+              class="px-xl py-3 bg-tertiary text-on-tertiary font-bold rounded-full flex items-center gap-2 shadow-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <span class="material-symbols-outlined animate-spin" v-if="isUploadingPei">sync</span>
+              <span class="material-symbols-outlined" v-else>memory</span>
+              {{ isUploadingPei ? 'Analizando documento con IA...' : 'Extraer Principios (Gemini)' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 4: ADMINISTRADOR -->
+        <div v-if="currentStep === 4" class="space-y-md">
           <div>
             <h2 class="font-headline-md text-headline-md text-on-surface">Usuario Administrador</h2>
             <p class="font-body-md text-body-md text-on-surface-variant">Registra los datos del docente o directivo encargado de administrar la plataforma.</p>
@@ -427,7 +550,7 @@ const handleConfigure = async () => {
           <div v-else></div> <!-- Spacer -->
 
           <button
-            v-if="currentStep < 3"
+            v-if="currentStep < 4"
             @click="nextStep"
             class="px-lg py-3 bg-primary text-on-primary font-label-md text-label-md rounded-input shadow-md btn-hover-effect cursor-pointer flex items-center gap-xs ml-auto"
             type="button"

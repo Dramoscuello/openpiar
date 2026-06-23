@@ -45,6 +45,9 @@ class ConfigurarSistemaRequest(BaseModel):
     correo_contacto: Optional[EmailStr] = None
     nombre_rector: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    pei_nombre_archivo: Optional[str] = None
+    pei_modelo_pedagogico: Optional[str] = None
+    pei_valores_principios: Optional[dict] = Field(default_factory=dict)
 
     # Administrador inicial
     admin_email: EmailStr
@@ -339,3 +342,53 @@ class DBAListResponse(BaseResponse):
 class EBCListResponse(BaseResponse):
     total: int
     items: list[EBCResponse]
+
+
+# ---------------------------------------------------------------------------
+# Anexo 2: PIAR y Ajustes Razonables
+# ---------------------------------------------------------------------------
+
+class CaracteristicasEstudianteCreate(BaseModel):
+    descripcion_gustos_intereses: str = Field(..., min_length=2)
+    descripcion_habilidades: str = Field(..., min_length=2)
+
+class CaracteristicasEstudianteResponse(CaracteristicasEstudianteCreate, BaseResponse):
+    id: uuid.UUID
+    piar_id: uuid.UUID
+
+class AjusteRazonableCreate(BaseModel):
+    area: Literal['Matemáticas', 'Ciencias', 'Lenguaje', 'Convivencia', 'Socialización', 'Participación', 'Autonomía', 'Autocontrol']
+    objetivos_propositos: str = Field(..., min_length=2)
+    barreras_evidenciadas: str = Field(..., min_length=2)
+    ajustes_estrategias: str = Field(..., min_length=2)
+    evaluacion_ajustes: Optional[str] = None
+
+class AjusteRazonableResponse(AjusteRazonableCreate, BaseResponse):
+    id: uuid.UUID
+    piar_id: uuid.UUID
+    periodo_id: int
+
+class PiarCreate(BaseModel):
+    estudiante_id: uuid.UUID
+    anio_lectivo: int = Field(..., ge=2020)
+    estado: Literal['borrador', 'generando_ia', 'en_revision', 'firmado', 'vencido'] = 'borrador'
+    docentes_elaboran: Optional[str] = None
+
+class PiarUpdate(BaseModel):
+    estado: Optional[Literal['borrador', 'generando_ia', 'en_revision', 'firmado', 'vencido']] = None
+    docentes_elaboran: Optional[str] = None
+    caracteristicas: Optional[CaracteristicasEstudianteCreate] = None
+
+class PiarResponse(PiarCreate, BaseResponse):
+    id: uuid.UUID
+    fecha_creacion: date
+    fecha_limite_firma: Optional[date] = None
+    creado_por: Optional[uuid.UUID] = None
+    caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
+    ajustes_razonables: list[AjusteRazonableResponse] = []
+
+class GenerarAjustesRequest(BaseModel):
+    barreras_evidenciadas: str
+    objetivos_propositos: str
+    area: str
+    instrucciones_adicionales: Optional[str] = None

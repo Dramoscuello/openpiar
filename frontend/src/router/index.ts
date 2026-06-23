@@ -39,6 +39,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/estudiantes/:id/piar',
+      name: 'piar-view',
+      component: () => import('../views/PiarView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/gestion-escolar',
       name: 'school-management',
       component: () => import('../views/SchoolManagementView.vue'),
