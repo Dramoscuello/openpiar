@@ -1,10 +1,13 @@
 import uuid
+import json
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-import google.generativeai as genai
+import google.generativeai as genai          # SDK legacy — usado solo en /generar_ia
+from google import genai as genai_new        # SDK nuevo — usado en /generar_plan_ia
+from google.genai import types as genai_types
 
 from app.core.config import get_settings
 from app.adapters.db.session import get_db
@@ -205,91 +208,117 @@ async def generar_plan_completo_ia(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
-    """Genera un plan completo de ajuste razonable por área usando Gemini con todo el contexto del estudiante."""
+    """
+    Genera barreras y ajustes razonables DUA usando Gemini (nuevo SDK google-genai).
+    Los objetivos/propósitos los define el docente — la IA no los toca.
+    Usa JSON structured output para garantizar texto limpio sin markdown.
+    """
     try:
         # Verificar PIAR
         piar = await db.get(PiarORM, piar_id)
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
 
-        # Construir contexto completo
-        contexto_estudiante = f"- Nombre: {data.estudiante_nombre}\n"
+        # --- Construir bloque de perfil del estudiante ---
+        perfil_parts = [f"Nombre: {data.estudiante_nombre}"]
         if data.grado:
-            contexto_estudiante += f"- Grado escolar: {data.grado}\n"
+            perfil_parts.append(f"Grado escolar: {data.grado}")
         if data.diagnostico_medico:
-            contexto_estudiante += f"- Diagnóstico médico: {data.diagnostico_medico}\n"
+            perfil_parts.append(f"Diagnóstico o condición reportada: {data.diagnostico_medico}")
         if data.gustos_intereses:
-            contexto_estudiante += f"- Gustos, intereses y expectativas: {data.gustos_intereses}\n"
+            perfil_parts.append(f"Gustos, intereses y expectativas familiares: {data.gustos_intereses}")
         if data.habilidades_fortalezas:
-            contexto_estudiante += f"- Habilidades, fortalezas y apoyos requeridos: {data.habilidades_fortalezas}\n"
+            perfil_parts.append(f"Habilidades, fortalezas y apoyos actuales: {data.habilidades_fortalezas}")
+        perfil_texto = "\n".join(perfil_parts)
 
-        contexto_curricular = f""
+        # --- Construir bloque curricular de referencia ---
+        curricular_parts = []
         if data.dba_referencia:
-            contexto_curricular += f"\nDerechos Básicos de Aprendizaje (DBA) de referencia para el grado:\n{data.dba_referencia}\n"
-        if data.ebc_referencia:
-            contexto_curricular += f"\nEstándares Básicos de Competencias (EBC) de referencia:\n{data.ebc_referencia}\n"
-
-        instrucciones_extra = ""
-        if data.instrucciones_docente:
-            instrucciones_extra = f"\n\n---INSTRUCCIONES ADICIONALES DEL DOCENTE---\n{data.instrucciones_docente}"
-
-        prompt = f"""Eres un experto en Educación Inclusiva, Diseño Universal para el Aprendizaje (DUA) y elaboración de PIAR (Plan Individual de Ajustes Razonables) según la normativa colombiana (Decreto 1421 de 2017).
-
-Tu tarea es generar un plan de ajuste razonable COMPLETO para el área de "{data.area}" para el siguiente estudiante con necesidades de apoyo educativo:
-
-== PERFIL DEL ESTUDIANTE ==
-{contexto_estudiante}
-== MALLA CURRICULAR DE REFERENCIA =={contexto_curricular if contexto_curricular else ' (No se proporcionaron DBA/EBC de referencia)'}
-
-Genera una respuesta estructurada en EXACTAMENTE el siguiente formato (respeta las líneas separadoras):
-
----OBJETIVOS---
-[Escribe aquí los propósitos y objetivos de aprendizaje adaptados para este estudiante en el área de {data.area}. Basa los objetivos en los DBA/EBC de referencia pero adáptalos a las capacidades del estudiante. Máximo 4 objetivos concretos.]
-
----BARRERAS---
-[Identifica 3 a 5 barreras de aprendizaje concretas que este estudiante probablemente enfrenta en el área de {data.area}, considerando su perfil y diagnóstico. Barreras cognitivas, comunicativas, sensoriales o contextuales.]
-
----AJUSTES---
-[Proporciona 5 a 8 estrategias DUA y ajustes razonables concretos y accionables para el docente, organizados en viñetas. Incluye adaptaciones metodológicas, de evaluación y de materiales.]{instrucciones_extra}
-
-Responde ÚNICAMENTE con el formato especificado, sin explicaciones previas ni conclusiones posteriores."""
-
-        # Obtener clave Gemini: BD primero, .env como fallback
-        gemini_key = await get_gemini_key(db)
-        genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-        response = model.generate_content(prompt)
-        raw = response.text.strip()
-
-        # Parsear la respuesta estructurada
-        def extract_section(text: str, marker: str, next_marker: Optional[str]) -> str:
-            start_tag = f"---{marker}---"
-            start = text.find(start_tag)
-            if start == -1:
-                return ""
-            start = start + len(start_tag)
-            if next_marker:
-                end_tag = f"---{next_marker}---"
-                end = text.find(end_tag, start)
-                return text[start:end].strip() if end != -1 else text[start:].strip()
-            return text[start:].strip()
-
-        objetivos = extract_section(raw, "OBJETIVOS", "BARRERAS")
-        barreras = extract_section(raw, "BARRERAS", "AJUSTES")
-        ajustes = extract_section(raw, "AJUSTES", None)
-
-        if not objetivos or not barreras or not ajustes:
-            # fallback: devolver todo si el parseo falla
-            return PlanCompletoIAResponse(
-                objetivos_propositos=raw,
-                barreras_evidenciadas="(Ver respuesta completa en objetivos)",
-                ajustes_estrategias="(Ver respuesta completa en objetivos)"
+            curricular_parts.append(
+                f"Derechos Básicos de Aprendizaje (DBA) para el grado {data.grado or ''}:\n{data.dba_referencia}"
             )
+        if data.ebc_referencia:
+            curricular_parts.append(
+                f"Estándares Básicos de Competencias (EBC):\n{data.ebc_referencia}"
+            )
+        curricular_texto = ("\n\n".join(curricular_parts)
+                            if curricular_parts else "No se proporcionaron DBA/EBC de referencia.")
+
+        instrucciones_extra = (
+            f"\n\nNota adicional del docente: {data.instrucciones_docente}"
+            if data.instrucciones_docente else ""
+        )
+
+        # --- Prompt optimizado con chain-of-thought y contexto de dominio ---
+        # Basado en: Decreto 1421/2017, DUA, y catálogo de ajustes razonables (7 tipos de apoyo)
+        prompt = f"""Eres un especialista en Educación Inclusiva colombiana con profundo conocimiento del Decreto 1421 de 2017 y el Diseño Universal para el Aprendizaje (DUA). Tu función es asistir a docentes en la elaboración del PIAR (Plan Individual de Ajustes Razonables).
+
+El docente ya definió los objetivos de aprendizaje. Tu tarea es EXCLUSIVAMENTE:
+1. Identificar las barreras de aprendizaje que este estudiante enfrenta en el area indicada.
+2. Proponer ajustes razonables concretos y accionables para el docente.
+
+AREA O ASIGNATURA: {data.area}
+
+PERFIL DEL ESTUDIANTE:
+{perfil_texto}
+
+REFERENCIA CURRICULAR (para contexto de las barreras y ajustes):
+{curricular_texto}{instrucciones_extra}
+
+PARA LAS BARRERAS considera: dificultades cognitivas, comunicativas, sensoriales, emocionales, actitudinales, de entorno fisico o contexto familiar que puedan obstaculizar el aprendizaje en esta area.
+
+PARA LOS AJUSTES considera los 7 tipos de apoyo del modelo colombiano:
+- Mediaciones discursivas: comunicacion, lenguaje alternativo o aumentativo, ritmo de instruccion
+- Situacion de aprendizaje: didactica, secuenciacion de tareas, multisensorialidad, agrupamientos flexibles
+- Productos y tecnologia: herramientas de apoyo, organizadores graficos, tics, materiales adaptados
+- Personas: companeros ayudantes, monitor, docente de apoyo, familia
+- Entorno fisico: distribucion del aula, ubicacion del estudiante, reduccion de distractores
+- Servicio y comunidad: articulacion con terapias externas, orientacion a la familia
+- Entorno socioeducativo: clima inclusivo, autoestima, regulacion emocional, participacion
+
+Reglas de formato para tu respuesta JSON:
+- Usa oraciones completas y directas, sin listas con guiones ni asteriscos.
+- Separa cada barrera o ajuste con un punto y aparte.
+- No uses negritas, cursivas, titulos ni ningun formato markdown.
+- Sé concreto y accionable: el docente debe poder aplicarlo directamente en el aula.
+- Escribe en tercera persona o imperativo (ej: "El estudiante presenta...", "Presentar la informacion...")."""
+
+        # --- Esquema JSON para structured output (garantiza texto limpio) ---
+        schema_json = {
+            "type": "object",
+            "properties": {
+                "barreras_evidenciadas": {
+                    "type": "string",
+                    "description": "Barreras de aprendizaje identificadas. Texto plano, sin listas ni markdown. Cada barrera separada con punto y aparte."
+                },
+                "ajustes_estrategias": {
+                    "type": "string",
+                    "description": "Ajustes razonables y estrategias DUA propuestos. Texto plano, sin listas ni markdown. Cada ajuste separado con punto y aparte."
+                }
+            },
+            "required": ["barreras_evidenciadas", "ajustes_estrategias"]
+        }
+
+        # --- Llamar a Gemini con el nuevo SDK (google-genai) ---
+        gemini_key = await get_gemini_key(db)
+        client = genai_new.Client(api_key=gemini_key)
+
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_json_schema=schema_json,
+                temperature=0.4,
+            )
+        )
+
+        # El SDK nuevo garantiza JSON válido cuando se usa response_mime_type
+        parsed = json.loads(response.text)
 
         return PlanCompletoIAResponse(
-            objetivos_propositos=objetivos,
-            barreras_evidenciadas=barreras,
-            ajustes_estrategias=ajustes
+            barreras_evidenciadas=parsed.get("barreras_evidenciadas", "").strip(),
+            ajustes_estrategias=parsed.get("ajustes_estrategias", "").strip()
         )
 
     except HTTPException:

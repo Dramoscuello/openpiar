@@ -423,7 +423,6 @@ class GenerarPlanCompletoRequest(BaseModel):
 
 
 class PlanCompletoIAResponse(BaseResponse):
-    """Respuesta del plan de ajuste razonable generado por IA."""
-    objetivos_propositos: str
+    """Respuesta de la IA: solo barreras y ajustes. Los objetivos los define el docente."""
     barreras_evidenciadas: str
     ajustes_estrategias: str

@@ -937,12 +937,11 @@ async function generarConIA() {
     }
 
     const data = await res.json()
-    // Llenar los campos del formulario con la respuesta de IA
-    ajusteForm.value.objetivos = data.objetivos_propositos
+    // Solo llenar barreras y ajustes — los objetivos los define el docente
     ajusteForm.value.barreras = data.barreras_evidenciadas
     ajusteForm.value.ajustes = data.ajustes_estrategias
 
-    showToast('✨ Plan generado por IA. Revisa y ajusta los campos antes de guardar.')
+    showToast('✨ Barreras y ajustes generados por IA. Revisa y edita antes de guardar.')
   } catch (e: any) {
     showToast(e.message || 'Error al generar el plan con IA. Verifica la configuración de Gemini.', true)
   } finally {
