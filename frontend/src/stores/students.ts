@@ -21,6 +21,7 @@ export interface StudentGeneral {
   grupo_etnico: string
   victima_conflicto: boolean
   registro_victima: boolean
+  grupo_id: string | null
 }
 
 export interface TerapiaDetalle {
@@ -141,6 +142,7 @@ const createDefaultDraft = (): StudentDraft => ({
     grupo_etnico: '',
     victima_conflicto: false,
     registro_victima: false,
+    grupo_id: null,
   },
   salud: {
     afiliacion_salud: false,
@@ -313,6 +315,7 @@ export const useStudentsStore = defineStore('students', {
           grupo_etnico: dataGeneral.grupo_etnico || '',
           victima_conflicto: dataGeneral.victima_conflicto || false,
           registro_victima: dataGeneral.registro_victima || false,
+          grupo_id: dataGeneral.grupo_id || null,
         }
 
         // 2. Fetch de sub-entornos de forma paralela (tolerante a 404s en caso de que no se hayan creado aún)
@@ -520,6 +523,31 @@ export const useStudentsStore = defineStore('students', {
         return false
       } finally {
         this.submitting = false
+      }
+    },
+
+    /**
+     * Elimina un estudiante y todos sus datos relacionados del servidor.
+     */
+    async deleteStudent(id: string): Promise<boolean> {
+      const authStore = useAuthStore()
+      this.error = null
+      try {
+        const res = await fetch(`/api/v1/estudiantes/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${authStore.token}` },
+        })
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Error al eliminar el estudiante.')
+        }
+        // Remover de la lista local sin recargar
+        this.students = this.students.filter(s => s.id !== id)
+        this.total = Math.max(0, this.total - 1)
+        return true
+      } catch (err: any) {
+        this.error = err.message || 'Error al eliminar.'
+        return false
       }
     },
   },

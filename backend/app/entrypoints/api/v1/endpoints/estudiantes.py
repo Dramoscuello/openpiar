@@ -24,9 +24,11 @@ from app.adapters.db.models import (
     EstudianteORM,
     MatriculaActualORM,
     TrayectoriaEducativaORM,
+    GrupoORM,
 )
 from app.adapters.db.session import get_db
 from app.core.exceptions import EstudianteNoEncontradoError, EstudianteYaRegistradoError
+from app.domain.entities import Usuario
 from app.entrypoints.api.dependencies import CurrentUser, get_estudiante_repo
 from app.entrypoints.api.schemas import (
     CrearEstudianteRequest,
@@ -88,11 +90,39 @@ async def listar_estudiantes(
             grupo_etnico=e.grupo_etnico,
             victima_conflicto=e.victima_conflicto,
             registro_victima=e.registro_victima,
+            grupo_id=e.grupo_id,
             created_at=e.created_at,
         )
         for e in estudiantes
     ]
     return EstudianteListResponse(total=total, items=items)
+
+
+# ---------------------------------------------------------------------------
+# Helper: check write permissions on student profiles (Anexo 1)
+# ---------------------------------------------------------------------------
+
+async def check_write_permission(current_user: Usuario, db: AsyncSession) -> None:
+    """Solo directivos o directores de grupo pueden escribir en Anexo 1."""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Autenticación requerida."
+        )
+    if current_user.rol.es_directivo:
+        return
+
+    # Verificar si es director de algún grupo
+    group_director_result = await db.execute(
+        select(GrupoORM).where(GrupoORM.director_id == current_user.id)
+    )
+    if group_director_result.scalars().first() is not None:
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Solo los directivos o directores de grupo tienen permisos para registrar o editar estudiantes."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +145,7 @@ async def crear_estudiante(
     current_user: CurrentUser = None,
     repo=Depends(get_estudiante_repo),
 ) -> EstudianteResponse:
+    await check_write_permission(current_user, repo._session)
     use_case = CrearEstudianteUseCase(repo)
     try:
         estudiante = await use_case.execute(
@@ -130,6 +161,7 @@ async def crear_estudiante(
                 direccion=body.direccion,
                 barrio_vereda=body.barrio_vereda,
                 creado_por=current_user.id if current_user else None,
+                grupo_id=body.grupo_id,
                 lugar_nacimiento=body.lugar_nacimiento,
                 telefono=body.telefono,
                 correo=str(body.correo) if body.correo else None,
@@ -165,6 +197,7 @@ async def crear_estudiante(
         grupo_etnico=estudiante.grupo_etnico,
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
+        grupo_id=estudiante.grupo_id,
         created_at=estudiante.created_at,
     )
 
@@ -209,8 +242,36 @@ async def obtener_estudiante(
         grupo_etnico=estudiante.grupo_etnico,
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
+        grupo_id=estudiante.grupo_id,
         created_at=estudiante.created_at,
     )
+
+
+# ---------------------------------------------------------------------------
+# DELETE /estudiantes/{id}
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/{estudiante_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar estudiante",
+    description=(
+        "Elimina permanentemente el estudiante y todos sus datos relacionados "
+        "(salud, hogar, trayectoria, matrícula). Solo directivos o directores de grupo."
+    ),
+)
+async def eliminar_estudiante(
+    estudiante_id: uuid.UUID,
+    current_user: CurrentUser = None,
+    repo=Depends(get_estudiante_repo),
+) -> None:
+    await check_write_permission(current_user, repo._session)
+    deleted = await repo.delete_by_id(estudiante_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Estudiante {estudiante_id} no encontrado.",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +289,7 @@ async def actualizar_estudiante(
     current_user: CurrentUser = None,
     repo=Depends(get_estudiante_repo),
 ) -> EstudianteResponse:
+    await check_write_permission(current_user, repo._session)
     estudiante = await repo.find_by_id(estudiante_id)
     if not estudiante:
         raise HTTPException(
@@ -254,6 +316,7 @@ async def actualizar_estudiante(
     estudiante.grupo_etnico = body.grupo_etnico
     estudiante.victima_conflicto = body.victima_conflicto
     estudiante.registro_victima = body.registro_victima
+    estudiante.grupo_id = body.grupo_id
 
     # Persistir
     await repo.save(estudiante)
@@ -278,6 +341,7 @@ async def actualizar_estudiante(
         grupo_etnico=estudiante.grupo_etnico,
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
+        grupo_id=estudiante.grupo_id,
         created_at=estudiante.created_at,
     )
 
@@ -317,6 +381,7 @@ async def crear_entorno_salud(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoSaludResponse:
+    await check_write_permission(current_user, db)
     # Verificar que el estudiante existe
     estudiante = await db.get(EstudianteORM, estudiante_id)
     if not estudiante:
@@ -343,6 +408,7 @@ async def actualizar_entorno_salud(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoSaludResponse:
+    await check_write_permission(current_user, db)
     result = await db.execute(
         select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
     )
@@ -393,6 +459,7 @@ async def crear_entorno_hogar(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoHogarResponse:
+    await check_write_permission(current_user, db)
     estudiante = await db.get(EstudianteORM, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
@@ -415,6 +482,7 @@ async def actualizar_entorno_hogar(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoHogarResponse:
+    await check_write_permission(current_user, db)
     result = await db.execute(
         select(EntornoHogarORM).where(EntornoHogarORM.estudiante_id == estudiante_id)
     )
@@ -465,6 +533,7 @@ async def crear_trayectoria_educativa(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> TrayectoriaEducativaResponse:
+    await check_write_permission(current_user, db)
     estudiante = await db.get(EstudianteORM, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
@@ -490,6 +559,7 @@ async def actualizar_trayectoria_educativa(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> TrayectoriaEducativaResponse:
+    await check_write_permission(current_user, db)
     result = await db.execute(
         select(TrayectoriaEducativaORM).where(TrayectoriaEducativaORM.estudiante_id == estudiante_id)
     )
@@ -540,6 +610,7 @@ async def crear_matricula_actual(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> MatriculaActualResponse:
+    await check_write_permission(current_user, db)
     estudiante = await db.get(EstudianteORM, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
@@ -565,6 +636,7 @@ async def actualizar_matricula_actual(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> MatriculaActualResponse:
+    await check_write_permission(current_user, db)
     result = await db.execute(
         select(MatriculaActualORM).where(MatriculaActualORM.estudiante_id == estudiante_id)
     )

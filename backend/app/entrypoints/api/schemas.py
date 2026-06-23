@@ -86,6 +86,33 @@ class TestDBResponse(BaseResponse):
 
 
 # ---------------------------------------------------------------------------
+# Periodos Académicos
+# ---------------------------------------------------------------------------
+
+class PeriodoAcademicoBase(BaseModel):
+    nombre: str = Field(..., min_length=2, max_length=100)
+    fecha_inicio: date
+    fecha_fin: date
+
+
+class PeriodoAcademicoCreate(PeriodoAcademicoBase):
+    pass
+
+
+class PeriodoAcademicoUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=2, max_length=100)
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
+
+
+class PeriodoAcademicoResponse(PeriodoAcademicoBase, BaseResponse):
+    id: int
+    activo: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---------------------------------------------------------------------------
 # Autenticación
 # ---------------------------------------------------------------------------
 
@@ -121,6 +148,7 @@ class UsuarioResponse(BaseResponse):
     apellido: str
     rol: str
     cargo: Optional[str] = None
+    es_director: bool = False
     created_at: datetime
 
 
@@ -144,6 +172,7 @@ class CrearEstudianteRequest(BaseModel):
     direccion: str = Field(..., min_length=5)
     barrio_vereda: str = Field(..., min_length=2)
     # Opcionales
+    grupo_id: Optional[uuid.UUID] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[EmailStr] = None
@@ -166,6 +195,7 @@ class EstudianteResponse(BaseResponse):
     municipio_residencia: str
     direccion: str
     barrio_vereda: str
+    grupo_id: Optional[uuid.UUID] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None

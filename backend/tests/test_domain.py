@@ -172,6 +172,7 @@ class TestCrearEstudiante:
         return CrearEstudianteUseCase(repo)
 
     async def test_crear_estudiante_exitoso(self, use_case):
+        dummy_grupo_id = uuid.uuid4()
         data = CrearEstudianteInput(
             nombres="Ana",
             apellidos="Pérez",
@@ -183,10 +184,12 @@ class TestCrearEstudiante:
             municipio_residencia="Medellín",
             direccion="Carrera 50 #60-70",
             barrio_vereda="El Poblado",
+            grupo_id=dummy_grupo_id,
         )
         estudiante = await use_case.execute(data)
         assert estudiante.nombres == "Ana"
         assert estudiante.id is not None
+        assert estudiante.grupo_id == dummy_grupo_id
 
     async def test_no_permite_documento_duplicado(self, use_case):
         data = CrearEstudianteInput(

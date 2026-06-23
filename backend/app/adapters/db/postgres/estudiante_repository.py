@@ -48,6 +48,7 @@ class PostgresEstudianteRepository(IEstudianteRepository):
             victima_conflicto=orm.victima_conflicto,
             registro_victima=orm.registro_victima,
             creado_por=orm.creado_por,
+            grupo_id=orm.grupo_id,
             created_at=orm.created_at,
             updated_at=orm.updated_at,
         )
@@ -75,6 +76,7 @@ class PostgresEstudianteRepository(IEstudianteRepository):
             victima_conflicto=estudiante.victima_conflicto,
             registro_victima=estudiante.registro_victima,
             creado_por=estudiante.creado_por,
+            grupo_id=estudiante.grupo_id,
         )
 
     # -----------------------------------------------------------------------
@@ -115,6 +117,7 @@ class PostgresEstudianteRepository(IEstudianteRepository):
                 "direccion", "barrio_vereda", "telefono", "correo",
                 "en_centro_proteccion", "centro_proteccion_donde",
                 "grupo_etnico", "victima_conflicto", "registro_victima",
+                "grupo_id",
             ):
                 setattr(existing, field, getattr(estudiante, field))
         else:
@@ -128,3 +131,12 @@ class PostgresEstudianteRepository(IEstudianteRepository):
             select(func.count()).select_from(EstudianteORM)
         )
         return result.scalar_one()
+
+    async def delete_by_id(self, estudiante_id: uuid.UUID) -> bool:
+        """Elimina el estudiante y todos sus datos relacionados (cascade)."""
+        orm = await self._session.get(EstudianteORM, estudiante_id)
+        if not orm:
+            return False
+        await self._session.delete(orm)
+        await self._session.flush()
+        return True

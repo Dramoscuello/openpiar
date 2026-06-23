@@ -14,6 +14,37 @@ const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
+// Delete state
+const confirmDeleteStudent = ref<{ id: string; nombre: string } | null>(null)
+const deleting = ref(false)
+const deleteError = ref<string | null>(null)
+
+const promptDelete = (student: any) => {
+  deleteError.value = null
+  confirmDeleteStudent.value = {
+    id: student.id,
+    nombre: `${student.nombres} ${student.apellidos}`,
+  }
+}
+
+const cancelDelete = () => {
+  confirmDeleteStudent.value = null
+  deleteError.value = null
+}
+
+const confirmDelete = async () => {
+  if (!confirmDeleteStudent.value) return
+  deleting.value = true
+  deleteError.value = null
+  const ok = await studentsStore.deleteStudent(confirmDeleteStudent.value.id)
+  deleting.value = false
+  if (ok) {
+    confirmDeleteStudent.value = null
+  } else {
+    deleteError.value = studentsStore.error || 'No se pudo eliminar el estudiante.'
+  }
+}
+
 // Load data on mount
 onMounted(async () => {
   await loadStudents()
@@ -181,6 +212,7 @@ const formatDate = (dateStr: string) => {
         <div class="flex items-center gap-4">
           <!-- Add Student Button -->
           <button
+            v-if="authStore.canCreateStudent"
             @click="goToAddStudent"
             class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
           >
@@ -275,11 +307,22 @@ const formatDate = (dateStr: string) => {
                     <div class="flex items-center justify-end gap-xs">
                       <!-- Edit Anexo 1 -->
                       <button
+                        v-if="authStore.canCreateStudent"
                         @click="goToEditStudent(student.id)"
                         class="p-2 text-primary hover:bg-primary/5 rounded-full transition-all cursor-pointer"
                         title="Editar Registro Pedagógico (Anexo 1)"
                       >
                         <span class="material-symbols-outlined text-[20px]">edit_note</span>
+                      </button>
+
+                    <!-- Delete -->
+                      <button
+                        v-if="authStore.canCreateStudent"
+                        @click="promptDelete(student)"
+                        class="p-2 text-error hover:bg-error/5 rounded-full transition-all cursor-pointer"
+                        title="Eliminar estudiante"
+                      >
+                        <span class="material-symbols-outlined text-[20px]">delete</span>
                       </button>
 
                       <!-- Create PIAR (Anexo 2) -->
@@ -329,10 +372,100 @@ const formatDate = (dateStr: string) => {
       </div>
     </main>
   </div>
+
+  <!-- Modal de confirmación de eliminación -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div
+        v-if="confirmDeleteStudent"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-6"
+        style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
+        @click.self="cancelDelete"
+      >
+        <!-- Dialog -->
+        <div
+          style="background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.25); width:100%; max-width:440px; padding:28px; box-sizing:border-box;"
+        >
+          <!-- Icon + Title row -->
+          <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+            <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+              <span class="material-symbols-outlined" style="color:#ef4444; font-size:22px;">warning</span>
+            </div>
+            <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Eliminar estudiante</h3>
+          </div>
+
+          <!-- Body text -->
+          <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 8px 0;">
+            ¿Estás seguro de que deseas eliminar a
+            <strong style="color:#111827;">{{ confirmDeleteStudent?.nombre }}</strong>?
+          </p>
+          <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;">
+            Se eliminará también toda la información de salud, hogar, trayectoria y matrícula.
+            <strong style="color:#ef4444;">Esta acción no se puede deshacer.</strong>
+          </p>
+
+          <!-- Error -->
+          <div
+            v-if="deleteError"
+            style="background:#fee2e2; color:#dc2626; border-radius:10px; padding:12px 16px; font-size:13px; margin-bottom:16px;"
+          >
+            {{ deleteError }}
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex; justify-content:flex-end; gap:12px;">
+            <button
+              @click="cancelDelete"
+              :disabled="deleting"
+              style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
+              @mouseenter="($event.target as HTMLElement).style.background='#f9fafb'"
+              @mouseleave="($event.target as HTMLElement).style.background='transparent'"
+            >
+              Cancelar
+            </button>
+            <button
+              @click="confirmDelete"
+              :disabled="deleting"
+              style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; color:#fff; background:#ef4444; border:none; cursor:pointer; display:flex; align-items:center; gap:8px; transition:background .15s;"
+              @mouseenter="($event.target as HTMLElement).style.background='#dc2626'"
+              @mouseleave="($event.target as HTMLElement).style.background='#ef4444'"
+            >
+              <span v-if="deleting" class="material-symbols-outlined" style="font-size:18px; animation:spin 1s linear infinite;">progress_activity</span>
+              <span v-else class="material-symbols-outlined" style="font-size:18px;">delete</span>
+              {{ deleting ? 'Eliminando...' : 'Sí, eliminar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
 .star-icon {
   font-variation-settings: 'FILL' 1;
+}
+
+/* Modal transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.18s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-active > div,
+.modal-leave-active > div {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+.modal-enter-from > div {
+  transform: scale(0.95);
+  opacity: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 </style>

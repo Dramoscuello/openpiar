@@ -121,6 +121,7 @@ class Estudiante:
     victima_conflicto: bool = False
     registro_victima: bool = False
     creado_por: Optional[uuid.UUID] = None
+    grupo_id: Optional[uuid.UUID] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -138,6 +139,7 @@ class Estudiante:
         direccion: str,
         barrio_vereda: str,
         creado_por: Optional[uuid.UUID] = None,
+        grupo_id: Optional[uuid.UUID] = None,
         **kwargs,
     ) -> "Estudiante":
         """Factory method — crea un nuevo Estudiante validando invariantes básicos."""
@@ -159,6 +161,7 @@ class Estudiante:
             direccion=direccion,
             barrio_vereda=barrio_vereda,
             creado_por=creado_por,
+            grupo_id=grupo_id,
             **kwargs,
         )
 

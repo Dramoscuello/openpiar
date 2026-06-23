@@ -23,6 +23,10 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state): boolean => !!state.token,
     isSetupCompleted: (state): boolean => state.setupStatus?.setup_completado ?? true,
     nombreInstitucion: (state): string => state.setupStatus?.nombre_institucion ?? 'OpenPiar',
+    canCreateStudent: (state): boolean => {
+      if (!state.user) return false
+      return state.user.rol === 'directivo' || !!state.user.es_director
+    },
   },
 
   actions: {

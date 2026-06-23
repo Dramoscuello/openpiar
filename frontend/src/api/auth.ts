@@ -20,6 +20,7 @@ export interface UserResponse {
   nombre: string
   apellido: string
   rol: string
+  es_director?: boolean
   created_at: string
 }
 

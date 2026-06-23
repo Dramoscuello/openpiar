@@ -84,7 +84,25 @@ class ConfiguracionSistemaORM(Base):
 
 
 # ---------------------------------------------------------------------------
-# Tabla 2: usuarios
+# Tabla 2: periodos_academicos
+# ---------------------------------------------------------------------------
+
+class PeriodoAcademicoORM(Base):
+    __tablename__ = "periodos_academicos"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        default=_now, onupdate=_now, server_default=func.now()
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tabla 3: usuarios
 # ---------------------------------------------------------------------------
 
 class UsuarioORM(Base):

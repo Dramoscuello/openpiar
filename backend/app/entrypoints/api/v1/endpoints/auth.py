@@ -8,11 +8,15 @@ Implementa OAuth2 Password Flow compatible con el esquema estándar de FastAPI.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import CredencialesInvalidasError
 from app.entrypoints.api.dependencies import CurrentUser, get_usuario_repo
 from app.entrypoints.api.schemas import TokenResponse, UsuarioResponse, ChangePasswordRequest
 from app.use_cases.auth.login import LoginInput, LoginUseCase
+from app.adapters.db.session import get_db
+from app.adapters.db.models import GrupoORM
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -55,13 +59,23 @@ async def login(
     summary="Usuario autenticado",
     description="Retorna la información del usuario autenticado con el token actual.",
 )
-async def get_me(current_user: CurrentUser) -> UsuarioResponse:
+async def get_me(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+) -> UsuarioResponse:
+    # Verificar si es director de algún grupo
+    group_director_result = await db.execute(
+        select(GrupoORM).where(GrupoORM.director_id == current_user.id)
+    )
+    es_director = group_director_result.scalars().first() is not None
+
     return UsuarioResponse(
         id=current_user.id,
         email=str(current_user.email),
         nombre=current_user.nombre,
         apellido=current_user.apellido,
         rol=str(current_user.rol),
+        es_director=es_director,
         created_at=current_user.created_at,
     )
 

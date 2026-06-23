@@ -1,9 +1,10 @@
 <!-- Copyright (c) 2026 OpenPiar Contributors — GPL-3.0 -->
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed, reactive, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useStudentsStore } from '../stores/students'
 import { useAuthStore } from '../stores/auth'
+import { DEPARTAMENTOS } from '../data/colombia'
 
 const router = useRouter()
 const route = useRoute()
@@ -15,8 +16,128 @@ const currentStep = ref(1)
 const isEditMode = ref(false)
 const validationError = ref<string | null>(null)
 
+// Catalog lists
+const sedes = ref<any[]>([])
+const grupos = ref<any[]>([])
+const loadingSedesGrupos = ref(false)
+const selectedSedeId = ref<string>('')
+
+const filteredGrupos = computed(() => {
+  if (!selectedSedeId.value) return []
+  return grupos.value.filter(g => g.sede && g.sede.id === selectedSedeId.value)
+})
+
+// -----------------------------------------------------------------------
+// Custom date picker (Día / Mes / Año)
+// -----------------------------------------------------------------------
+const MESES = [
+  { val: '01', label: 'Enero' }, { val: '02', label: 'Febrero' },
+  { val: '03', label: 'Marzo' }, { val: '04', label: 'Abril' },
+  { val: '05', label: 'Mayo' }, { val: '06', label: 'Junio' },
+  { val: '07', label: 'Julio' }, { val: '08', label: 'Agosto' },
+  { val: '09', label: 'Septiembre' }, { val: '10', label: 'Octubre' },
+  { val: '11', label: 'Noviembre' }, { val: '12', label: 'Diciembre' },
+]
+const birthDay   = ref<string>('')
+const birthMonth = ref<string>('')
+const birthYear  = ref<string>('')
+
+// Años válidos: nacidos entre 1990 y hace 2 años
+const birthYears = computed(() => {
+  const end = new Date().getFullYear() - 2
+  const years: number[] = []
+  for (let y = end; y >= 1990; y--) years.push(y)
+  return years
+})
+
+// Días del mes seleccionado
+const birthDays = computed(() => {
+  const m = parseInt(birthMonth.value || '1')
+  const y = parseInt(birthYear.value  || '2000')
+  const max = new Date(y, m, 0).getDate()
+  return Array.from({ length: max }, (_, i) => String(i + 1).padStart(2, '0'))
+})
+
+// Cuando cambia alguno de los tres selects, actualizar el modelo
+watch([birthDay, birthMonth, birthYear], ([d, m, y]) => {
+  if (d && m && y) {
+    studentsStore.draft.general.fecha_nacimiento = `${y}-${m}-${d}`
+  } else {
+    studentsStore.draft.general.fecha_nacimiento = ''
+  }
+})
+
+// Si ya hay una fecha en el store (modo edición), descomponer
+watch(
+  () => studentsStore.draft.general.fecha_nacimiento,
+  (val) => {
+    if (val && val.length === 10 && !birthYear.value) {
+      const parts = val.split('-')
+      birthYear.value  = parts[0] ?? ''
+      birthMonth.value = parts[1] ?? ''
+      birthDay.value   = parts[2] ?? ''
+    }
+  },
+  { immediate: true }
+)
+
+// -----------------------------------------------------------------------
+// Departamentos / Municipios — datos estáticos DANE (sin API externa)
+// -----------------------------------------------------------------------
+const departamentos = DEPARTAMENTOS.slice().sort((a, b) => a.nombre.localeCompare(b.nombre))
+const municipios      = ref<{ id: string; nombre: string }[]>([])
+const loadingMunicipios = ref(false)
+const selectedDeptoId = ref<string>('')
+
+const cargarMunicipios = (deptoId: string) => {
+  if (!deptoId) { municipios.value = []; return }
+  const depto = DEPARTAMENTOS.find(d => d.id === deptoId)
+  municipios.value = depto
+    ? depto.municipios.slice().sort((a, b) => a.nombre.localeCompare(b.nombre))
+    : []
+}
+
+// Al cambiar departamento, actualizar municipio y el nombre en el store
+watch(selectedDeptoId, (newId) => {
+  studentsStore.draft.general.municipio_residencia = ''
+  const depto = DEPARTAMENTOS.find(d => d.id === newId)
+  studentsStore.draft.general.departamento_residencia = depto ? depto.nombre : ''
+  cargarMunicipios(newId)
+})
+
+const fetchSedesAndGrupos = async () => {
+  loadingSedesGrupos.value = true
+  try {
+    const headers = { 'Authorization': `Bearer ${authStore.token}` }
+    const [resSedes, resGrupos] = await Promise.all([
+      fetch('/api/v1/gestion/sedes', { headers }),
+      fetch('/api/v1/gestion/grupos', { headers })
+    ])
+    if (resSedes.ok) sedes.value = await resSedes.json()
+    if (resGrupos.ok) grupos.value = await resGrupos.json()
+    
+    // Si estamos editando y el estudiante ya tiene un grupo_id, pre-seleccionar la sede
+    if (studentsStore.draft.general.grupo_id) {
+      const grupo = grupos.value.find(g => g.id === studentsStore.draft.general.grupo_id)
+      if (grupo && grupo.sede) {
+        selectedSedeId.value = grupo.sede.id
+      }
+    }
+  } catch (e) {
+    console.error('Error cargando sedes/grupos:', e)
+  } finally {
+    loadingSedesGrupos.value = false
+  }
+}
+
 // Load data on mount
 onMounted(async () => {
+  // Enforzar permisos
+  if (!authStore.canCreateStudent) {
+    router.push('/estudiantes')
+    return
+  }
+
   const studentId = route.params.id as string
   if (studentId) {
     isEditMode.value = true
@@ -28,6 +149,50 @@ onMounted(async () => {
     if (!studentsStore.draft.matricula.institucion_educativa && authStore.nombreInstitucion) {
       studentsStore.draft.matricula.institucion_educativa = authStore.nombreInstitucion
     }
+  }
+  await fetchSedesAndGrupos()
+
+  // Si en modo edición ya hay depto guardado, pre-seleccionar y restaurar municipio
+  if (studentsStore.draft.general.departamento_residencia) {
+    const deptoName = studentsStore.draft.general.departamento_residencia
+    // Guardar el municipio ANTES de que el watch lo borre al cambiar selectedDeptoId
+    const savedMunicipio = studentsStore.draft.general.municipio_residencia
+    const depto = DEPARTAMENTOS.find(d =>
+      d.nombre.toLowerCase() === deptoName.toLowerCase()
+    )
+    if (depto) {
+      selectedDeptoId.value = depto.id
+      cargarMunicipios(depto.id)
+      // El watch borra municipio_residencia al dispararse; restaurarlo en el siguiente tick
+      await nextTick()
+      studentsStore.draft.general.municipio_residencia = savedMunicipio
+    }
+  }
+})
+
+// Sincronizar Sede seleccionada con texto del Anexo 1
+watch(selectedSedeId, (newSedeId) => {
+  const selectedGrupo = grupos.value.find(g => g.id === studentsStore.draft.general.grupo_id)
+  if (selectedGrupo && selectedGrupo.sede.id !== newSedeId) {
+    studentsStore.draft.general.grupo_id = null
+  }
+  const sedeObj = sedes.value.find(s => s.id === newSedeId)
+  if (sedeObj) {
+    studentsStore.draft.matricula.sede = sedeObj.nombre
+  } else {
+    studentsStore.draft.matricula.sede = ''
+  }
+})
+
+// Sincronizar Grupo seleccionado con grado de ingreso del Anexo 1
+watch(() => studentsStore.draft.general.grupo_id, (newGrupoId) => {
+  if (newGrupoId) {
+    const grupoObj = grupos.value.find(g => g.id === newGrupoId)
+    if (grupoObj) {
+      studentsStore.draft.matricula.grado_ingreso = `${grupoObj.grado} - ${grupoObj.nombre}`
+    }
+  } else {
+    studentsStore.draft.matricula.grado_ingreso = ''
   }
 })
 
@@ -194,6 +359,10 @@ const cancel = () => {
 }
 
 const save = async () => {
+  // Auto-asignar la institucion educativa asociada al usuario que crea el estudiante
+  if (authStore.nombreInstitucion) {
+    studentsStore.draft.matricula.institucion_educativa = authStore.nombreInstitucion
+  }
   if (!validateStep(4)) return
 
   const studentId = route.params.id as string
@@ -381,16 +550,23 @@ const save = async () => {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Tipo Documento *</label>
-                <select
-                  v-model="studentsStore.draft.general.tipo_documento"
-                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                >
-                  <option value="RC">Registro Civil (RC)</option>
-                  <option value="TI">Tarjeta de Identidad (TI)</option>
-                  <option value="CC">Cédula de Ciudadanía (CC)</option>
-                  <option value="NES">Número Establecido por Secretaría (NES)</option>
-                  <option value="PEP">Permiso Especial de Permanencia (PEP)</option>
-                </select>
+                <div class="relative">
+                  <select
+                    v-model="studentsStore.draft.general.tipo_documento"
+                    class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  >
+                    <option value="RC">Registro Civil (RC)</option>
+                    <option value="TI">Tarjeta de Identidad (TI)</option>
+                    <option value="CC">Cédula de Ciudadanía (CC)</option>
+                    <option value="NES">Número Establecido por Secretaría (NES)</option>
+                    <option value="PEP">Permiso Especial de Permanencia (PEP)</option>
+                  </select>
+                  <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </span>
+                </div>
               </div>
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Número Documento *</label>
@@ -403,11 +579,47 @@ const save = async () => {
               </div>
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Fecha de Nacimiento *</label>
-                <input
-                  v-model="studentsStore.draft.general.fecha_nacimiento"
-                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  type="date"
-                />
+                <div class="grid grid-cols-3 gap-2">
+                  <!-- Día -->
+                  <div class="relative">
+                    <select
+                      v-model="birthDay"
+                      class="w-full px-3 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                    >
+                      <option value="" disabled>Día</option>
+                      <option v-for="d in birthDays" :key="d" :value="d">{{ parseInt(d) }}</option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-outline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
+                  <!-- Mes -->
+                  <div class="relative">
+                    <select
+                      v-model="birthMonth"
+                      class="w-full px-3 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                    >
+                      <option value="" disabled>Mes</option>
+                      <option v-for="m in MESES" :key="m.val" :value="m.val">{{ m.label }}</option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-outline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
+                  <!-- Año -->
+                  <div class="relative">
+                    <select
+                      v-model="birthYear"
+                      class="w-full px-3 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                    >
+                      <option value="" disabled>Año</option>
+                      <option v-for="y in birthYears" :key="y" :value="String(y)">{{ y }}</option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-outline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -434,21 +646,40 @@ const save = async () => {
 
             <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">DIRECCIÓN Y CONTACTO</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <!-- Departamento -->
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Departamento de Residencia *</label>
-                <input
-                  v-model="studentsStore.draft.general.departamento_residencia"
-                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  type="text"
-                />
+                <div class="relative">
+                  <select
+                    v-model="selectedDeptoId"
+                    class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  >
+                    <option value="" disabled>Selecciona un departamento</option>
+                    <option v-for="d in departamentos" :key="d.id" :value="d.id">{{ d.nombre }}</option>
+                  </select>
+                  <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </div>
               </div>
+              <!-- Municipio -->
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Municipio de Residencia *</label>
-                <input
-                  v-model="studentsStore.draft.general.municipio_residencia"
-                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  type="text"
-                />
+                <div class="relative">
+                  <select
+                    v-model="studentsStore.draft.general.municipio_residencia"
+                    :disabled="!selectedDeptoId"
+                    class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="" disabled>
+                      {{ !selectedDeptoId ? 'Primero selecciona un departamento' : 'Selecciona un municipio' }}
+                    </option>
+                    <option v-for="m in municipios" :key="m.id" :value="m.nombre">{{ m.nombre }}</option>
+                  </select>
+                  <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -571,14 +802,19 @@ const save = async () => {
                 </div>
                 <div class="space-y-xs">
                   <label class="font-label-md text-label-md text-on-surface-variant">Régimen *</label>
-                  <select
-                    v-model="studentsStore.draft.salud.regimen"
-                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  >
-                    <option value="">Selecciona régimen...</option>
-                    <option value="contributivo">Contributivo</option>
-                    <option value="subsidiado">Subsidiado</option>
-                  </select>
+                  <div class="relative">
+                    <select
+                      v-model="studentsStore.draft.salud.regimen"
+                      class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                    >
+                      <option value="" disabled>Selecciona régimen...</option>
+                      <option value="contributivo">Contributivo</option>
+                      <option value="subsidiado">Subsidiado</option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -944,7 +1180,7 @@ const save = async () => {
                   type="checkbox"
                   class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
                 />
-                <label for="inicial" class="font-label-md text-label-md text-on-surface select-none">¿Estuvo vinculado en educación inicial previa (jardín, CDI)?</label>
+                <label for="inicial" class="font-label-md text-label-md text-on-surface select-none">¿Ha estado vinculado en otra institución educativa, fundación o modalidad de educación inicial?</label>
               </div>
 
               <div v-if="studentsStore.draft.trayectoria.vinculado_educacion_inicial" class="space-y-xs pl-6">
@@ -953,7 +1189,7 @@ const save = async () => {
                   v-model="studentsStore.draft.trayectoria.educacion_inicial_instituciones"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
                   type="text"
-                  placeholder="Nombre de CDI o Jardín"
+                  placeholder="¿Cuáles?"
                 />
               </div>
 
@@ -1030,50 +1266,75 @@ const save = async () => {
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
-                  <label class="font-label-md text-label-md text-on-surface-variant">Institución Educativa *</label>
-                  <input
-                    v-model="studentsStore.draft.matricula.institucion_educativa"
-                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                    type="text"
-                  />
-                </div>
-                <div class="space-y-xs">
                   <label class="font-label-md text-label-md text-on-surface-variant">Sede Escolar *</label>
+                  <div v-if="sedes.length > 0" class="relative">
+                    <select
+                      v-model="selectedSedeId"
+                      class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                    >
+                      <option value="" disabled>Selecciona sede...</option>
+                      <option v-for="sede in sedes" :key="sede.id" :value="sede.id">
+                        {{ sede.nombre }}
+                      </option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
                   <input
+                    v-else
                     v-model="studentsStore.draft.matricula.sede"
-                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
                     type="text"
                     placeholder="Ej: Sede Principal, Sede B"
                   />
                 </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
                   <label class="font-label-md text-label-md text-on-surface-variant">Grado al que ingresa *</label>
+                  <div v-if="sedes.length > 0 && grupos.length > 0" class="relative">
+                    <select
+                      v-model="studentsStore.draft.general.grupo_id"
+                      :disabled="!selectedSedeId"
+                      class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-50 disabled:cursor-not-allowed dark:text-white"
+                    >
+                      <option :value="null" disabled>Selecciona grupo...</option>
+                      <option v-for="grupo in filteredGrupos" :key="grupo.id" :value="grupo.id">
+                        {{ grupo.grado }} - {{ grupo.nombre }}
+                      </option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
                   <input
+                    v-else
                     v-model="studentsStore.draft.matricula.grado_ingreso"
-                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                    class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
                     type="text"
                     placeholder="Ej: Primero, Cuarto"
                   />
                 </div>
-                <div class="space-y-xs">
-                  <label class="font-label-md text-label-md text-on-surface-variant">Jornada Escolar *</label>
-                  <select
-                    v-model="studentsStore.draft.matricula.jornada"
-                    class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  >
-                    <option value="">Selecciona jornada...</option>
-                    <option value="mañana">Mañana</option>
-                    <option value="tarde">Tarde</option>
-                    <option value="unica">Única</option>
-                    <option value="nocturna">Nocturna</option>
-                  </select>
-                </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                <div class="space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Jornada Escolar *</label>
+                  <div class="relative">
+                    <select
+                      v-model="studentsStore.draft.matricula.jornada"
+                      class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                    >
+                      <option value="" disabled>Selecciona jornada...</option>
+                      <option value="mañana">Mañana</option>
+                      <option value="tarde">Tarde</option>
+                      <option value="unica">Única</option>
+                      <option value="nocturna">Nocturna</option>
+                    </select>
+                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
+                </div>
                 <div class="space-y-xs">
                   <label class="font-label-md text-label-md text-on-surface-variant">Medio de transporte al colegio</label>
                   <input
@@ -1083,6 +1344,9 @@ const save = async () => {
                     placeholder="Ej: Caminando, Ruta, Moto"
                   />
                 </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
                   <label class="font-label-md text-label-md text-on-surface-variant">Distancia / Tiempo desde el hogar</label>
                   <input

@@ -30,6 +30,7 @@ class CrearEstudianteInput:
     direccion: str
     barrio_vereda: str
     creado_por: Optional[uuid.UUID] = None
+    grupo_id: Optional[uuid.UUID] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None
@@ -85,6 +86,7 @@ class CrearEstudianteUseCase:
             direccion=data.direccion,
             barrio_vereda=data.barrio_vereda,
             creado_por=data.creado_por,
+            grupo_id=data.grupo_id,
             lugar_nacimiento=data.lugar_nacimiento,
             telefono=data.telefono,
             correo=data.correo,
