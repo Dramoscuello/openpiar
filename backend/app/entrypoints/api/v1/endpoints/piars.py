@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 import google.generativeai as genai
-import os
 
+from app.core.config import get_settings
 from app.adapters.db.session import get_db
 from app.adapters.db.models import (
     PiarORM,
@@ -14,7 +14,8 @@ from app.adapters.db.models import (
     AjusteRazonableORM,
     PeriodoAcademicoORM,
     EstudianteORM,
-    RecomendacionPMIORM
+    RecomendacionPMIORM,
+    ConfiguracionSistemaORM
 )
 from app.entrypoints.api.schemas import (
     PiarCreate,
@@ -23,6 +24,8 @@ from app.entrypoints.api.schemas import (
     AjusteRazonableCreate,
     AjusteRazonableResponse,
     GenerarAjustesRequest,
+    GenerarPlanCompletoRequest,
+    PlanCompletoIAResponse,
     BaseResponse,
     RecomendacionPMICreate,
     RecomendacionPMIResponse
@@ -30,6 +33,32 @@ from app.entrypoints.api.schemas import (
 from app.entrypoints.api.dependencies import CurrentUser
 
 router = APIRouter(prefix="/piars", tags=["piars"])
+settings = get_settings()
+
+
+async def get_gemini_key(db: AsyncSession) -> str:
+    """
+    Obtiene la clave de API de Gemini con prioridad BD > .env.
+
+    Flujo:
+    1. Busca en configuracion_sistema (guardada por el wizard del usuario final).
+    2. Si no existe o es nula, usa el valor de GEMINI_API_KEY en .env
+       (util para desarrollo local).
+    3. Si ninguna está disponible, lanza HTTPException 400.
+    """
+    result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+    config = result.scalars().first()
+    if config and config.gemini_api_key:
+        return config.gemini_api_key
+    if settings.GEMINI_API_KEY:
+        return settings.GEMINI_API_KEY
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "No se encontró la clave de API de Gemini. "
+            "Confígurela en el wizard de configuración o en el archivo .env."
+        ),
+    )
 
 @router.get("/estudiante/{estudiante_id}", response_model=PiarResponse)
 async def get_piar_by_estudiante(
@@ -158,15 +187,115 @@ async def generar_ajustes_ia(
             "directo, sin preámbulos, organizadas en viñetas o un párrafo claro."
         )
 
-        # Usar la librería google-generativeai
-        # Asegurarse de tener GEMINI_API_KEY en las variables de entorno
-        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Obtener clave Gemini: BD primero, .env como fallback
+        gemini_key = await get_gemini_key(db)
+        genai.configure(api_key=gemini_key)
+        model = genai.GenerativeModel(settings.GEMINI_MODEL)
         response = model.generate_content(prompt)
         
         return {"success": True, "estrategias_generadas": response.text.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generando IA: {str(e)}")
+
+
+@router.post("/{piar_id}/generar_plan_ia", response_model=PlanCompletoIAResponse)
+async def generar_plan_completo_ia(
+    piar_id: uuid.UUID,
+    data: GenerarPlanCompletoRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """Genera un plan completo de ajuste razonable por área usando Gemini con todo el contexto del estudiante."""
+    try:
+        # Verificar PIAR
+        piar = await db.get(PiarORM, piar_id)
+        if not piar:
+            raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+        # Construir contexto completo
+        contexto_estudiante = f"- Nombre: {data.estudiante_nombre}\n"
+        if data.grado:
+            contexto_estudiante += f"- Grado escolar: {data.grado}\n"
+        if data.diagnostico_medico:
+            contexto_estudiante += f"- Diagnóstico médico: {data.diagnostico_medico}\n"
+        if data.gustos_intereses:
+            contexto_estudiante += f"- Gustos, intereses y expectativas: {data.gustos_intereses}\n"
+        if data.habilidades_fortalezas:
+            contexto_estudiante += f"- Habilidades, fortalezas y apoyos requeridos: {data.habilidades_fortalezas}\n"
+
+        contexto_curricular = f""
+        if data.dba_referencia:
+            contexto_curricular += f"\nDerechos Básicos de Aprendizaje (DBA) de referencia para el grado:\n{data.dba_referencia}\n"
+        if data.ebc_referencia:
+            contexto_curricular += f"\nEstándares Básicos de Competencias (EBC) de referencia:\n{data.ebc_referencia}\n"
+
+        instrucciones_extra = ""
+        if data.instrucciones_docente:
+            instrucciones_extra = f"\n\n---INSTRUCCIONES ADICIONALES DEL DOCENTE---\n{data.instrucciones_docente}"
+
+        prompt = f"""Eres un experto en Educación Inclusiva, Diseño Universal para el Aprendizaje (DUA) y elaboración de PIAR (Plan Individual de Ajustes Razonables) según la normativa colombiana (Decreto 1421 de 2017).
+
+Tu tarea es generar un plan de ajuste razonable COMPLETO para el área de "{data.area}" para el siguiente estudiante con necesidades de apoyo educativo:
+
+== PERFIL DEL ESTUDIANTE ==
+{contexto_estudiante}
+== MALLA CURRICULAR DE REFERENCIA =={contexto_curricular if contexto_curricular else ' (No se proporcionaron DBA/EBC de referencia)'}
+
+Genera una respuesta estructurada en EXACTAMENTE el siguiente formato (respeta las líneas separadoras):
+
+---OBJETIVOS---
+[Escribe aquí los propósitos y objetivos de aprendizaje adaptados para este estudiante en el área de {data.area}. Basa los objetivos en los DBA/EBC de referencia pero adáptalos a las capacidades del estudiante. Máximo 4 objetivos concretos.]
+
+---BARRERAS---
+[Identifica 3 a 5 barreras de aprendizaje concretas que este estudiante probablemente enfrenta en el área de {data.area}, considerando su perfil y diagnóstico. Barreras cognitivas, comunicativas, sensoriales o contextuales.]
+
+---AJUSTES---
+[Proporciona 5 a 8 estrategias DUA y ajustes razonables concretos y accionables para el docente, organizados en viñetas. Incluye adaptaciones metodológicas, de evaluación y de materiales.]{instrucciones_extra}
+
+Responde ÚNICAMENTE con el formato especificado, sin explicaciones previas ni conclusiones posteriores."""
+
+        # Obtener clave Gemini: BD primero, .env como fallback
+        gemini_key = await get_gemini_key(db)
+        genai.configure(api_key=gemini_key)
+        model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        response = model.generate_content(prompt)
+        raw = response.text.strip()
+
+        # Parsear la respuesta estructurada
+        def extract_section(text: str, marker: str, next_marker: Optional[str]) -> str:
+            start_tag = f"---{marker}---"
+            start = text.find(start_tag)
+            if start == -1:
+                return ""
+            start = start + len(start_tag)
+            if next_marker:
+                end_tag = f"---{next_marker}---"
+                end = text.find(end_tag, start)
+                return text[start:end].strip() if end != -1 else text[start:].strip()
+            return text[start:].strip()
+
+        objetivos = extract_section(raw, "OBJETIVOS", "BARRERAS")
+        barreras = extract_section(raw, "BARRERAS", "AJUSTES")
+        ajustes = extract_section(raw, "AJUSTES", None)
+
+        if not objetivos or not barreras or not ajustes:
+            # fallback: devolver todo si el parseo falla
+            return PlanCompletoIAResponse(
+                objetivos_propositos=raw,
+                barreras_evidenciadas="(Ver respuesta completa en objetivos)",
+                ajustes_estrategias="(Ver respuesta completa en objetivos)"
+            )
+
+        return PlanCompletoIAResponse(
+            objetivos_propositos=objetivos,
+            barreras_evidenciadas=barreras,
+            ajustes_estrategias=ajustes
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al contactar Gemini: {str(e)}")
 
 @router.patch("/{piar_id}", response_model=PiarResponse)
 async def update_piar(

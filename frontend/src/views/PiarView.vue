@@ -86,7 +86,7 @@
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'pmi' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
           <span class="material-symbols-outlined text-[20px]">groups</span>
-          7. Recomendaciones PMI
+          3. Recomendaciones PMI
         </button>
       </div>
 
@@ -309,6 +309,20 @@
 
               <!-- Action buttons -->
               <div class="flex justify-end gap-xs pt-md mt-sm border-t border-outline-variant/30">
+
+                <!-- Botón IA: Generar con Gemini -->
+                <button
+                  @click="generarConIA"
+                  :disabled="isGeneratingIA || !ajusteForm.area"
+                  class="px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-lg flex items-center gap-1.5 hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all cursor-pointer shadow-md hover:shadow-violet-400/30 mr-auto"
+                  title="Generar objetivos, barreras y ajustes automáticamente con Gemini IA"
+                >
+                  <span class="material-symbols-outlined text-[20px]" :class="{ 'animate-spin': isGeneratingIA }">
+                    {{ isGeneratingIA ? 'progress_activity' : 'auto_awesome' }}
+                  </span>
+                  {{ isGeneratingIA ? 'Generando...' : 'Generar con IA ✨' }}
+                </button>
+
                 <button 
                   v-if="isEditingAjuste"
                   @click="cancelarEdicionAjuste"
@@ -565,6 +579,7 @@ const { activePiar, isLoading, error } = storeToRefs(piarStore)
 
 const estudianteId = route.params.id as string
 const estudiante = ref<any>(null)
+const entornoSalud = ref<any>(null)
 
 // Pestañas
 const activeTab = ref('caracteristicas')
@@ -589,6 +604,7 @@ const ajusteForm = ref({
 })
 const isEditingAjuste = computed(() => !!ajusteForm.value.id)
 const isSavingAjuste = ref(false)
+const isGeneratingIA = ref(false)
 
 // Helper buscador de currículo
 const showCurriculumSearch = ref(false)
@@ -673,6 +689,7 @@ onMounted(async () => {
   await cargarEstudiante()
   await cargarPiar()
   await cargarAsignaturas()
+  cargarEntornoSalud() // sin await: enriquece contexto IA en background
 })
 
 async function cargarEstudiante() {
@@ -687,6 +704,20 @@ async function cargarEstudiante() {
     }
   } catch (e) {
     console.error("Error fetching student", e)
+  }
+}
+
+async function cargarEntornoSalud() {
+  try {
+    const res = await fetch(`http://localhost:8000/api/v1/estudiantes/${estudianteId}/salud`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    if (res.ok) {
+      entornoSalud.value = await res.json()
+    }
+  } catch (e) {
+    // No es crítico si falla
+    console.warn('No se pudo cargar el entorno de salud para contexto IA', e)
   }
 }
 
@@ -837,6 +868,85 @@ async function eliminarAjuste(ajusteId: string) {
     } catch (e: any) {
       showToast("Error al eliminar el ajuste razonable.", true)
     }
+  }
+}
+
+// IA: Generar plan completo con Gemini
+async function generarConIA() {
+  if (!activePiar.value?.id) {
+    showToast('No hay un PIAR activo para generar el plan.', true)
+    return
+  }
+  if (!ajusteForm.value.area) {
+    showToast('Selecciona un área o asignatura antes de generar con IA.', true)
+    return
+  }
+
+  isGeneratingIA.value = true
+  try {
+    // Si no hay resultados de búsqueda cargados, buscar DBA automáticamente para el área y grado
+    let dbaContexto = searchResults.value.filter((r: any) => searchType.value === 'dba')
+    if (dbaContexto.length === 0 && searchGrade.value) {
+      try {
+        const dbaUrl = `http://localhost:8000/api/v1/curriculum/dba?grado=${searchGrade.value}&area=${searchArea.value}&limit=10`
+        const dbaRes = await fetch(dbaUrl, { headers: { 'Authorization': `Bearer ${authStore.token}` } })
+        if (dbaRes.ok) {
+          const dbaData = await dbaRes.json()
+          dbaContexto = dbaData.items || []
+        }
+      } catch (_) { /* fallback: sin DBA */ }
+    }
+
+    const dbaTexto = dbaContexto.length > 0
+      ? dbaContexto.map((d: any) => `DBA #${d.numero}: ${d.enunciado}`).join('\n')
+      : null
+    const ebcTexto = searchResults.value.length > 0 && searchType.value === 'ebc'
+      ? searchResults.value.map((e: any) => `${e.factor}: ${e.enunciado}`).join('\n')
+      : null
+
+    // Contexto del estudiante
+    const diagnostico = entornoSalud.value?.diagnostico_medico || null
+
+    const payload = {
+      area: ajusteForm.value.area,
+      estudiante_nombre: `${estudiante.value?.nombres || ''} ${estudiante.value?.apellidos || ''}`.trim(),
+      grado: estudiante.value?.grado || null,
+      diagnostico_medico: diagnostico,
+      gustos_intereses: activePiar.value.caracteristicas?.descripcion_gustos_intereses || null,
+      habilidades_fortalezas: activePiar.value.caracteristicas?.descripcion_habilidades || null,
+      dba_referencia: dbaTexto,
+      ebc_referencia: ebcTexto,
+      instrucciones_docente: null
+    }
+
+    const res = await fetch(
+      `http://localhost:8000/api/v1/piars/${activePiar.value.id}/generar_plan_ia`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify(payload)
+      }
+    )
+
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.detail || 'Error al contactar Gemini')
+    }
+
+    const data = await res.json()
+    // Llenar los campos del formulario con la respuesta de IA
+    ajusteForm.value.objetivos = data.objetivos_propositos
+    ajusteForm.value.barreras = data.barreras_evidenciadas
+    ajusteForm.value.ajustes = data.ajustes_estrategias
+
+    showToast('✨ Plan generado por IA. Revisa y ajusta los campos antes de guardar.')
+  } catch (e: any) {
+    showToast(e.message || 'Error al generar el plan con IA. Verifica la configuración de Gemini.', true)
+  } finally {
+    isGeneratingIA.value = false
   }
 }
 

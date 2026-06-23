@@ -403,3 +403,27 @@ class GenerarAjustesRequest(BaseModel):
     objetivos_propositos: str
     area: str
     instrucciones_adicionales: Optional[str] = None
+
+
+class GenerarPlanCompletoRequest(BaseModel):
+    """Payload para generar un plan de ajuste razonable completo por área usando IA."""
+    area: str
+    # Datos del estudiante
+    estudiante_nombre: str
+    grado: Optional[str] = None
+    diagnostico_medico: Optional[str] = None
+    # Contexto del PIAR
+    gustos_intereses: Optional[str] = None
+    habilidades_fortalezas: Optional[str] = None
+    # Malla curricular de referencia
+    dba_referencia: Optional[str] = None
+    ebc_referencia: Optional[str] = None
+    # Instrucciones adicionales del docente
+    instrucciones_docente: Optional[str] = None
+
+
+class PlanCompletoIAResponse(BaseResponse):
+    """Respuesta del plan de ajuste razonable generado por IA."""
+    objetivos_propositos: str
+    barreras_evidenciadas: str
+    ajustes_estrategias: str
