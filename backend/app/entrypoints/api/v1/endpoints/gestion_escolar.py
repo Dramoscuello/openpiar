@@ -351,7 +351,19 @@ async def list_asignaturas(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(AsignaturaORM).order_by(AsignaturaORM.nombre))
+    if not current_user.rol.es_directivo:
+        # Solo mostrar asignaturas asignadas al docente
+        query = (
+            select(AsignaturaORM)
+            .join(CargaAcademicaORM, AsignaturaORM.id == CargaAcademicaORM.asignatura_id)
+            .where(CargaAcademicaORM.docente_id == current_user.id)
+            .order_by(AsignaturaORM.nombre)
+            .distinct()
+        )
+    else:
+        query = select(AsignaturaORM).order_by(AsignaturaORM.nombre)
+
+    result = await db.execute(query)
     return result.scalars().all()
 
 @router.post("/asignaturas", response_model=AsignaturaResponse, status_code=status.HTTP_201_CREATED)

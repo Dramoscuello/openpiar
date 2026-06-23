@@ -404,13 +404,13 @@ const save = async () => {
             <span class="material-symbols-outlined">group</span>
             <span class="font-label-md">Estudiantes</span>
           </RouterLink>
-          <a
+          <RouterLink
+            to="/estudiantes"
             class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            href="#"
           >
             <span class="material-symbols-outlined">description</span>
             <span class="font-label-md">PIARs (Anexo 2)</span>
-          </a>
+          </RouterLink>
           <a
             class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
             href="#"

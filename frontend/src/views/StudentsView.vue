@@ -100,8 +100,7 @@ const goToEditStudent = (id: string) => {
 }
 
 const goToCreatePiar = (studentId: string) => {
-  // Enrutado temporal a Dashboard por ahora (Módulo 2)
-  router.push(`/dashboard?action=create-piar&student_id=${studentId}`)
+  router.push(`/estudiantes/${studentId}/piar`)
 }
 
 const formatDate = (dateStr: string) => {
@@ -145,13 +144,13 @@ const formatDate = (dateStr: string) => {
             <span class="material-symbols-outlined">group</span>
             <span class="font-label-md">Estudiantes</span>
           </RouterLink>
-          <a
+          <RouterLink
+            to="/estudiantes"
             class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            href="#"
           >
             <span class="material-symbols-outlined">description</span>
             <span class="font-label-md">PIARs (Anexo 2)</span>
-          </a>
+          </RouterLink>
           <a
             class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
             href="#"

@@ -1,5 +1,7 @@
+// Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useAuthStore } from './auth'
 
 const API_URL = 'http://localhost:8000/api/v1'
 
@@ -12,12 +14,16 @@ export const usePiarStore = defineStore('piar', () => {
   async function fetchPiarForStudent(estudianteId: string) {
     isLoading.value = true
     error.value = null
+    const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/estudiante/${estudianteId}`)
+      const response = await fetch(`${API_URL}/piars/estudiante/${estudianteId}`, {
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        }
+      })
       if (response.ok) {
         activePiar.value = await response.json()
       } else if (response.status === 404) {
-        // Si no tiene PIAR, podríamos inicializar uno temporal o mostrar estado vacío
         activePiar.value = null
       } else {
         throw new Error('Error al obtener PIAR')
@@ -30,10 +36,14 @@ export const usePiarStore = defineStore('piar', () => {
   }
 
   async function createPiar(estudianteId: string) {
+    const authStore = useAuthStore()
     try {
       const response = await fetch(`${API_URL}/piars/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
         body: JSON.stringify({
           estudiante_id: estudianteId,
           anio_lectivo: new Date().getFullYear(),
@@ -54,10 +64,14 @@ export const usePiarStore = defineStore('piar', () => {
     
     isGeneratingAI.value = true
     error.value = null
+    const authStore = useAuthStore()
     try {
       const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/generar_ia`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
         body: JSON.stringify({
           barreras_evidenciadas: barreras,
           objetivos_propositos: objetivos,
@@ -79,10 +93,14 @@ export const usePiarStore = defineStore('piar', () => {
   async function saveAjuste(area: string, objetivos: string, barreras: string, ajustes: string) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
+    const authStore = useAuthStore()
     try {
       const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
         body: JSON.stringify({
           area: area,
           objetivos_propositos: objetivos,
@@ -93,9 +111,159 @@ export const usePiarStore = defineStore('piar', () => {
       })
       if (!response.ok) throw new Error('Error al guardar ajuste. Verifique que exista un periodo académico activo.')
       const nuevoAjuste = await response.json()
-      // Actualizar el estado local
       if (!activePiar.value.ajustes_razonables) activePiar.value.ajustes_razonables = []
       activePiar.value.ajustes_razonables.push(nuevoAjuste)
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function updateAjuste(ajusteId: string, area: string, objetivos: string, barreras: string, ajustes: string, evaluacion: string) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${ajusteId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify({
+          area: area,
+          objetivos_propositos: objetivos,
+          barreras_evidenciadas: barreras,
+          ajustes_estrategias: ajustes,
+          evaluacion_ajustes: evaluacion
+        })
+      })
+      if (!response.ok) throw new Error('Error al actualizar ajuste')
+      const updatedAjuste = await response.json()
+      const index = activePiar.value.ajustes_razonables.findIndex((a: any) => a.id === ajusteId)
+      if (index !== -1) {
+        activePiar.value.ajustes_razonables[index] = updatedAjuste
+      }
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function deleteAjuste(ajusteId: string) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${ajusteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        }
+      })
+      if (!response.ok) throw new Error('Error al eliminar ajuste')
+      activePiar.value.ajustes_razonables = activePiar.value.ajustes_razonables.filter((a: any) => a.id !== ajusteId)
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function updatePiar(docentesElaboran: string, caracteristicas?: { descripcion_gustos_intereses: string, descripcion_habilidades: string }) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify({
+          docentes_elaboran: docentesElaboran,
+          caracteristicas: caracteristicas
+        })
+      })
+      if (!response.ok) throw new Error('Error al actualizar PIAR')
+      const updatedPiar = await response.json()
+      activePiar.value = updatedPiar
+      return updatedPiar
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function addRecomendacionPMI(actor: string, acciones: string, estrategias: string) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/pmi`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify({
+          actor: actor,
+          acciones: acciones,
+          estrategias_implementar: estrategias
+        })
+      })
+      if (!response.ok) throw new Error('Error al agregar recomendación PMI')
+      const nuevaRec = await response.json()
+      if (!activePiar.value.recomendaciones_pmi) activePiar.value.recomendaciones_pmi = []
+      activePiar.value.recomendaciones_pmi.push(nuevaRec)
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function updateRecomendacionPMI(pmiId: string, actor: string, acciones: string, estrategias: string) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/pmi/${pmiId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify({
+          actor: actor,
+          acciones: acciones,
+          estrategias_implementar: estrategias
+        })
+      })
+      if (!response.ok) throw new Error('Error al actualizar recomendación PMI')
+      const updatedRec = await response.json()
+      const index = activePiar.value.recomendaciones_pmi.findIndex((r: any) => r.id === pmiId)
+      if (index !== -1) {
+        activePiar.value.recomendaciones_pmi[index] = updatedRec
+      }
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  async function deleteRecomendacionPMI(pmiId: string) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/pmi/${pmiId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        }
+      })
+      if (!response.ok) throw new Error('Error al eliminar recomendación PMI')
+      activePiar.value.recomendaciones_pmi = activePiar.value.recomendaciones_pmi.filter((r: any) => r.id !== pmiId)
     } catch (e: any) {
       error.value = e.message
       throw e
@@ -110,6 +278,12 @@ export const usePiarStore = defineStore('piar', () => {
     fetchPiarForStudent,
     createPiar,
     generateAIAjustes,
-    saveAjuste
+    saveAjuste,
+    updateAjuste,
+    deleteAjuste,
+    updatePiar,
+    addRecomendacionPMI,
+    updateRecomendacionPMI,
+    deleteRecomendacionPMI
   }
 })

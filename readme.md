@@ -75,3 +75,20 @@ Entra al perfil del estudiante, selecciona **"Crear PIAR"**, elige la materia y 
 
 ### Paso 5: Firmar el Acta (Anexo 3)
 Añade las actividades de apoyo en casa para la familia, genera el PDF institucional y descárgalo para la firma física o digital del directivo, docentes y acudientes.
+
+---
+
+## ⚡ Carga del Currículo Nacional (DBA y EBC)
+
+Para que el buscador de **Mallas Curriculares Oficiales** funcione en los computadores del colegio sin necesidad de internet (Offline-First), el proyecto viene con los listados de Derechos Básicos de Aprendizaje y Estándares listos en archivos locales.
+
+Si estás instalando la aplicación, debes pasar estos datos a la base de datos del programa. Para hacerlo, abre una terminal y ejecuta el siguiente comando:
+
+```bash
+cd backend
+.venv/bin/python scripts/seed_curriculum.py
+```
+
+> [!NOTE]
+> Este paso es **completamente offline** (se realiza dentro de tu propio computador) y **no consume créditos ni tokens** de Inteligencia Artificial. Una vez ejecutado, el buscador de asignaturas y competencias estará disponible inmediatamente para todos los docentes.
+

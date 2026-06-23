@@ -17,6 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.adapters.db.models import (
     EntornoHogarORM,
@@ -177,6 +178,12 @@ async def crear_estudiante(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
+    grado = None
+    if body.grupo_id:
+        grupo_orm = await repo._session.get(GrupoORM, body.grupo_id)
+        if grupo_orm:
+            grado = grupo_orm.grado
+
     return EstudianteResponse(
         id=estudiante.id,
         nombres=estudiante.nombres,
@@ -198,6 +205,7 @@ async def crear_estudiante(
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
         grupo_id=estudiante.grupo_id,
+        grado=grado,
         created_at=estudiante.created_at,
     )
 
@@ -222,6 +230,13 @@ async def obtener_estudiante(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Estudiante {estudiante_id} no encontrado.",
         )
+
+    grado = None
+    if estudiante.grupo_id:
+        grupo_orm = await repo._session.get(GrupoORM, estudiante.grupo_id)
+        if grupo_orm:
+            grado = grupo_orm.grado
+
     return EstudianteResponse(
         id=estudiante.id,
         nombres=estudiante.nombres,
@@ -243,6 +258,7 @@ async def obtener_estudiante(
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
         grupo_id=estudiante.grupo_id,
+        grado=grado,
         created_at=estudiante.created_at,
     )
 
@@ -321,6 +337,12 @@ async def actualizar_estudiante(
     # Persistir
     await repo.save(estudiante)
 
+    grado = None
+    if body.grupo_id:
+        grupo_orm = await repo._session.get(GrupoORM, body.grupo_id)
+        if grupo_orm:
+            grado = grupo_orm.grado
+
     return EstudianteResponse(
         id=estudiante.id,
         nombres=estudiante.nombres,
@@ -342,6 +364,7 @@ async def actualizar_estudiante(
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
         grupo_id=estudiante.grupo_id,
+        grado=grado,
         created_at=estudiante.created_at,
     )
 

@@ -199,6 +199,7 @@ class EstudianteResponse(BaseResponse):
     direccion: str
     barrio_vereda: str
     grupo_id: Optional[uuid.UUID] = None
+    grado: Optional[str] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None
@@ -368,6 +369,15 @@ class AjusteRazonableResponse(AjusteRazonableCreate, BaseResponse):
     piar_id: uuid.UUID
     periodo_id: int
 
+class RecomendacionPMICreate(BaseModel):
+    actor: Literal['Familia', 'Docentes', 'Directivos', 'Administrativos', 'Pares']
+    acciones: str = Field(..., min_length=2)
+    estrategias_implementar: str = Field(..., min_length=2)
+
+class RecomendacionPMIResponse(RecomendacionPMICreate, BaseResponse):
+    id: uuid.UUID
+    piar_id: uuid.UUID
+
 class PiarCreate(BaseModel):
     estudiante_id: uuid.UUID
     anio_lectivo: int = Field(..., ge=2020)
@@ -386,6 +396,7 @@ class PiarResponse(PiarCreate, BaseResponse):
     creado_por: Optional[uuid.UUID] = None
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
     ajustes_razonables: list[AjusteRazonableResponse] = []
+    recomendaciones_pmi: list[RecomendacionPMIResponse] = []
 
 class GenerarAjustesRequest(BaseModel):
     barreras_evidenciadas: str
