@@ -180,9 +180,12 @@ async def crear_estudiante(
 
     grado = None
     if body.grupo_id:
-        grupo_orm = await repo._session.get(GrupoORM, body.grupo_id)
-        if grupo_orm:
-            grado = grupo_orm.grado
+        result = await repo._session.execute(
+            select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == body.grupo_id)
+        )
+        grupo_orm = result.scalars().first()
+        if grupo_orm and grupo_orm.grado:
+            grado = grupo_orm.grado.nombre
 
     return EstudianteResponse(
         id=estudiante.id,
@@ -233,9 +236,12 @@ async def obtener_estudiante(
 
     grado = None
     if estudiante.grupo_id:
-        grupo_orm = await repo._session.get(GrupoORM, estudiante.grupo_id)
-        if grupo_orm:
-            grado = grupo_orm.grado
+        result = await repo._session.execute(
+            select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == estudiante.grupo_id)
+        )
+        grupo_orm = result.scalars().first()
+        if grupo_orm and grupo_orm.grado:
+            grado = grupo_orm.grado.nombre
 
     return EstudianteResponse(
         id=estudiante.id,
@@ -339,9 +345,12 @@ async def actualizar_estudiante(
 
     grado = None
     if body.grupo_id:
-        grupo_orm = await repo._session.get(GrupoORM, body.grupo_id)
-        if grupo_orm:
-            grado = grupo_orm.grado
+        result = await repo._session.execute(
+            select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == body.grupo_id)
+        )
+        grupo_orm = result.scalars().first()
+        if grupo_orm and grupo_orm.grado:
+            grado = grupo_orm.grado.nombre
 
     return EstudianteResponse(
         id=estudiante.id,

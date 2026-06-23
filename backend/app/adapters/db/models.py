@@ -690,12 +690,32 @@ class AsignaturaORM(Base):
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
 
 
+class GradoORM(Base):
+    __tablename__ = "grados"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    institucion_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("configuracion_sistema.id", ondelete="CASCADE"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+
+    # Relaciones
+    grupos: Mapped[list["GrupoORM"]] = relationship(
+        "GrupoORM", back_populates="grado", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("nombre", "institucion_id", name="uq_grado_nombre_institucion"),
+    )
+
+
 class GrupoORM(Base):
     __tablename__ = "grupos"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid_pk)
     nombre: Mapped[str] = mapped_column(Text, nullable=False)
-    grado: Mapped[str] = mapped_column(Text, nullable=False)
+    grado_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grados.id", ondelete="CASCADE"), nullable=False)
     sede_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sedes.id", ondelete="CASCADE"), nullable=False)
     director_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
@@ -704,9 +724,10 @@ class GrupoORM(Base):
     sede: Mapped["SedeORM"] = relationship(back_populates="grupos")
     director: Mapped[Optional["UsuarioORM"]] = relationship(back_populates="grupos_dirigidos")
     carga: Mapped[list["CargaAcademicaORM"]] = relationship(back_populates="grupo", cascade="all, delete-orphan")
+    grado: Mapped["GradoORM"] = relationship(back_populates="grupos")
 
     __table_args__ = (
-        UniqueConstraint("nombre", "grado", "sede_id", name="uq_grupo_sede"),
+        UniqueConstraint("nombre", "grado_id", "sede_id", name="uq_grupo_sede"),
     )
 
 

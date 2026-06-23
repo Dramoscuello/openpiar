@@ -21,7 +21,8 @@ from app.adapters.db.models import (
     AsignaturaORM,
     GrupoORM,
     CargaAcademicaORM,
-    PeriodoAcademicoORM
+    PeriodoAcademicoORM,
+    GradoORM
 )
 from app.entrypoints.api.schemas import (
     PeriodoAcademicoCreate,
@@ -94,9 +95,21 @@ class AsignaturaResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class GradoCreate(BaseModel):
+    nombre: str
+
+class GradoResponse(BaseModel):
+    id: uuid.UUID
+    nombre: str
+    institucion_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class GrupoCreate(BaseModel):
     nombre: str
-    grado: str
+    grado_id: uuid.UUID
     sede_id: uuid.UUID
     director_id: Optional[uuid.UUID] = None
 
@@ -434,6 +447,83 @@ async def delete_asignatura(
 
 
 # ---------------------------------------------------------------------------
+# Grados Endpoints
+# ---------------------------------------------------------------------------
+
+VALORES_GRADOS_PERMITIDOS = [
+    "Pre-jardín", "Jardín", "Preescolar",
+    "1°", "2°", "3°", "4°", "5°", "6°",
+    "7°", "8°", "9°", "10°", "11°"
+]
+
+@router.get("/grados", response_model=List[GradoResponse])
+async def list_grados(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(GradoORM).order_by(GradoORM.nombre))
+    return result.scalars().all()
+
+@router.post("/grados", response_model=GradoResponse, status_code=status.HTTP_201_CREATED)
+async def create_grado(
+    body: GradoCreate,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db)
+):
+    # Validar nombre del grado
+    if body.nombre not in VALORES_GRADOS_PERMITIDOS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Nombre de grado no permitido. Debe ser uno de: {', '.join(VALORES_GRADOS_PERMITIDOS)}"
+        )
+
+    # Buscar el ID de la primera institución (singleton)
+    from app.adapters.db.models import ConfiguracionSistemaORM
+    inst_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+    institucion = inst_result.scalars().first()
+    inst_id = institucion.id if institucion else None
+
+    # Verificar si ya existe
+    exists = await db.execute(
+        select(GradoORM).where(
+            GradoORM.nombre == body.nombre,
+            GradoORM.institucion_id == inst_id
+        )
+    )
+    if exists.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este grado ya está registrado para la institución."
+        )
+
+    grado = GradoORM(
+        nombre=body.nombre,
+        institucion_id=inst_id
+    )
+    db.add(grado)
+    await db.commit()
+    await db.refresh(grado)
+    return grado
+
+@router.delete("/grados/{grado_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_grado(
+    grado_id: uuid.UUID,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(GradoORM).where(GradoORM.id == grado_id))
+    grado = result.scalars().first()
+    if not grado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El grado especificado no existe."
+        )
+    await db.delete(grado)
+    await db.commit()
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Grupos Endpoints
 # ---------------------------------------------------------------------------
 
@@ -444,8 +534,9 @@ async def list_grupos(
 ):
     result = await db.execute(
         select(GrupoORM)
-        .options(selectinload(GrupoORM.sede), selectinload(GrupoORM.director))
-        .order_by(GrupoORM.grado, GrupoORM.nombre)
+        .join(GrupoORM.grado)
+        .options(selectinload(GrupoORM.sede), selectinload(GrupoORM.director), selectinload(GrupoORM.grado))
+        .order_by(GradoORM.nombre, GrupoORM.nombre)
     )
     grupos = result.scalars().all()
     
@@ -462,7 +553,7 @@ async def list_grupos(
         response.append(GrupoResponse(
             id=g.id,
             nombre=g.nombre,
-            grado=g.grado,
+            grado=g.grado.nombre,
             sede=SedeResponse.from_orm(g.sede),
             director=director_dict
         ))
@@ -483,6 +574,15 @@ async def create_grupo(
             detail="La sede especificada no existe."
         )
 
+    # Verify Grado exists
+    grado_result = await db.execute(select(GradoORM).where(GradoORM.id == body.grado_id))
+    grado = grado_result.scalars().first()
+    if not grado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El grado especificado no existe."
+        )
+
     # Verify director (if provided) exists
     director = None
     if body.director_id:
@@ -494,11 +594,11 @@ async def create_grupo(
                 detail="El director de grupo especificado no existe."
             )
 
-    # Check unique constraint (nombre, grado, sede_id)
+    # Check unique constraint (nombre, grado_id, sede_id)
     exists = await db.execute(
         select(GrupoORM).where(
             GrupoORM.nombre == body.nombre,
-            GrupoORM.grado == body.grado,
+            GrupoORM.grado_id == body.grado_id,
             GrupoORM.sede_id == body.sede_id
         )
     )
@@ -510,7 +610,7 @@ async def create_grupo(
 
     grupo = GrupoORM(
         nombre=body.nombre,
-        grado=body.grado,
+        grado_id=body.grado_id,
         sede_id=body.sede_id,
         director_id=body.director_id
     )
@@ -522,7 +622,7 @@ async def create_grupo(
     result = await db.execute(
         select(GrupoORM)
         .where(GrupoORM.id == grupo.id)
-        .options(selectinload(GrupoORM.sede), selectinload(GrupoORM.director))
+        .options(selectinload(GrupoORM.sede), selectinload(GrupoORM.director), selectinload(GrupoORM.grado))
     )
     g = result.scalars().one()
     
@@ -538,7 +638,7 @@ async def create_grupo(
     return GrupoResponse(
         id=g.id,
         nombre=g.nombre,
-        grado=g.grado,
+        grado=g.grado.nombre,
         sede=SedeResponse.from_orm(g.sede),
         director=director_dict
     )
@@ -567,6 +667,15 @@ async def update_grupo(
             detail="La sede especificada no existe."
         )
 
+    # Verify Grado exists
+    grado_result = await db.execute(select(GradoORM).where(GradoORM.id == body.grado_id))
+    grado = grado_result.scalars().first()
+    if not grado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El grado especificado no existe."
+        )
+
     # Verify director (if provided) exists
     director = None
     if body.director_id:
@@ -579,11 +688,11 @@ async def update_grupo(
             )
 
     # Check unique constraint if values changed
-    if body.nombre != grupo.nombre or body.grado != grupo.grado or body.sede_id != grupo.sede_id:
+    if body.nombre != grupo.nombre or body.grado_id != grupo.grado_id or body.sede_id != grupo.sede_id:
         exists = await db.execute(
             select(GrupoORM).where(
                 GrupoORM.nombre == body.nombre,
-                GrupoORM.grado == body.grado,
+                GrupoORM.grado_id == body.grado_id,
                 GrupoORM.sede_id == body.sede_id,
                 GrupoORM.id != grupo_id
             )
@@ -595,7 +704,7 @@ async def update_grupo(
             )
 
     grupo.nombre = body.nombre
-    grupo.grado = body.grado
+    grupo.grado_id = body.grado_id
     grupo.sede_id = body.sede_id
     grupo.director_id = body.director_id
 
@@ -606,7 +715,7 @@ async def update_grupo(
     result = await db.execute(
         select(GrupoORM)
         .where(GrupoORM.id == grupo.id)
-        .options(selectinload(GrupoORM.sede), selectinload(GrupoORM.director))
+        .options(selectinload(GrupoORM.sede), selectinload(GrupoORM.director), selectinload(GrupoORM.grado))
     )
     g = result.scalars().one()
     
@@ -622,7 +731,7 @@ async def update_grupo(
     return GrupoResponse(
         id=g.id,
         nombre=g.nombre,
-        grado=g.grado,
+        grado=g.grado.nombre,
         sede=SedeResponse.from_orm(g.sede),
         director=director_dict
     )
@@ -660,7 +769,8 @@ async def list_carga_academica(
             selectinload(CargaAcademicaORM.docente),
             selectinload(CargaAcademicaORM.asignatura),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director)
+            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
+            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
         )
     )
     cargas = result.scalars().all()
@@ -684,7 +794,7 @@ async def list_carga_academica(
             grupo=GrupoResponse(
                 id=c.grupo.id,
                 nombre=c.grupo.nombre,
-                grado=c.grupo.grado,
+                grado=c.grupo.grado.nombre,
                 sede=SedeResponse.from_orm(c.grupo.sede),
                 director=director_dict
             )
@@ -746,7 +856,8 @@ async def create_carga_academica(
             selectinload(CargaAcademicaORM.docente),
             selectinload(CargaAcademicaORM.asignatura),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director)
+            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
+            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
         )
     )
     c = result.scalars().one()
@@ -768,7 +879,7 @@ async def create_carga_academica(
         grupo=GrupoResponse(
             id=c.grupo.id,
             nombre=c.grupo.nombre,
-            grado=c.grupo.grado,
+            grado=c.grupo.grado.nombre,
             sede=SedeResponse.from_orm(c.grupo.sede),
             director=director_dict
         )
@@ -838,7 +949,8 @@ async def update_carga_academica(
             selectinload(CargaAcademicaORM.docente),
             selectinload(CargaAcademicaORM.asignatura),
             selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director)
+            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
+            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
         )
     )
     c = result.scalars().one()
@@ -860,7 +972,7 @@ async def update_carga_academica(
         grupo=GrupoResponse(
             id=c.grupo.id,
             nombre=c.grupo.nombre,
-            grado=c.grupo.grado,
+            grado=c.grupo.grado.nombre,
             sede=SedeResponse.from_orm(c.grupo.sede),
             director=director_dict
         )

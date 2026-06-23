@@ -538,14 +538,14 @@
     </div>
 
     <!-- Floating Notifications -->
-    <div v-if="successMessage || localError" class="fixed bottom-6 right-6 z-[9999] max-w-[28rem] animate-fade-in">
+    <div v-if="successMessage || localError" class="fixed bottom-6 right-6 z-[9999] max-w-[28rem] animate-fade-in flex flex-col gap-2">
       <div v-if="successMessage" class="bg-[#caead6] text-[#042014] p-4 pr-6 rounded-xl shadow-lg border border-[#afceba] flex items-center gap-3">
-        <span class="material-symbols-outlined text-tertiary">check_circle</span>
-        <span class="font-semibold text-body-md whitespace-nowrap">{{ successMessage }}</span>
+        <span class="material-symbols-outlined text-tertiary shrink-0">check_circle</span>
+        <span class="font-semibold text-body-md">{{ successMessage }}</span>
       </div>
       <div v-if="localError" class="bg-error-container text-on-error-container p-4 pr-6 rounded-xl shadow-lg border border-error/20 flex items-center gap-3">
-        <span class="material-symbols-outlined text-error">error</span>
-        <span class="font-semibold text-body-md whitespace-nowrap">{{ localError }}</span>
+        <span class="material-symbols-outlined text-error shrink-0">error</span>
+        <span class="font-semibold text-body-md">{{ localError }}</span>
       </div>
     </div>
   </div>

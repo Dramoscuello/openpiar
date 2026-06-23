@@ -8,7 +8,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // State management
-const activeTab = ref('sedes') // 'sedes', 'docentes', 'asignaturas', 'grupos', 'carga'
+const activeTab = ref('sedes') // 'sedes', 'docentes', 'grados', 'grupos', 'asignaturas', 'carga', 'periodos'
 const loading = ref(false)
 const isSubmitting = ref(false)
 const errorMsg = ref<string | null>(null)
@@ -17,6 +17,7 @@ const successMsg = ref<string | null>(null)
 // Data arrays from API
 const sedes = ref<any[]>([])
 const docentes = ref<any[]>([])
+const grados = ref<any[]>([])
 const asignaturas = ref<any[]>([])
 const grupos = ref<any[]>([])
 const cargas = ref<any[]>([])
@@ -25,6 +26,7 @@ const periodos = ref<any[]>([])
 // Modals visibility
 const showSedeModal = ref(false)
 const showDocenteModal = ref(false)
+const showGradoModal = ref(false)
 const showAsignaturaModal = ref(false)
 const showGrupoModal = ref(false)
 const showCargaModal = ref(false)
@@ -33,8 +35,9 @@ const showPeriodoModal = ref(false)
 // Form fields
 const sedeForm = ref({ nombre: '', direccion: '', telefono: '' })
 const docenteForm = ref({ email: '', password: '', nombre: '', apellido: '', rol: 'docente_aula', cargo: 'Docente', sede_ids: [] as string[] })
+const gradoForm = ref({ nombre: '' })
 const asignaturaForm = ref({ nombre: '' })
-const grupoForm = ref({ nombre: '', grado: '', sede_id: '', director_id: '' })
+const grupoForm = ref({ nombre: '', grado_id: '', sede_id: '', director_id: '' })
 const cargaForm = ref({ docente_id: '', asignatura_id: '', grupo_ids: [] as string[] })
 const periodoForm = ref({ nombre: '', fecha_inicio: '', fecha_fin: '' })
 
@@ -80,9 +83,10 @@ const loadData = async () => {
     const headers = { 'Authorization': `Bearer ${authStore.token}` }
     
     // Fetch all in parallel
-    const [sedesRes, docentesRes, asignaturasRes, gruposRes, cargasRes, periodosRes] = await Promise.all([
+    const [sedesRes, docentesRes, gradosRes, asignaturasRes, gruposRes, cargasRes, periodosRes] = await Promise.all([
       fetch('/api/v1/gestion/sedes', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/docentes', { headers }).then(r => r.ok ? r.json() : []),
+      fetch('/api/v1/gestion/grados', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/asignaturas', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/grupos', { headers }).then(r => r.ok ? r.json() : []),
       fetch('/api/v1/gestion/carga-academica', { headers }).then(r => r.ok ? r.json() : []),
@@ -91,6 +95,7 @@ const loadData = async () => {
 
     sedes.value = sedesRes
     docentes.value = docentesRes
+    grados.value = gradosRes
     asignaturas.value = asignaturasRes
     grupos.value = gruposRes
     cargas.value = cargasRes
@@ -132,11 +137,7 @@ const handleResponse = async (res: Response, defaultError: string) => {
 const editingId = ref<string | null>(null)
 const isEditing = ref(false)
 
-const isCreatingNewGrado = ref(false)
-const existingGrados = computed(() => {
-  const list = grupos.value.map(g => g.grado)
-  return [...new Set(list)].filter(Boolean).sort()
-})
+
 
 const openNewSede = () => {
   editingId.value = null
@@ -194,29 +195,28 @@ const openEditAsignatura = (asignatura: any) => {
   showAsignaturaModal.value = true
 }
 
+const openNewGrado = () => {
+  editingId.value = null
+  gradoForm.value = { nombre: 'Preescolar' }
+  showGradoModal.value = true
+}
+
 const openNewGrupo = () => {
   editingId.value = null
-  grupoForm.value = { nombre: '', grado: '', sede_id: '', director_id: '' }
-  isCreatingNewGrado.value = existingGrados.value.length === 0
+  grupoForm.value = { nombre: '', grado_id: '', sede_id: '', director_id: '' }
   showGrupoModal.value = true
 }
 
 const openEditGrupo = (grupo: any) => {
   editingId.value = grupo.id
+  const matchGrado = grados.value.find((gr: any) => gr.nombre === grupo.grado)
   grupoForm.value = {
     nombre: grupo.nombre,
-    grado: grupo.grado,
+    grado_id: matchGrado ? matchGrado.id : '',
     sede_id: grupo.sede.id,
     director_id: grupo.director ? grupo.director.id : ''
   }
-  isCreatingNewGrado.value = !existingGrados.value.includes(grupo.grado)
   showGrupoModal.value = true
-}
-const onGradoSelectChange = (e: any) => {
-  if (e.target.value === '__NEW__') {
-    isCreatingNewGrado.value = true
-    grupoForm.value.grado = ''
-  }
 }
 
 const openNewCarga = () => {
@@ -392,9 +392,45 @@ const submitAsignatura = async () => {
   }
 }
 
+const submitGrado = async () => {
+  if (!gradoForm.value.nombre) {
+    errorMsg.value = 'El nombre del grado es obligatorio.'
+    return
+  }
+  errorMsg.value = null
+  successMsg.value = null
+  try {
+    const isEdit = editingId.value !== null
+    const url = isEdit ? `/api/v1/gestion/grados/${editingId.value}` : '/api/v1/gestion/grados'
+    const method = isEdit ? 'PUT' : 'POST'
+    
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify(gradoForm.value)
+    })
+    const data = await handleResponse(res, isEdit ? 'Error al actualizar grado' : 'Error al registrar grado')
+    
+    if (isEdit) {
+      const idx = grados.value.findIndex(g => g.id === editingId.value)
+      if (idx !== -1) grados.value[idx] = data
+    } else {
+      grados.value.push(data)
+    }
+    showGradoModal.value = false
+    gradoForm.value = { nombre: '' }
+    successMsg.value = isEdit ? 'Grado actualizado exitosamente.' : 'Grado registrado exitosamente.'
+  } catch (err: any) {
+    errorMsg.value = err.message
+  }
+}
+
 const submitGrupo = async () => {
   const f = grupoForm.value
-  if (!f.nombre || !f.grado || !f.sede_id) {
+  if (!f.nombre || !f.grado_id || !f.sede_id) {
     errorMsg.value = 'Completa los campos obligatorios del grupo.'
     return
   }
@@ -407,7 +443,7 @@ const submitGrupo = async () => {
     
     const body: any = {
       nombre: f.nombre,
-      grado: f.grado,
+      grado_id: f.grado_id,
       sede_id: f.sede_id,
       director_id: f.director_id || null
     }
@@ -438,8 +474,8 @@ const submitGrupo = async () => {
       grupos.value.push(data)
     }
     showGrupoModal.value = false
-    grupoForm.value = { nombre: '', grado: '', sede_id: '', director_id: '' }
-    successMsg.value = isEdit ? 'Grupo / Grado actualizado exitosamente.' : 'Grupo / Grado registrado exitosamente.'
+    grupoForm.value = { nombre: '', grado_id: '', sede_id: '', director_id: '' }
+    successMsg.value = isEdit ? 'Grupo actualizado exitosamente.' : 'Grupo registrado exitosamente.'
   } catch (err: any) {
     errorMsg.value = err.message
   }
@@ -521,7 +557,7 @@ const submitCarga = async () => {
 const confirmDeleteEntity = ref<{
   id: string;
   name: string;
-  type: 'sede' | 'docente' | 'asignatura' | 'grupo' | 'carga';
+  type: 'sede' | 'docente' | 'grado' | 'asignatura' | 'grupo' | 'carga' | 'periodo';
   title: string;
   warningText: string;
 } | null>(null)
@@ -531,7 +567,7 @@ const deletingEntity = ref(false)
 const promptDelete = (
   id: string,
   name: string,
-  type: 'sede' | 'docente' | 'asignatura' | 'grupo' | 'carga',
+  type: 'sede' | 'docente' | 'grado' | 'asignatura' | 'grupo' | 'carga' | 'periodo',
   title: string,
   warningText: string
 ) => {
@@ -550,6 +586,7 @@ const confirmDeleteAction = async () => {
   
   if (type === 'sede') await deleteSede(id, name, true)
   else if (type === 'docente') await deleteDocente(id, name, true)
+  else if (type === 'grado') await deleteGrado(id, name, true)
   else if (type === 'asignatura') await deleteAsignatura(id, name, true)
   else if (type === 'grupo') await deleteGrupo(id, name, true)
   else if (type === 'carga') await deleteCarga(id, true)
@@ -808,6 +845,34 @@ const deleteGrupo = async (id: string, nombreCompleto: string, confirmed: boolea
     errorMsg.value = err.message
   }
 }
+
+const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolean = false) => {
+  if (!confirmed) {
+    promptDelete(id, nombreCompleto, 'grado', 'Eliminar grado', 'Se eliminarán todos los grupos vinculados a este grado y sus cargas académicas relacionadas.')
+    return
+  }
+  errorMsg.value = null
+  successMsg.value = null
+  try {
+    const res = await fetch(`/api/v1/gestion/grados/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    if (!res.ok) {
+      let detail = 'No se pudo eliminar el grado'
+      try {
+        const data = await res.json()
+        detail = data.detail || detail
+      } catch (_) {}
+      throw new Error(detail)
+    }
+    
+    await loadData()
+    successMsg.value = 'Grado eliminado exitosamente junto con sus datos relacionados.'
+  } catch (err: any) {
+    errorMsg.value = err.message
+  }
+}
 </script>
 
 <template>
@@ -935,18 +1000,25 @@ const deleteGrupo = async (id: string, nombreCompleto: string, confirmed: boolea
             Docentes
           </button>
           <button
-            @click="activeTab = 'asignaturas'"
+            @click="activeTab = 'grados'"
             class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
-            :class="activeTab === 'asignaturas' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
+            :class="activeTab === 'grados' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
           >
-            Asignaturas
+            Grados
           </button>
           <button
             @click="activeTab = 'grupos'"
             class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
             :class="activeTab === 'grupos' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
           >
-            Grados y Grupos
+            Grupos
+          </button>
+          <button
+            @click="activeTab = 'asignaturas'"
+            class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
+            :class="activeTab === 'asignaturas' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
+          >
+            Asignaturas
           </button>
           <button
             @click="activeTab = 'carga'"
@@ -1133,10 +1205,56 @@ const deleteGrupo = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
         </div>
 
+        <!-- TAB: GRADOS -->
+        <div v-if="activeTab === 'grados'" class="space-y-md">
+          <div class="flex justify-between items-center">
+            <h3 class="font-headline-md text-[20px]">Grados Escolares</h3>
+            <button
+              @click="openNewGrado()"
+              class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[20px]">school</span>
+              Nuevo Grado
+            </button>
+          </div>
+
+          <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl overflow-hidden shadow-sm transition-colors duration-300">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
+                  <th class="py-4 px-md">Nombre</th>
+                  <th class="py-4 px-md">Fecha Registro</th>
+                  <th class="py-4 px-md text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20 text-body-md">
+                <tr v-if="grados.length === 0">
+                  <td colspan="3" class="py-8 text-center text-outline">
+                    No hay grados registrados. Registra un grado para poder crear grupos.
+                  </td>
+                </tr>
+                <tr v-else v-for="gr in grados" :key="gr.id" class="hover:bg-surface-container-low/50 transition-colors">
+                  <td class="py-4 px-md font-medium text-on-surface">{{ gr.nombre }}</td>
+                  <td class="py-4 px-md text-on-surface-variant">{{ new Date(gr.created_at).toLocaleDateString() }}</td>
+                  <td class="py-4 px-md text-right">
+                    <button
+                      @click="promptDelete(gr.id, gr.nombre, 'grado', 'Eliminar grado', 'Se eliminarán todos los grupos vinculados a este grado y sus cargas académicas relacionadas.')"
+                      class="text-outline hover:text-error transition-colors p-1 cursor-pointer"
+                      title="Eliminar"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- 4. TAB: GRUPOS -->
         <div v-if="activeTab === 'grupos'" class="space-y-md">
           <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Grados y Grupos</h3>
+            <h3 class="font-headline-md text-[20px]">Grupos Escolares</h3>
             <button
               @click="openNewGrupo()"
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
@@ -1513,43 +1631,48 @@ const deleteGrupo = async (id: string, nombreCompleto: string, confirmed: boolea
     </div>
 
     <!-- MODAL: GRUPO -->
+    <!-- MODAL: GRADO -->
+    <div v-if="showGradoModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
+        <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
+          <span class="material-symbols-outlined">school</span>
+          {{ isEditing ? 'Editar Grado' : 'Registrar Nuevo Grado' }}
+        </h3>
+        <div class="space-y-sm">
+          <div class="space-y-xs">
+            <label class="font-label-md text-label-md text-on-surface-variant">Selecciona el Grado *</label>
+            <select v-model="gradoForm.nombre" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white">
+              <option value="" disabled>Selecciona un grado estándar...</option>
+              <option v-for="val in ['Pre-jardín', 'Jardín', 'Preescolar', '1°', '2°', '3°', '4°', '5°', '6°', '7°', '8°', '9°', '10°', '11°']" :key="val" :value="val">{{ val }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
+          <button @click="showGradoModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
+          <button @click="submitGrado" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Guardar Grado</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: GRUPO -->
     <div v-if="showGrupoModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">{{ isEditing ? 'edit_square' : 'groups' }}</span>
-          {{ isEditing ? 'Editar Grupo / Curso' : 'Nuevo Grupo / Curso' }}
+          {{ isEditing ? 'Editar Grupo' : 'Nuevo Grupo' }}
         </h3>
         <div class="space-y-sm">
           <div class="grid grid-cols-2 gap-sm">
             <div class="space-y-xs flex flex-col">
-              <div class="flex justify-between items-center">
-                <label class="font-label-md text-label-md text-on-surface-variant">Grado *</label>
-                <button
-                  v-if="isCreatingNewGrado && existingGrados.length > 0"
-                  type="button"
-                  @click="isCreatingNewGrado = false; grupoForm.grado = existingGrados[0]"
-                  class="text-[12px] text-primary hover:underline cursor-pointer"
-                >
-                  Elegir existente
-                </button>
-              </div>
+              <label class="font-label-md text-label-md text-on-surface-variant">Grado *</label>
               <select
-                v-if="!isCreatingNewGrado && existingGrados.length > 0"
-                v-model="grupoForm.grado"
-                @change="onGradoSelectChange"
+                v-model="grupoForm.grado_id"
                 class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white"
               >
                 <option value="" disabled>Selecciona grado...</option>
-                <option v-for="g in existingGrados" :key="g" :value="g">{{ g }}</option>
-                <option value="__NEW__" class="text-primary font-bold">+ Crear nuevo grado...</option>
+                <option v-if="grados.length === 0" disabled value="">No hay grados registrados. Créalos primero en la pestaña de Grados.</option>
+                <option v-for="gr in grados" :key="gr.id" :value="gr.id">{{ gr.nombre }}</option>
               </select>
-              <input
-                v-else
-                v-model="grupoForm.grado"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white"
-                type="text"
-                placeholder="Ej: Primero, Transición"
-              />
             </div>
             <div class="space-y-xs">
               <label class="font-label-md text-label-md text-on-surface-variant">Grupo *</label>

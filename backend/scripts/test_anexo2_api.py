@@ -18,13 +18,16 @@ from app.adapters.db.models import (
     PiarORM,
     AjusteRazonableORM,
     RecomendacionPMIORM,
-    UsuarioORM
+    UsuarioORM,
+    GradoORM
 )
 from app.core.security import get_password_hash, create_access_token
+from sqlalchemy import select
 
 async def test_anexo2_api_flow():
     # Identificadores de prueba
     sede_id = uuid.uuid4()
+    grado_id = uuid.uuid4()
     grupo_id = uuid.uuid4()
     estudiante_id = uuid.uuid4()
     usuario_id = uuid.uuid4()
@@ -33,12 +36,40 @@ async def test_anexo2_api_flow():
     pmi_id = None
     periodo_id = None
     token = None
+    created_institucion_id = None
 
     print("--- INICIANDO PRUEBA DE INTEGRACIÓN DE ANEXO 2 ---")
 
     try:
         # 1. Configurar datos semilla en la BD
         async with AsyncSessionLocal() as session:
+            # Buscar primera institución si existe para ligarla
+            from app.adapters.db.models import ConfiguracionSistemaORM
+            inst_result = await session.execute(select(ConfiguracionSistemaORM).limit(1))
+            institucion = inst_result.scalars().first()
+            
+            if not institucion:
+                institucion = ConfiguracionSistemaORM(
+                    nombre_institucion="Colegio de Prueba",
+                    nit="123456789",
+                    codigo_dane="987654321",
+                    direccion="Calle de Prueba 123",
+                    setup_completado=True
+                )
+                session.add(institucion)
+                await session.flush()
+                created_institucion_id = institucion.id
+                print(f"1.0 Creada institución semilla temporal. ID: {created_institucion_id}")
+            
+            inst_id = institucion.id
+
+            grado = GradoORM(
+                id=grado_id,
+                nombre="5°",
+                institucion_id=inst_id
+            )
+            session.add(grado)
+
             sede = SedeORM(
                 id=sede_id,
                 nombre="Sede Anexo2 Test",
@@ -50,7 +81,7 @@ async def test_anexo2_api_flow():
             grupo = GrupoORM(
                 id=grupo_id,
                 nombre="Grupo Anexo2 Test",
-                grado="5",
+                grado_id=grado_id,
                 sede_id=sede_id
             )
             session.add(grupo)
@@ -230,6 +261,10 @@ async def test_anexo2_api_flow():
             if grupo:
                 await session.delete(grupo)
 
+            grado_obj = await session.get(GradoORM, grado_id)
+            if grado_obj:
+                await session.delete(grado_obj)
+
             sede = await session.get(SedeORM, sede_id)
             if sede:
                 await session.delete(sede)
@@ -238,6 +273,11 @@ async def test_anexo2_api_flow():
                 usuario = await session.get(UsuarioORM, usuario_id)
                 if usuario:
                     await session.delete(usuario)
+
+            if created_institucion_id:
+                inst = await session.get(ConfiguracionSistemaORM, created_institucion_id)
+                if inst:
+                    await session.delete(inst)
 
             await session.commit()
             print("3. Limpieza de base de datos exitosa.")
