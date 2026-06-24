@@ -200,6 +200,7 @@ class EstudianteResponse(BaseResponse):
     barrio_vereda: str
     grupo_id: Optional[uuid.UUID] = None
     grado: Optional[str] = None
+    grupo_director_id: Optional[uuid.UUID] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None
@@ -390,6 +391,37 @@ class PiarUpdate(BaseModel):
     docentes_elaboran: Optional[str] = None
     caracteristicas: Optional[CaracteristicasEstudianteCreate] = None
 
+class CompromisoCasaCreate(BaseModel):
+    nombre_actividad: str = Field(..., min_length=2)
+    descripcion_estrategia: str = Field(..., min_length=2)
+    frecuencia: Literal['diaria', 'semanal', 'permanente']
+
+class CompromisoCasaResponse(CompromisoCasaCreate, BaseResponse):
+    id: uuid.UUID
+    acta_id: uuid.UUID
+
+class ActaAcuerdoCreate(BaseModel):
+    fecha_firma: Optional[date] = None
+    compromisos_aula: Optional[str] = None
+    firmado_estudiante: bool = False
+    firmado_acudiente: bool = False
+    firmado_docente_apoyo: bool = False
+    firmado_docentes_aula: bool = False
+    firmado_directivo: bool = False
+    compromisos_casa: list[CompromisoCasaCreate] = []
+
+class ActaAcuerdoResponse(BaseResponse):
+    id: uuid.UUID
+    piar_id: uuid.UUID
+    fecha_firma: Optional[date] = None
+    compromisos_aula: Optional[str] = None
+    firmado_estudiante: bool
+    firmado_acudiente: bool
+    firmado_docente_apoyo: bool
+    firmado_docentes_aula: bool
+    firmado_directivo: bool
+    compromisos_casa: list[CompromisoCasaResponse] = []
+
 class PiarResponse(PiarCreate, BaseResponse):
     id: uuid.UUID
     fecha_creacion: date
@@ -398,6 +430,7 @@ class PiarResponse(PiarCreate, BaseResponse):
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
     ajustes_razonables: list[AjusteRazonableResponse] = []
     recomendaciones_pmi: list[RecomendacionPMIResponse] = []
+    acta_acuerdo: Optional[ActaAcuerdoResponse] = None
 
 class GenerarAjustesRequest(BaseModel):
     barreras_evidenciadas: str

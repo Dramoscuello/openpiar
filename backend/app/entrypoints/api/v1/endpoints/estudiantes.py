@@ -26,6 +26,8 @@ from app.adapters.db.models import (
     MatriculaActualORM,
     TrayectoriaEducativaORM,
     GrupoORM,
+    GradoORM,
+    CargaAcademicaORM,
 )
 from app.adapters.db.session import get_db
 from app.core.exceptions import EstudianteNoEncontradoError, EstudianteYaRegistradoError
@@ -68,34 +70,74 @@ async def listar_estudiantes(
     repo=Depends(get_estudiante_repo),
     db: AsyncSession = Depends(get_db),
 ) -> EstudianteListResponse:
-    estudiantes = await repo.list_all(skip=skip, limit=limit)
-    total = await repo.count()
-    items = [
-        EstudianteResponse(
-            id=e.id,
-            nombres=e.nombres,
-            apellidos=e.apellidos,
-            tipo_documento=e.tipo_documento,
-            numero_documento=e.numero_documento,
-            fecha_nacimiento=e.fecha_nacimiento,
-            edad=e.edad,
-            departamento_residencia=e.departamento_residencia,
-            municipio_residencia=e.municipio_residencia,
-            direccion=e.direccion,
-            barrio_vereda=e.barrio_vereda,
-            lugar_nacimiento=e.lugar_nacimiento,
-            telefono=e.telefono,
-            correo=e.correo,
-            en_centro_proteccion=e.en_centro_proteccion,
-            centro_proteccion_donde=e.centro_proteccion_donde,
-            grupo_etnico=e.grupo_etnico,
-            victima_conflicto=e.victima_conflicto,
-            registro_victima=e.registro_victima,
-            grupo_id=e.grupo_id,
-            created_at=e.created_at,
+    if current_user.rol == 'directivo':
+        # Admin: sin filtros
+        query = (
+            select(EstudianteORM, GrupoORM.director_id, GradoORM.nombre)
+            .outerjoin(GrupoORM, GrupoORM.id == EstudianteORM.grupo_id)
+            .outerjoin(GradoORM, GradoORM.id == GrupoORM.grado_id)
+            .order_by(EstudianteORM.apellidos, EstudianteORM.nombres)
         )
-        for e in estudiantes
-    ]
+        count_query = select(func.count()).select_from(EstudianteORM)
+    else:
+        # Docente: filtrar por grupo dirigido o grados donde da clase
+        grados_docente_query = select(GrupoORM.grado_id).join(
+            CargaAcademicaORM, CargaAcademicaORM.grupo_id == GrupoORM.id
+        ).where(CargaAcademicaORM.docente_id == current_user.id)
+
+        grupos_permitidos_query = select(GrupoORM.id).where(
+            (GrupoORM.director_id == current_user.id) | 
+            (GrupoORM.grado_id.in_(grados_docente_query))
+        )
+
+        query = (
+            select(EstudianteORM, GrupoORM.director_id, GradoORM.nombre)
+            .outerjoin(GrupoORM, GrupoORM.id == EstudianteORM.grupo_id)
+            .outerjoin(GradoORM, GradoORM.id == GrupoORM.grado_id)
+            .where(EstudianteORM.grupo_id.in_(grupos_permitidos_query))
+            .order_by(EstudianteORM.apellidos, EstudianteORM.nombres)
+        )
+
+        count_query = select(func.count()).select_from(EstudianteORM).where(
+            EstudianteORM.grupo_id.in_(grupos_permitidos_query)
+        )
+
+    # Offset y límite
+    result = await db.execute(query.offset(skip).limit(limit))
+    rows = result.all()
+    
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
+
+    items = []
+    for e, director_id, grado_nombre in rows:
+        items.append(
+            EstudianteResponse(
+                id=e.id,
+                nombres=e.nombres,
+                apellidos=e.apellidos,
+                tipo_documento=e.tipo_documento,
+                numero_documento=e.numero_documento,
+                fecha_nacimiento=e.fecha_nacimiento,
+                edad=e.edad,
+                departamento_residencia=e.departamento_residencia,
+                municipio_residencia=e.municipio_residencia,
+                direccion=e.direccion,
+                barrio_vereda=e.barrio_vereda,
+                lugar_nacimiento=e.lugar_nacimiento,
+                telefono=e.telefono,
+                correo=e.correo,
+                en_centro_proteccion=e.en_centro_proteccion,
+                centro_proteccion_donde=e.centro_proteccion_donde,
+                grupo_etnico=e.grupo_etnico,
+                victima_conflicto=e.victima_conflicto,
+                registro_victima=e.registro_victima,
+                grupo_id=e.grupo_id,
+                grado=grado_nombre,
+                grupo_director_id=director_id,
+                created_at=e.created_at,
+            )
+        )
     return EstudianteListResponse(total=total, items=items)
 
 
@@ -235,13 +277,16 @@ async def obtener_estudiante(
         )
 
     grado = None
+    grupo_director_id = None
     if estudiante.grupo_id:
         result = await repo._session.execute(
             select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == estudiante.grupo_id)
         )
         grupo_orm = result.scalars().first()
-        if grupo_orm and grupo_orm.grado:
-            grado = grupo_orm.grado.nombre
+        if grupo_orm:
+            grupo_director_id = grupo_orm.director_id
+            if grupo_orm.grado:
+                grado = grupo_orm.grado.nombre
 
     return EstudianteResponse(
         id=estudiante.id,
@@ -265,6 +310,7 @@ async def obtener_estudiante(
         registro_victima=estudiante.registro_victima,
         grupo_id=estudiante.grupo_id,
         grado=grado,
+        grupo_director_id=grupo_director_id,
         created_at=estudiante.created_at,
     )
 

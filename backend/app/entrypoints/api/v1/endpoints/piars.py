@@ -1,7 +1,7 @@
 import uuid
 import json
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -18,7 +18,9 @@ from app.adapters.db.models import (
     PeriodoAcademicoORM,
     EstudianteORM,
     RecomendacionPMIORM,
-    ConfiguracionSistemaORM
+    ConfiguracionSistemaORM,
+    ActaAcuerdoORM,
+    CompromisoCasaORM
 )
 from app.entrypoints.api.schemas import (
     PiarCreate,
@@ -31,7 +33,9 @@ from app.entrypoints.api.schemas import (
     PlanCompletoIAResponse,
     BaseResponse,
     RecomendacionPMICreate,
-    RecomendacionPMIResponse
+    RecomendacionPMIResponse,
+    ActaAcuerdoCreate,
+    ActaAcuerdoResponse
 )
 from app.entrypoints.api.dependencies import CurrentUser
 
@@ -76,7 +80,8 @@ async def get_piar_by_estudiante(
         .options(
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables),
-            selectinload(PiarORM.recomendaciones_pmi)
+            selectinload(PiarORM.recomendaciones_pmi),
+            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
         .order_by(PiarORM.created_at.desc())
     )
@@ -118,7 +123,8 @@ async def create_piar(
         .options(
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables),
-            selectinload(PiarORM.recomendaciones_pmi)
+            selectinload(PiarORM.recomendaciones_pmi),
+            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
     )
     result = await db.execute(query)
@@ -348,7 +354,8 @@ async def update_piar(
         .options(
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables),
-            selectinload(PiarORM.recomendaciones_pmi)
+            selectinload(PiarORM.recomendaciones_pmi),
+            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
     )
     result = await db.execute(query)
@@ -479,4 +486,138 @@ async def delete_recomendacion_pmi(
     await db.delete(rec)
     await db.commit()
     return None
+
+
+@router.get("/{piar_id}/acta", response_model=Optional[ActaAcuerdoResponse])
+async def get_acta_acuerdo(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """Obtiene el Acta de Acuerdo (Anexo 3) para un PIAR, si existe."""
+    query = (
+        select(ActaAcuerdoORM)
+        .where(ActaAcuerdoORM.piar_id == piar_id)
+        .options(selectinload(ActaAcuerdoORM.compromisos_casa))
+    )
+    result = await db.execute(query)
+    acta = result.scalars().first()
+    return acta
+
+
+@router.post("/{piar_id}/acta", response_model=ActaAcuerdoResponse)
+async def upsert_acta_acuerdo(
+    piar_id: uuid.UUID,
+    data: ActaAcuerdoCreate,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """Crea o actualiza el Acta de Acuerdo (Anexo 3) para un PIAR, y sincroniza las actividades de casa."""
+    # Verificar si el PIAR existe
+    piar = await db.get(PiarORM, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+    # Buscar si ya existe acta para este PIAR
+    query = (
+        select(ActaAcuerdoORM)
+        .where(ActaAcuerdoORM.piar_id == piar_id)
+        .options(selectinload(ActaAcuerdoORM.compromisos_casa))
+    )
+    result = await db.execute(query)
+    acta = result.scalars().first()
+
+    if not acta:
+        # Crear nueva acta
+        acta = ActaAcuerdoORM(
+            piar_id=piar_id,
+            fecha_firma=data.fecha_firma,
+            compromisos_aula=data.compromisos_aula,
+            firmado_estudiante=data.firmado_estudiante,
+            firmado_acudiente=data.firmado_acudiente,
+            firmado_docente_apoyo=data.firmado_docente_apoyo,
+            firmado_docentes_aula=data.firmado_docentes_aula,
+            firmado_directivo=data.firmado_directivo
+        )
+        db.add(acta)
+        await db.flush()  # Obtener el acta.id
+    else:
+        # Actualizar acta existente
+        acta.fecha_firma = data.fecha_firma
+        acta.compromisos_aula = data.compromisos_aula
+        acta.firmado_estudiante = data.firmado_estudiante
+        acta.firmado_acudiente = data.firmado_acudiente
+        acta.firmado_docente_apoyo = data.firmado_docente_apoyo
+        acta.firmado_docentes_aula = data.firmado_docentes_aula
+        acta.firmado_directivo = data.firmado_directivo
+
+    # Sincronizar compromisos de casa (borrar antiguos, crear nuevos)
+    for comp in list(acta.compromisos_casa):
+        await db.delete(comp)
+    
+    for comp_in in data.compromisos_casa:
+        nuevo_comp = CompromisoCasaORM(
+            acta_id=acta.id,
+            nombre_actividad=comp_in.nombre_actividad,
+            descripcion_estrategia=comp_in.descripcion_estrategia,
+            frecuencia=comp_in.frecuencia
+        )
+        db.add(nuevo_comp)
+
+    await db.commit()
+
+    # Recargar para devolver la respuesta con los compromisos de casa cargados
+    query = (
+        select(ActaAcuerdoORM)
+        .where(ActaAcuerdoORM.id == acta.id)
+        .options(selectinload(ActaAcuerdoORM.compromisos_casa))
+    )
+    res = await db.execute(query)
+    return res.scalars().first()
+
+
+@router.get("/{piar_id}/acta/pdf")
+async def download_acta_pdf(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """Genera y descarga el PDF oficial del Acta de Acuerdo (Anexo 3) para un PIAR."""
+    # Buscar el PIAR con relaciones cargadas
+    query = (
+        select(PiarORM)
+        .where(PiarORM.id == piar_id)
+        .options(
+            selectinload(PiarORM.estudiante),
+            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
+        )
+    )
+    result = await db.execute(query)
+    piar = result.scalars().first()
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    
+    if not piar.acta_acuerdo:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe completar y guardar el Acta de Acuerdo (Anexo 3) antes de generar el PDF."
+        )
+
+    # Cargar la configuración del sistema
+    config_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+    config = config_result.scalars().first()
+
+    # Generar el PDF
+    from app.core.pdf_generator import generate_acta_pdf
+    pdf_bytes = generate_acta_pdf(piar, config)
+
+    # Retornar como archivo descargable
+    filename = f"Acta_Acuerdo_{piar.estudiante.numero_documento}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
 

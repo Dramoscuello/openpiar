@@ -68,6 +68,7 @@
       <!-- Tabs Navigation -->
       <div class="bg-surface border-b border-outline-variant/30 flex-shrink-0 px-lg flex gap-md">
         <button 
+          v-if="isDirectorOrAdmin"
           @click="activeTab = 'caracteristicas'" 
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'caracteristicas' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
@@ -82,11 +83,20 @@
           2. Matriz de Ajustes Razonables
         </button>
         <button 
+          v-if="isDirectorOrAdmin"
           @click="activeTab = 'pmi'" 
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'pmi' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
           <span class="material-symbols-outlined text-[20px]">groups</span>
           3. Recomendaciones PMI
+        </button>
+        <button 
+          v-if="isDirectorOrAdmin"
+          @click="activeTab = 'acta'" 
+          :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'acta' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
+        >
+          <span class="material-symbols-outlined text-[20px]">assignment_turned_in</span>
+          4. Acta de Acuerdo (Anexo 3)
         </button>
       </div>
 
@@ -95,7 +105,7 @@
 
 
         <!-- TAB 1: CARACTERÍSTICAS -->
-        <div v-if="activeTab === 'caracteristicas'" class="max-w-4xl mx-auto space-y-md">
+        <div v-if="activeTab === 'caracteristicas' && isDirectorOrAdmin" class="max-w-4xl mx-auto space-y-md">
           <section class="glass-card p-lg space-y-md border border-outline-variant/30">
             <h2 class="text-headline-md font-bold text-primary flex items-center gap-2 border-b border-outline-variant/30 pb-xs">
               <span class="material-symbols-outlined">edit_note</span>
@@ -468,7 +478,7 @@
         </div>
 
         <!-- TAB 3: RECOMENDACIONES PMI -->
-        <div v-if="activeTab === 'pmi'" class="grid grid-cols-12 gap-lg items-start">
+        <div v-if="activeTab === 'pmi' && isDirectorOrAdmin" class="grid grid-cols-12 gap-lg items-start">
           <!-- Formulario de ingreso PMI (5 cols) -->
           <div class="col-span-12 lg:col-span-5 space-y-md">
             <section :class="['glass-card p-md border transition-all', isEditingPMI ? 'border-secondary-container shadow-md shadow-secondary/5' : 'border-outline-variant/30']">
@@ -595,6 +605,210 @@
             </div>
           </div>
         </div>
+
+        <!-- TAB 4: ACTA DE ACUERDO -->
+        <div v-if="activeTab === 'acta' && isDirectorOrAdmin" class="grid grid-cols-12 gap-lg items-start">
+          <!-- Columna izquierda: Formularios de compromisos -->
+          <div class="col-span-8 space-y-md">
+            <!-- Sección 1: Compromisos Aula -->
+            <div class="glass-card p-lg space-y-md border border-outline-variant/30">
+              <h3 class="text-title-lg font-bold text-primary flex items-center gap-2 border-b border-outline-variant/30 pb-xs">
+                <span class="material-symbols-outlined">school</span>
+                1. Compromisos del Establecimiento Educativo (Aula)
+              </h3>
+              <p class="text-body-md text-on-surface-variant">
+                Define las acciones, adaptaciones curriculares y apoyos específicos que la escuela y los docentes implementarán en el aula de clases.
+              </p>
+              <div class="flex flex-col gap-1">
+                <textarea 
+                  v-model="actaForm.compromisosAula" 
+                  rows="4"
+                  class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all font-semibold resize-y"
+                  placeholder="Ej: Se ubicará al estudiante en primera fila, se dará apoyo visual durante explicaciones y se flexibilizarán los tiempos de evaluación escrita..."
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Sección 2: Compromisos Casa (Dynamic Table) -->
+            <div class="glass-card p-lg space-y-md border border-outline-variant/30">
+              <div class="flex justify-between items-center border-b border-outline-variant/30 pb-xs">
+                <h3 class="text-title-lg font-bold text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined">home</span>
+                  2. Compromisos de Apoyo Familiar (Casa)
+                </h3>
+                <button 
+                  @click="agregarCompromisoCasa"
+                  class="bg-primary text-on-primary font-bold text-label-md px-3 py-1.5 rounded-full flex items-center gap-1 hover:opacity-90 active:scale-95 transition-all shadow-md"
+                >
+                  <span class="material-symbols-outlined text-[18px]">add</span>
+                  Agregar Actividad
+                </button>
+              </div>
+              <p class="text-body-md text-on-surface-variant">
+                Planifica las actividades y estrategias que la familia realizará en el hogar para dar continuidad a los procesos escolares.
+              </p>
+
+              <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                  <thead>
+                    <tr class="bg-surface-container-high border-b border-outline-variant">
+                      <th class="p-3 text-left font-bold text-label-md text-on-surface-variant w-[25%]">Actividad</th>
+                      <th class="p-3 text-left font-bold text-label-md text-on-surface-variant w-[50%]">Estrategia / Descripción</th>
+                      <th class="p-3 text-left font-bold text-label-md text-on-surface-variant w-[20%]">Frecuencia</th>
+                      <th class="p-3 text-center font-bold text-label-md text-on-surface-variant w-[5%]"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="actaForm.compromisosCasa.length === 0">
+                      <td colspan="4" class="p-8 text-center text-body-md text-on-surface-variant italic">
+                        No hay actividades en casa registradas. Haz clic en "Agregar Actividad" para comenzar.
+                      </td>
+                    </tr>
+                    <tr 
+                      v-else 
+                      v-for="(comp, index) in actaForm.compromisosCasa" 
+                      :key="index"
+                      class="border-b border-outline-variant/30 hover:bg-surface-container-low transition-all"
+                    >
+                      <td class="p-2">
+                        <input 
+                          v-model="comp.nombre_actividad"
+                          type="text"
+                          class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm outline-none focus:border-primary transition-all font-semibold"
+                          placeholder="Ej: Lectura diaria"
+                        />
+                      </td>
+                      <td class="p-2">
+                        <textarea 
+                          v-model="comp.descripcion_estrategia"
+                          rows="1"
+                          class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm outline-none focus:border-primary transition-all font-semibold resize-y"
+                          placeholder="Ej: Acompañar al niño a leer 15 minutos en las tardes y hacer preguntas sobre el texto..."
+                        ></textarea>
+                      </td>
+                      <td class="p-2">
+                        <select 
+                          v-model="comp.frecuencia"
+                          class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm outline-none focus:border-primary transition-all font-semibold"
+                        >
+                          <option value="diaria">Diaria</option>
+                          <option value="semanal">Semanal</option>
+                          <option value="permanente">Permanente</option>
+                        </select>
+                      </td>
+                      <td class="p-2 text-center">
+                        <button 
+                          @click="removerCompromisoCasa(index)"
+                          class="text-error hover:bg-error-container/20 p-1.5 rounded-lg active:scale-95 transition-all"
+                          title="Eliminar actividad"
+                        >
+                          <span class="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna derecha: Firmas y descargas -->
+          <div class="col-span-4 space-y-md">
+            <!-- Card de Firmas -->
+            <div class="glass-card p-lg space-y-md border border-outline-variant/30 bg-surface">
+              <h3 class="text-title-lg font-bold text-primary flex items-center gap-2 border-b border-outline-variant/30 pb-xs">
+                <span class="material-symbols-outlined">draw</span>
+                3. Firmas y Fecha
+              </h3>
+              
+              <!-- Fecha de firma -->
+              <div class="flex flex-col gap-1">
+                <label class="font-label-md text-label-sm text-on-surface-variant">Fecha de Firma del Acta</label>
+                <input 
+                  v-model="actaForm.fechaFirma"
+                  type="date"
+                  class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all font-semibold"
+                />
+              </div>
+
+              <!-- Listado de actores que firmaron -->
+              <div class="space-y-sm">
+                <label class="font-label-md text-label-sm text-on-surface-variant block">Actores Comprometidos (Firmantes)</label>
+                
+                <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
+                  <input 
+                    v-model="actaForm.firmadoEstudiante"
+                    type="checkbox"
+                    class="accent-primary w-[18px] h-[18px]"
+                  />
+                  <span class="text-body-md font-semibold text-on-surface">Estudiante</span>
+                </label>
+
+                <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
+                  <input 
+                    v-model="actaForm.firmadoAcudiente"
+                    type="checkbox"
+                    class="accent-primary w-[18px] h-[18px]"
+                  />
+                  <span class="text-body-md font-semibold text-on-surface">Acudiente / Familia</span>
+                </label>
+
+                <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
+                  <input 
+                    v-model="actaForm.firmadoDocenteApoyo"
+                    type="checkbox"
+                    class="accent-primary w-[18px] h-[18px]"
+                  />
+                  <span class="text-body-md font-semibold text-on-surface">Docente de Apoyo</span>
+                </label>
+
+                <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
+                  <input 
+                    v-model="actaForm.firmadoDocentesAula"
+                    type="checkbox"
+                    class="accent-primary w-[18px] h-[18px]"
+                  />
+                  <span class="text-body-md font-semibold text-on-surface">Docentes de Aula</span>
+                </label>
+
+                <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
+                  <input 
+                    v-model="actaForm.firmadoDirectivo"
+                    type="checkbox"
+                    class="accent-primary w-[18px] h-[18px]"
+                  />
+                  <span class="text-body-md font-semibold text-on-surface">Directivo Docente (Rector)</span>
+                </label>
+              </div>
+
+              <!-- Botones de Acción -->
+              <div class="flex flex-col gap-sm pt-xs border-t border-outline-variant/30">
+                <button 
+                  @click="guardarActaAcuerdo"
+                  :disabled="isSavingActa"
+                  class="bg-primary text-on-primary font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 transition-all disabled:opacity-50 shadow-md"
+                >
+                  <span v-if="isSavingActa" class="w-5 h-5 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></span>
+                  <span v-else class="material-symbols-outlined text-[20px]">save</span>
+                  Guardar Acta y Compromisos
+                </button>
+
+                <button 
+                  @click="descargarPDFActa"
+                  :disabled="!activePiar?.acta_acuerdo"
+                  class="bg-secondary-container text-on-secondary-container font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 transition-all disabled:opacity-50 shadow-sm border border-outline-variant/30"
+                >
+                  <span class="material-symbols-outlined text-[20px]">download</span>
+                  Descargar PDF Oficial
+                </button>
+              </div>
+
+              <div v-if="!activePiar?.acta_acuerdo" class="bg-surface-container-high/50 p-3 rounded-lg border border-outline-variant/30 text-xs text-on-surface-variant">
+                ⚠️ Primero debes guardar el acta para habilitar la descarga del PDF.
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -631,11 +845,109 @@ const entornoSalud = ref<any>(null)
 // Pestañas
 const activeTab = ref('caracteristicas')
 
+const isDirectorOrAdmin = computed(() => {
+  if (!authStore.user) return false
+  if (authStore.user.rol === 'directivo') return true
+  if (estudiante.value && estudiante.value.grupo_director_id === authStore.user.id) return true
+  return false
+})
+
 // TAB 1: Características
 const docentesElaboran = ref('')
 const gustos = ref('')
 const habilidades = ref('')
 const isSavingCarac = ref(false)
+
+// TAB 4: Acta de Acuerdo (Anexo 3)
+const actaForm = ref({
+  fechaFirma: '',
+  compromisosAula: '',
+  firmadoEstudiante: false,
+  firmadoAcudiente: false,
+  firmadoDocenteApoyo: false,
+  firmadoDocentesAula: false,
+  firmadoDirectivo: false,
+  compromisosCasa: [] as Array<{ nombre_actividad: string, descripcion_estrategia: string, frecuencia: string }>
+})
+const isSavingActa = ref(false)
+
+const cargarActaDesdePiar = () => {
+  if (activePiar.value?.acta_acuerdo) {
+    const acta = activePiar.value.acta_acuerdo
+    actaForm.value = {
+      fechaFirma: acta.fecha_firma || '',
+      compromisosAula: acta.compromisos_aula || '',
+      firmadoEstudiante: !!acta.firmado_estudiante,
+      firmadoAcudiente: !!acta.firmado_acudiente,
+      firmadoDocenteApoyo: !!acta.firmado_docente_apoyo,
+      firmadoDocentesAula: !!acta.firmado_docentes_aula,
+      firmadoDirectivo: !!acta.firmado_directivo,
+      compromisosCasa: acta.compromisos_casa ? acta.compromisos_casa.map((c: any) => ({
+        nombre_actividad: c.nombre_actividad,
+        descripcion_estrategia: c.descripcion_estrategia,
+        frecuencia: c.frecuencia
+      })) : []
+    }
+  } else {
+    actaForm.value = {
+      fechaFirma: '',
+      compromisosAula: '',
+      firmadoEstudiante: false,
+      firmadoAcudiente: false,
+      firmadoDocenteApoyo: false,
+      firmadoDocentesAula: false,
+      firmadoDirectivo: false,
+      compromisosCasa: []
+    }
+  }
+}
+
+const agregarCompromisoCasa = () => {
+  actaForm.value.compromisosCasa.push({
+    nombre_actividad: '',
+    descripcion_estrategia: '',
+    frecuencia: 'diaria'
+  })
+}
+
+const removerCompromisoCasa = (index: number) => {
+  actaForm.value.compromisosCasa.splice(index, 1)
+}
+
+const guardarActaAcuerdo = async () => {
+  isSavingActa.value = true
+  try {
+    for (const comp of actaForm.value.compromisosCasa) {
+      if (!comp.nombre_actividad.trim() || !comp.descripcion_estrategia.trim()) {
+        throw new Error('Todas las actividades y estrategias en casa deben tener contenido.')
+      }
+    }
+    
+    await piarStore.saveActaAcuerdo({
+      fechaFirma: actaForm.value.fechaFirma || null,
+      compromisosAula: actaForm.value.compromisosAula,
+      firmadoEstudiante: actaForm.value.firmadoEstudiante,
+      firmadoAcudiente: actaForm.value.firmadoAcudiente,
+      firmadoDocenteApoyo: actaForm.value.firmadoDocenteApoyo,
+      firmadoDocentesAula: actaForm.value.firmadoDocentesAula,
+      firmadoDirectivo: actaForm.value.firmadoDirectivo,
+      compromisosCasa: actaForm.value.compromisosCasa.map(c => ({
+        nombre_actividad: c.nombre_actividad.trim(),
+        descripcion_estrategia: c.descripcion_estrategia.trim(),
+        frecuencia: c.frecuencia
+      }))
+    })
+    showToast('Acta de Acuerdo (Anexo 3) guardada con éxito.')
+  } catch (e: any) {
+    showToast(e.message || 'Error al guardar el acta.', true)
+  } finally {
+    isSavingActa.value = false
+  }
+}
+
+const descargarPDFActa = () => {
+  piarStore.downloadActaPDF()
+}
 
 // Periodos Académicos
 const periodos = ref<any[]>([])
@@ -828,6 +1140,9 @@ async function cargarEstudiante() {
     })
     if (res.ok) {
       estudiante.value = await res.json()
+      if (!isDirectorOrAdmin.value) {
+        activeTab.value = 'ajustes'
+      }
     }
   } catch (e) {
     console.error("Error fetching student", e)
@@ -877,8 +1192,10 @@ function inicializarFormularios() {
     docentesElaboran.value = activePiar.value.docentes_elaboran || (authStore.user ? `${authStore.user.nombre} ${authStore.user.apellido}` : '')
     gustos.value = activePiar.value.caracteristicas?.descripcion_gustos_intereses || ''
     habilidades.value = activePiar.value.caracteristicas?.descripcion_habilidades || ''
+    cargarActaDesdePiar()
   } else {
     docentesElaboran.value = authStore.user ? `${authStore.user.nombre} ${authStore.user.apellido}` : ''
+    cargarActaDesdePiar()
   }
 }
 

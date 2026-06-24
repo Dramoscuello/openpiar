@@ -30,6 +30,7 @@ google-genai>=2.9.0
 # --- Procesamiento de PDF (para ingesta de PEI y DBA/EBC) ---
 pdfplumber==0.11.4
 PyMuPDF==1.24.14
+reportlab==4.1.0
 
 # --- Utilidades ---
 python-dotenv==1.0.1      # Carga de .env en scripts locales

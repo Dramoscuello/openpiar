@@ -272,6 +272,74 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
+  async function saveActaAcuerdo(data: {
+    fechaFirma: string | null,
+    compromisosAula: string,
+    firmadoEstudiante: boolean,
+    firmadoAcudiente: boolean,
+    firmadoDocenteApoyo: boolean,
+    firmadoDocentesAula: boolean,
+    firmadoDirectivo: boolean,
+    compromisosCasa: Array<{ nombre_actividad: string, descripcion_estrategia: string, frecuencia: string }>
+  }) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/acta`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify({
+          fecha_firma: data.fechaFirma || null,
+          compromisos_aula: data.compromisosAula,
+          firmado_estudiante: data.firmadoEstudiante,
+          firmado_acudiente: data.firmadoAcudiente,
+          firmado_docente_apoyo: data.firmadoDocenteApoyo,
+          firmado_docentes_aula: data.firmadoDocentesAula,
+          firmado_directivo: data.firmadoDirectivo,
+          compromisos_casa: data.compromisosCasa
+        })
+      })
+      if (!response.ok) throw new Error('Error al guardar el acta de acuerdo')
+      const actaGuardada = await response.json()
+      activePiar.value.acta_acuerdo = actaGuardada
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
+  function downloadActaPDF() {
+    if (!activePiar.value) return
+    const authStore = useAuthStore()
+    fetch(`${API_URL}/piars/${activePiar.value!.id}/acta/pdf`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+    .then(response => {
+      if (!response.ok) throw new Error('Error al descargar el PDF')
+      return response.blob()
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Acta_Acuerdo_${activePiar.value?.id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    })
+    .catch(e => {
+      error.value = e.message
+      alert(e.message || 'No se pudo descargar el PDF.')
+    })
+  }
+
   return {
     activePiar,
     isGeneratingAI,
@@ -286,6 +354,8 @@ export const usePiarStore = defineStore('piar', () => {
     updatePiar,
     addRecomendacionPMI,
     updateRecomendacionPMI,
-    deleteRecomendacionPMI
+    deleteRecomendacionPMI,
+    saveActaAcuerdo,
+    downloadActaPDF
   }
 })
