@@ -160,9 +160,9 @@
           <div class="col-span-12 lg:col-span-5 space-y-md">
             <section :class="['glass-card p-md border transition-all', isEditingAjuste ? 'border-secondary-container shadow-md shadow-secondary/5' : 'border-outline-variant/30']">
               <div class="flex justify-between items-center border-b border-outline-variant/30 pb-xs mb-sm">
-                <h3 class="font-headline-md font-bold flex items-center gap-2" :class="isEditingAjuste ? 'text-secondary-container' : 'text-primary'">
+                <h3 class="font-headline-md font-bold flex items-center gap-2 text-wrap" :class="isEditingAjuste ? 'text-secondary-container' : 'text-primary'">
                   <span class="material-symbols-outlined">{{ isEditingAjuste ? 'edit_square' : 'add_box' }}</span>
-                  {{ isEditingAjuste ? 'Editar Ajuste Razonable' : 'Agregar Ajuste Razonable' }}
+                  {{ isEditingAjuste ? `Editar Ajuste (${periodoEdicionNombre})` : 'Agregar Ajuste Razonable' }}
                 </h3>
                 <button 
                   v-if="isEditingAjuste"
@@ -171,6 +171,21 @@
                 >
                   <span class="material-symbols-outlined text-[16px]">cancel</span> Cancelar
                 </button>
+              </div>
+
+              <!-- Active Period Banner -->
+              <div v-if="periodoActivo && !isEditingAjuste" class="bg-primary/5 text-primary border border-primary/10 rounded-xl p-3 text-body-md mb-sm flex items-center gap-2 select-none">
+                <span class="material-symbols-outlined text-[20px] text-primary">calendar_today</span>
+                <span class="text-left leading-tight">
+                  Nuevo ajuste se guardará en: <strong>{{ periodoActivo.nombre }}</strong>
+                </span>
+                <span class="bg-success/15 text-success px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0">Activo</span>
+              </div>
+              <div v-else-if="!periodoActivo && !isEditingAjuste" class="bg-error-container text-on-error-container border border-error/20 rounded-xl p-3 text-body-md mb-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px] text-error">warning</span>
+                <span class="text-left leading-tight">
+                  Sin periodo académico activo. Debes activar uno en Gestión Escolar.
+                </span>
               </div>
 
               <div class="space-y-sm">
@@ -184,6 +199,17 @@
                     <option v-if="dbAsignaturas.length === 0" v-for="areaOpt in AREAS_VALIDAS" :key="areaOpt" :value="areaOpt">{{ areaOpt }}</option>
                     <option v-else v-for="asig in dbAsignaturas" :key="asig.id" :value="asig.nombre">{{ asig.nombre }}</option>
                   </select>
+                </div>
+
+                <!-- Titulo del tema -->
+                <div class="flex flex-col gap-1">
+                  <label class="font-label-md text-label-sm text-on-surface-variant flex items-center gap-1">Título del Tema</label>
+                  <input 
+                    v-model="ajusteForm.titulo_tema" 
+                    type="text"
+                    class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all font-semibold"
+                    placeholder="Ej: Fraccionarios, Ecuaciones, Célula, etc."
+                  />
                 </div>
 
                 <!-- Objetivos y buscador -->
@@ -357,65 +383,86 @@
               <p class="text-label-sm max-w-[24rem] mx-auto">Utiliza el formulario de la izquierda para agregar objetivos de aprendizaje y estrategias adaptadas para el estudiante.</p>
             </div>
 
-            <div v-else class="space-y-sm max-h-[70vh] overflow-y-auto pr-xs">
-              <article 
-                v-for="ajuste in activePiar.ajustes_razonables" 
-                :key="ajuste.id" 
-                class="bg-surface border border-outline-variant/30 rounded-2xl p-md shadow-sm flex flex-col gap-2 hover:border-primary/40 transition-all relative group"
-              >
-                <!-- Card Header -->
-                <div class="flex justify-between items-start">
-                  <span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-label-md font-bold text-xs uppercase">
-                    {{ ajuste.area }}
+            <div v-else class="space-y-lg max-h-[70vh] overflow-y-auto pr-xs">
+              <div v-for="grupo in periodosConAjustes" :key="grupo.periodo.id" class="space-y-sm">
+                <!-- Header del periodo -->
+                <div class="flex items-center gap-2 border-b border-outline-variant/20 pb-xs mb-xs mt-sm">
+                  <span class="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+                  <span class="font-bold text-on-surface text-body-lg">
+                    {{ grupo.periodo.nombre }}
                   </span>
-                  <div class="flex items-center gap-xs lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      @click="cargarAjusteParaEdicion(ajuste)"
-                      class="p-1.5 hover:bg-surface-container-high rounded-lg text-outline-variant hover:text-primary transition-all active:scale-90 cursor-pointer"
-                      title="Editar ajuste"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">edit</span>
-                    </button>
-                    <button 
-                      @click="eliminarAjuste(ajuste.id)"
-                      class="p-1.5 hover:bg-error/10 rounded-lg text-outline-variant hover:text-error transition-all active:scale-90 cursor-pointer"
-                      title="Eliminar ajuste"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
-                  </div>
+                  <span v-if="grupo.periodo.activo" class="bg-success/15 text-success border border-success/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider">
+                    Activo
+                  </span>
                 </div>
 
-                <!-- Contenido -->
-                <div class="grid grid-cols-2 gap-sm text-body-md pt-xs">
-                  <div>
-                    <h4 class="font-bold text-primary text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[14px]">track_changes</span> Propósito / Meta
-                    </h4>
-                    <p class="text-on-surface leading-tight font-medium">{{ ajuste.objetivos_propositos }}</p>
-                  </div>
-                  <div>
-                    <h4 class="font-bold text-error text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[14px]">report_problem</span> Barreras
-                    </h4>
-                    <p class="text-on-surface-variant leading-tight">{{ ajuste.barreras_evidenciadas }}</p>
-                  </div>
-                </div>
+                <!-- Lista de ajustes para este periodo -->
+                <div class="space-y-sm">
+                  <article 
+                    v-for="ajuste in grupo.ajustes" 
+                    :key="ajuste.id" 
+                    class="bg-surface border border-outline-variant/30 rounded-2xl p-md shadow-sm flex flex-col gap-2 hover:border-primary/40 transition-all relative group"
+                  >
+                    <!-- Card Header -->
+                    <div class="flex justify-between items-start">
+                      <div class="flex flex-wrap items-center gap-xs">
+                        <span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-label-md font-bold text-xs uppercase">
+                          {{ ajuste.area }}
+                        </span>
+                        <span v-if="ajuste.titulo_tema" class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-label-md font-bold text-xs">
+                          Tema: {{ ajuste.titulo_tema }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-xs lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          @click="cargarAjusteParaEdicion(ajuste)"
+                          class="p-1.5 hover:bg-surface-container-high rounded-lg text-outline-variant hover:text-primary transition-all active:scale-90 cursor-pointer"
+                          title="Editar ajuste"
+                        >
+                          <span class="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button 
+                          @click="eliminarAjuste(ajuste.id)"
+                          class="p-1.5 hover:bg-error/10 rounded-lg text-outline-variant hover:text-error transition-all active:scale-90 cursor-pointer"
+                          title="Eliminar ajuste"
+                        >
+                          <span class="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </div>
+                    </div>
 
-                <div class="border-t border-outline-variant/20 pt-sm mt-xs">
-                  <h4 class="font-bold text-tertiary-container text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">tips_and_updates</span> Ajustes y Apoyos DUA
-                  </h4>
-                  <p class="text-on-surface leading-snug whitespace-pre-wrap font-medium">{{ ajuste.ajustes_estrategias }}</p>
-                </div>
+                    <!-- Contenido -->
+                    <div class="grid grid-cols-2 gap-sm text-body-md pt-xs">
+                      <div>
+                        <h4 class="font-bold text-primary text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[14px]">track_changes</span> Propósito / Meta
+                        </h4>
+                        <p class="text-on-surface leading-tight font-medium">{{ ajuste.objetivos_propositos }}</p>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-error text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[14px]">report_problem</span> Barreras
+                        </h4>
+                        <p class="text-on-surface-variant leading-tight">{{ ajuste.barreras_evidenciadas }}</p>
+                      </div>
+                    </div>
 
-                <div v-if="ajuste.evaluacion_ajustes" class="border-t border-outline-variant/20 pt-sm mt-xs bg-[#caead6]/10 p-2.5 rounded-xl border border-[#caead6]/30">
-                  <h4 class="font-bold text-tertiary text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">fact_check</span> Evaluación de Ajuste
-                  </h4>
-                  <p class="text-on-surface-variant leading-snug">{{ ajuste.evaluacion_ajustes }}</p>
+                    <div class="border-t border-outline-variant/20 pt-sm mt-xs">
+                      <h4 class="font-bold text-tertiary-container text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">tips_and_updates</span> Ajustes y Apoyos DUA
+                      </h4>
+                      <p class="text-on-surface leading-snug whitespace-pre-wrap font-medium">{{ ajuste.ajustes_estrategias }}</p>
+                    </div>
+
+                    <div v-if="ajuste.evaluacion_ajustes" class="border-t border-outline-variant/20 pt-sm mt-xs bg-[#caead6]/10 p-2.5 rounded-xl border border-[#caead6]/30">
+                      <h4 class="font-bold text-tertiary text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">fact_check</span> Evaluación de Ajuste
+                      </h4>
+                      <p class="text-on-surface-variant leading-snug">{{ ajuste.evaluacion_ajustes }}</p>
+                    </div>
+                  </article>
                 </div>
-              </article>
+              </div>
             </div>
           </div>
         </div>
@@ -590,6 +637,84 @@ const gustos = ref('')
 const habilidades = ref('')
 const isSavingCarac = ref(false)
 
+// Periodos Académicos
+const periodos = ref<any[]>([])
+
+async function cargarPeriodos() {
+  try {
+    const res = await fetch('http://localhost:8000/api/v1/gestion/periodos', {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+    if (res.ok) {
+      periodos.value = await res.json()
+    }
+  } catch (e) {
+    console.error("Error fetching periodos", e)
+  }
+}
+
+const periodoActivo = computed(() => {
+  return periodos.value.find((p: any) => p.activo)
+})
+
+function getPeriodoNombre(periodoId: number): string {
+  const p = periodos.value.find((per: any) => per.id === periodoId)
+  return p ? p.nombre : `Periodo #${periodoId}`
+}
+
+function isPeriodoActivo(periodoId: number): boolean {
+  const p = periodos.value.find((per: any) => per.id === periodoId)
+  return p ? p.activo : false
+}
+
+const periodoEdicionNombre = computed(() => {
+  if (!isEditingAjuste.value) return ''
+  const ajuste = activePiar.value?.ajustes_razonables?.find((a: any) => a.id === ajusteForm.value.id)
+  if (ajuste) {
+    return getPeriodoNombre(ajuste.periodo_id)
+  }
+  return ''
+})
+
+const ajustesPorPeriodo = computed(() => {
+  if (!activePiar.value || !activePiar.value.ajustes_razonables) return {}
+  const grouped: Record<number, any[]> = {}
+  activePiar.value.ajustes_razonables.forEach((ajuste: any) => {
+    const pid = ajuste.periodo_id
+    if (!grouped[pid]) {
+      grouped[pid] = []
+    }
+    grouped[pid].push(ajuste)
+  })
+  return grouped
+})
+
+const periodosConAjustes = computed(() => {
+  const grouped = ajustesPorPeriodo.value
+  const list = periodos.value
+    .filter((p: any) => !!grouped[p.id])
+    .map((p: any) => ({
+      periodo: p,
+      ajustes: grouped[p.id]
+    }))
+    
+  // Fallback for periods not found in periodos.value
+  const foundIds = new Set(periodos.value.map((p: any) => p.id))
+  Object.keys(grouped).forEach((pidStr: string) => {
+    const pid = Number(pidStr)
+    if (!foundIds.has(pid)) {
+      list.push({
+        periodo: { id: pid, nombre: `Periodo #${pid}`, activo: false },
+        ajustes: grouped[pid]
+      })
+    }
+  })
+  
+  return list
+})
+
 // TAB 2: Formulario Ajuste
 const AREAS_VALIDAS = ['Matemáticas', 'Ciencias', 'Lenguaje', 'Convivencia', 'Socialización', 'Participación', 'Autonomía', 'Autocontrol'] as const
 const dbAsignaturas = ref<any[]>([])
@@ -597,6 +722,7 @@ const dbAsignaturas = ref<any[]>([])
 const ajusteForm = ref({
   id: '',
   area: 'Matemáticas' as string,
+  titulo_tema: '',
   objetivos: '',
   barreras: '',
   ajustes: '',
@@ -689,6 +815,7 @@ onMounted(async () => {
   await cargarEstudiante()
   await cargarPiar()
   await cargarAsignaturas()
+  await cargarPeriodos()
   cargarEntornoSalud() // sin await: enriquece contexto IA en background
 })
 
@@ -809,22 +936,24 @@ async function guardarAjuste() {
   isSavingAjuste.value = true
   try {
     if (isEditingAjuste.value) {
-      await piarStore.updateAjuste(
-        ajusteForm.value.id,
-        ajusteForm.value.area,
-        ajusteForm.value.objetivos,
-        ajusteForm.value.barreras,
-        ajusteForm.value.ajustes,
-        ajusteForm.value.evaluacion
-      )
+      await piarStore.updateAjuste({
+        ajusteId: ajusteForm.value.id,
+        area: ajusteForm.value.area,
+        tituloTema: ajusteForm.value.titulo_tema,
+        objetivos: ajusteForm.value.objetivos,
+        barreras: ajusteForm.value.barreras,
+        ajustes: ajusteForm.value.ajustes,
+        evaluacion: ajusteForm.value.evaluacion
+      })
       showToast("Ajuste razonable actualizado con éxito en la malla.")
     } else {
-      await piarStore.saveAjuste(
-        ajusteForm.value.area,
-        ajusteForm.value.objetivos,
-        ajusteForm.value.barreras,
-        ajusteForm.value.ajustes
-      )
+      await piarStore.saveAjuste({
+        area: ajusteForm.value.area,
+        tituloTema: ajusteForm.value.titulo_tema,
+        objetivos: ajusteForm.value.objetivos,
+        barreras: ajusteForm.value.barreras,
+        ajustes: ajusteForm.value.ajustes
+      })
       showToast("Ajuste razonable agregado a la malla escolar.")
     }
     cancelarEdicionAjuste()
@@ -839,6 +968,7 @@ function cargarAjusteParaEdicion(ajuste: any) {
   ajusteForm.value = {
     id: ajuste.id,
     area: ajuste.area,
+    titulo_tema: ajuste.titulo_tema || '',
     objetivos: ajuste.objetivos_propositos,
     barreras: ajuste.barreras_evidenciadas,
     ajustes: ajuste.ajustes_estrategias,
@@ -850,6 +980,7 @@ function cancelarEdicionAjuste() {
   ajusteForm.value = {
     id: '',
     area: 'Matemáticas',
+    titulo_tema: '',
     objetivos: '',
     barreras: '',
     ajustes: '',
@@ -913,6 +1044,7 @@ async function generarConIA() {
 
     const payload = {
       area: ajusteForm.value.area,
+      titulo_tema: ajusteForm.value.titulo_tema || null,
       estudiante_nombre: `${estudiante.value?.nombres || ''} ${estudiante.value?.apellidos || ''}`.trim(),
       grado: estudiante.value?.grado || null,
       edad: estudiante.value?.edad || null,

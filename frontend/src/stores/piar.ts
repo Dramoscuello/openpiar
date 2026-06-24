@@ -90,7 +90,7 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
-  async function saveAjuste(area: string, objetivos: string, barreras: string, ajustes: string) {
+  async function saveAjuste(data: { area: string, tituloTema: string, objetivos: string, barreras: string, ajustes: string }) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
     const authStore = useAuthStore()
@@ -102,10 +102,11 @@ export const usePiarStore = defineStore('piar', () => {
           'Authorization': `Bearer ${authStore.token}`
         },
         body: JSON.stringify({
-          area: area,
-          objetivos_propositos: objetivos,
-          barreras_evidenciadas: barreras,
-          ajustes_estrategias: ajustes,
+          area: data.area,
+          titulo_tema: data.tituloTema,
+          objetivos_propositos: data.objetivos,
+          barreras_evidenciadas: data.barreras,
+          ajustes_estrategias: data.ajustes,
           evaluacion_ajustes: ''
         })
       })
@@ -119,28 +120,29 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
-  async function updateAjuste(ajusteId: string, area: string, objetivos: string, barreras: string, ajustes: string, evaluacion: string) {
+  async function updateAjuste(data: { ajusteId: string, area: string, tituloTema: string, objetivos: string, barreras: string, ajustes: string, evaluacion: string }) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${ajusteId}`, {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${data.ajusteId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authStore.token}`
         },
         body: JSON.stringify({
-          area: area,
-          objetivos_propositos: objetivos,
-          barreras_evidenciadas: barreras,
-          ajustes_estrategias: ajustes,
-          evaluacion_ajustes: evaluacion
+          area: data.area,
+          titulo_tema: data.tituloTema,
+          objetivos_propositos: data.objetivos,
+          barreras_evidenciadas: data.barreras,
+          ajustes_estrategias: data.ajustes,
+          evaluacion_ajustes: data.evaluacion
         })
       })
       if (!response.ok) throw new Error('Error al actualizar ajuste')
       const updatedAjuste = await response.json()
-      const index = activePiar.value.ajustes_razonables.findIndex((a: any) => a.id === ajusteId)
+      const index = activePiar.value.ajustes_razonables.findIndex((a: any) => a.id === data.ajusteId)
       if (index !== -1) {
         activePiar.value.ajustes_razonables[index] = updatedAjuste
       }

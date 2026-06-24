@@ -149,6 +149,7 @@ async def add_ajuste_razonable(
         piar_id=piar_id,
         periodo_id=periodo_activo.id,
         area=data.area,
+        titulo_tema=data.titulo_tema,
         objetivos_propositos=data.objetivos_propositos,
         barreras_evidenciadas=data.barreras_evidenciadas,
         ajustes_estrategias=data.ajustes_estrategias,
@@ -179,6 +180,10 @@ async def generar_ajustes_ia(
             f"Necesito sugerencias de estrategias y ajustes razonables concretos para un estudiante.\n\n"
             f"Contexto:\n"
             f"- Área/Materia: {data.area}\n"
+        )
+        if data.titulo_tema:
+            prompt += f"- Título del Tema: {data.titulo_tema}\n"
+        prompt += (
             f"- Objetivos o Propósitos de Aprendizaje: {data.objetivos_propositos}\n"
             f"- Barreras Evidenciadas en el Estudiante: {data.barreras_evidenciadas}\n"
         )
@@ -258,6 +263,7 @@ async def generar_plan_completo_ia(
 El docente ya definió los objetivos de aprendizaje y las barreras identificadas. Tu tarea consiste EXCLUSIVAMENTE en proponer los ajustes razonables concretos, pedagógicos y accionables que minimicen esas barreras.
 
 AREA O ASIGNATURA: {data.area}
+TÍTULO DEL TEMA O TEMÁTICA: {data.titulo_tema if data.titulo_tema else 'No especificado'}
 
 PERFIL DEL ESTUDIANTE:
 {perfil_texto}
@@ -388,6 +394,7 @@ async def update_ajuste_razonable(
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
     ajuste.area = data.area
+    ajuste.titulo_tema = data.titulo_tema
     ajuste.objetivos_propositos = data.objetivos_propositos
     ajuste.barreras_evidenciadas = data.barreras_evidenciadas
     ajuste.ajustes_estrategias = data.ajustes_estrategias

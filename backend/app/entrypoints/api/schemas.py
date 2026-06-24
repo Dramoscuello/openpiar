@@ -359,6 +359,7 @@ class CaracteristicasEstudianteResponse(CaracteristicasEstudianteCreate, BaseRes
 
 class AjusteRazonableCreate(BaseModel):
     area: str = Field(..., min_length=2)
+    titulo_tema: Optional[str] = None
     objetivos_propositos: str = Field(..., min_length=2)
     barreras_evidenciadas: str = Field(..., min_length=2)
     ajustes_estrategias: str = Field(..., min_length=2)
@@ -402,12 +403,14 @@ class GenerarAjustesRequest(BaseModel):
     barreras_evidenciadas: str
     objetivos_propositos: str
     area: str
+    titulo_tema: Optional[str] = None
     instrucciones_adicionales: Optional[str] = None
 
 
 class GenerarPlanCompletoRequest(BaseModel):
     """Payload para generar un plan de ajuste razonable completo por área usando IA."""
     area: str
+    titulo_tema: Optional[str] = None
     # Datos del estudiante
     estudiante_nombre: str
     grado: Optional[str] = None

@@ -489,6 +489,7 @@ class AjusteRazonableORM(Base):
         nullable=False,
     )
     area: Mapped[str] = mapped_column(Text, nullable=False)
+    titulo_tema: Mapped[Optional[str]] = mapped_column(Text)
     objetivos_propositos: Mapped[str] = mapped_column(Text, nullable=False)
     barreras_evidenciadas: Mapped[str] = mapped_column(Text, nullable=False)
     ajustes_estrategias: Mapped[str] = mapped_column(Text, nullable=False)
