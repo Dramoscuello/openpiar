@@ -20,7 +20,15 @@ from app.adapters.db.models import (
     RecomendacionPMIORM,
     ConfiguracionSistemaORM,
     ActaAcuerdoORM,
-    CompromisoCasaORM
+    CompromisoCasaORM,
+    GrupoORM,
+    GradoORM,
+    EntornoSaludORM,
+    EntornoHogarORM,
+    TrayectoriaEducativaORM,
+    MatriculaActualORM,
+    AsignaturaORM,
+    CargaAcademicaORM
 )
 from app.entrypoints.api.schemas import (
     PiarCreate,
@@ -537,7 +545,8 @@ async def upsert_acta_acuerdo(
             firmado_acudiente=data.firmado_acudiente,
             firmado_docente_apoyo=data.firmado_docente_apoyo,
             firmado_docentes_aula=data.firmado_docentes_aula,
-            firmado_directivo=data.firmado_directivo
+            firmado_directivo=data.firmado_directivo,
+            compromisos_casa=[]
         )
         db.add(acta)
         await db.flush()  # Obtener el acta.id
@@ -588,7 +597,16 @@ async def download_acta_pdf(
         select(PiarORM)
         .where(PiarORM.id == piar_id)
         .options(
-            selectinload(PiarORM.estudiante),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.grado),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.sede),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.carga).selectinload(CargaAcademicaORM.asignatura),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_salud),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_hogar),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.trayectoria_educativa),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.matricula_actual),
+            selectinload(PiarORM.caracteristicas),
+            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
+            selectinload(PiarORM.recomendaciones_pmi),
             selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
     )
@@ -603,13 +621,30 @@ async def download_acta_pdf(
             detail="Debe completar y guardar el Acta de Acuerdo (Anexo 3) antes de generar el PDF."
         )
 
+    # Cargar todos los periodos académicos y determinar los activos/pasados
+    from datetime import date
+    periodos_result = await db.execute(
+        select(PeriodoAcademicoORM).order_by(PeriodoAcademicoORM.fecha_inicio)
+    )
+    all_periodos = periodos_result.scalars().all()
+
+    # Identificar periodos con ajustes para este estudiante
+    periods_with_adjustments = {aj.periodo_id for aj in piar.ajustes_razonables if aj.periodo_id}
+
+    # Filtrar periodos que están/estuvieron activos o tienen información
+    selected_periods = []
+    today = date.today()
+    for p in all_periodos:
+        if p.activo or p.fecha_inicio <= today or p.id in periods_with_adjustments:
+            selected_periods.append(p)
+
     # Cargar la configuración del sistema
     config_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
     config = config_result.scalars().first()
 
     # Generar el PDF
     from app.core.pdf_generator import generate_acta_pdf
-    pdf_bytes = generate_acta_pdf(piar, config)
+    pdf_bytes = generate_acta_pdf(piar, config, selected_periods)
 
     # Retornar como archivo descargable
     filename = f"Acta_Acuerdo_{piar.estudiante.numero_documento}.pdf"

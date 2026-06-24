@@ -70,7 +70,7 @@ async def listar_estudiantes(
     repo=Depends(get_estudiante_repo),
     db: AsyncSession = Depends(get_db),
 ) -> EstudianteListResponse:
-    if current_user.rol == 'directivo':
+    if current_user.rol.es_directivo:
         # Admin: sin filtros
         query = (
             select(EstudianteORM, GrupoORM.director_id, GradoORM.nombre)
