@@ -550,5 +550,79 @@ export const useStudentsStore = defineStore('students', {
         return false
       }
     },
+
+    async exportStudent(studentId: string, password: string): Promise<void> {
+      const authStore = useAuthStore()
+      this.loading = true
+      this.error = null
+      try {
+        const response = await fetch(`/api/v1/estudiantes/${studentId}/exportar?password=${encodeURIComponent(password)}`, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`,
+          },
+        })
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Error al exportar el expediente.')
+        }
+        const blob = await response.blob()
+        const contentDisposition = response.headers.get('Content-Disposition')
+        let filename = `estudiante_${studentId}.openpiar`
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="?([^"]+)"?/)
+          if (match && match[1]) {
+            filename = match[1]
+          }
+        }
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+      } catch (err: any) {
+        this.error = err.message || 'Error al exportar el estudiante.'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async importStudent(file: File, password: string, grupoId: string | null): Promise<boolean> {
+      const authStore = useAuthStore()
+      this.submitting = true
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('password', password)
+        if (grupoId) {
+          formData.append('grupo_id', grupoId)
+        }
+
+        const response = await fetch(`/api/v1/estudiantes/importar`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`,
+          },
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Error al importar el expediente.')
+        }
+
+        await this.fetchStudents() // Refrescar lista de estudiantes
+        return true
+      } catch (err: any) {
+        this.error = err.message || 'Error al importar el estudiante.'
+        throw err
+      } finally {
+        this.submitting = false
+      }
+    },
   },
 })

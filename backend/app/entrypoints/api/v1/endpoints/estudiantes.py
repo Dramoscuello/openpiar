@@ -14,7 +14,7 @@ Cubre:
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File, Form
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -34,6 +34,7 @@ from app.core.exceptions import EstudianteNoEncontradoError, EstudianteYaRegistr
 from app.domain.entities import Usuario
 from app.entrypoints.api.dependencies import CurrentUser, get_estudiante_repo
 from app.entrypoints.api.schemas import (
+    BaseResponse,
     CrearEstudianteRequest,
     EntornoHogarRequest,
     EntornoHogarResponse,
@@ -49,6 +50,12 @@ from app.entrypoints.api.schemas import (
 from app.use_cases.estudiantes.crear_estudiante import (
     CrearEstudianteInput,
     CrearEstudianteUseCase,
+)
+from app.core.portable_exporter import (
+    serialize_student_data,
+    encrypt_data,
+    decrypt_data,
+    deserialize_and_import_student,
 )
 
 router = APIRouter(prefix="/estudiantes", tags=["Estudiantes — Anexo 1"])
@@ -728,3 +735,83 @@ async def actualizar_matricula_actual(
     await db.flush()
     await db.refresh(matricula)
     return MatriculaActualResponse.model_validate(matricula)
+
+
+@router.get(
+    "/{estudiante_id}/exportar",
+    summary="Exportar expediente completo del estudiante en un archivo encriptado .openpiar",
+)
+async def exportar_estudiante(
+    estudiante_id: uuid.UUID,
+    password: str = Query(..., min_length=6, description="Contraseña para cifrar el archivo (mínimo 6 caracteres)"),
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+):
+    # Validar permisos
+    if not current_user.rol.es_directivo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo usuarios con rol directivo/administrativo pueden exportar expedientes."
+        )
+        
+    estudiante = await db.get(EstudianteORM, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+        
+    try:
+        data = await serialize_student_data(db, estudiante_id)
+        encrypted_bytes = encrypt_data(data, password)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al exportar: {str(e)}")
+        
+    filename = f"estudiante_{estudiante.numero_documento}.openpiar"
+    return Response(
+        content=encrypted_bytes,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+@router.post(
+    "/importar",
+    response_model=BaseResponse,
+    summary="Importar expediente completo cifrado de un estudiante (.openpiar)",
+)
+async def importar_estudiante(
+    file: UploadFile = File(...),
+    password: str = Form(...),
+    grupo_id: Optional[uuid.UUID] = Form(None),
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> BaseResponse:
+    # Validar permisos
+    if not current_user.rol.es_directivo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo usuarios con rol directivo/administrativo pueden importar expedientes."
+        )
+        
+    # Validar formato
+    if not file.filename.endswith(".openpiar"):
+        raise HTTPException(
+            status_code=400,
+            detail="Formato de archivo inválido. Debe ser un archivo con extensión .openpiar"
+        )
+        
+    try:
+        encrypted_bytes = await file.read()
+        decrypted_data = decrypt_data(encrypted_bytes, password)
+        estudiante = await deserialize_and_import_student(
+            db, decrypted_data, grupo_id, current_user.id
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al importar archivo: {str(e)}")
+        
+    return BaseResponse(
+        success=True,
+        message=f"Estudiante {estudiante.nombres} {estudiante.apellidos} importado exitosamente con su historial."
+    )

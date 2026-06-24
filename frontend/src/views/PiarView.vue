@@ -801,6 +801,15 @@
                   <span class="material-symbols-outlined text-[20px]">download</span>
                   Descargar PDF Oficial
                 </button>
+
+                <button 
+                  v-if="authStore.user?.rol === 'directivo'"
+                  @click="abrirModalExportar"
+                  class="bg-primary text-on-primary font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 transition-all shadow-sm border border-outline-variant/30 mt-3"
+                >
+                  <span class="material-symbols-outlined text-[20px]">shield</span>
+                  Exportar Expediente Seguro (.openpiar)
+                </button>
               </div>
 
               <div v-if="!activePiar?.acta_acuerdo" class="bg-surface-container-high/50 p-3 rounded-lg border border-outline-variant/30 text-xs text-on-surface-variant">
@@ -823,6 +832,86 @@
         <span class="font-semibold text-body-md">{{ localError }}</span>
       </div>
     </div>
+
+    <!-- Modal de exportar archivo portable .openpiar -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showExportModal"
+          class="fixed inset-0 z-[9999] flex items-center justify-center p-6"
+          style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
+          @click.self="cancelarExportar"
+        >
+          <div
+            style="background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.25); width:100%; max-width:440px; padding:28px; box-sizing:border-box;"
+          >
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+              <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#e0e7ff; display:flex; align-items:center; justify-content:center;">
+                <span class="material-symbols-outlined" style="color:#4f46e5; font-size:22px;">shield</span>
+              </div>
+              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Exportar Expediente Seguro</h3>
+            </div>
+
+            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 16px 0;">
+              Estás exportando el historial de <strong style="color:#111827;">{{ estudiante?.nombres }} {{ estudiante?.apellidos }}</strong>.
+              Ingresa una contraseña para cifrar el archivo de forma segura. Quien lo importe necesitará esta contraseña.
+            </p>
+
+            <!-- Password input -->
+            <div style="margin-bottom:16px;">
+              <label style="display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px;">Contraseña de cifrado (mínimo 6 caracteres)</label>
+              <input
+                type="password"
+                v-model="exportPassword"
+                placeholder="••••••"
+                style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;"
+              />
+            </div>
+
+            <!-- Confirm Password input -->
+            <div style="margin-bottom:16px;">
+              <label style="display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px;">Confirmar contraseña</label>
+              <input
+                type="password"
+                v-model="exportConfirmPassword"
+                placeholder="••••••"
+                style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;"
+              />
+            </div>
+
+            <!-- Error -->
+            <div
+              v-if="exportError"
+              style="background:#fee2e2; color:#dc2626; border-radius:10px; padding:12px 16px; font-size:13px; margin-bottom:16px;"
+            >
+              {{ exportError }}
+            </div>
+
+            <!-- Actions -->
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+              <button
+                @click="cancelarExportar"
+                :disabled="isExporting"
+                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
+                @mouseenter="($event.target as HTMLElement).style.background='#f9fafb'"
+                @mouseleave="($event.target as HTMLElement).style.background='transparent'"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="ejecutarExportar"
+                :disabled="isExporting || exportPassword.length < 6 || exportPassword !== exportConfirmPassword"
+                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; color:#fff; background:#4f46e5; border:none; cursor:pointer; transition:opacity .15s;"
+                :style="{ opacity: (isExporting || exportPassword.length < 6 || exportPassword !== exportConfirmPassword) ? 0.6 : 1 }"
+              >
+                <span v-if="isExporting">Exportando...</span>
+                <span v-else>Cifrar y Descargar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -831,16 +920,62 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePiarStore } from '../stores/piar'
 import { useAuthStore } from '../stores/auth'
+import { useStudentsStore } from '../stores/students'
 import { storeToRefs } from 'pinia'
 
 const route = useRoute()
 const piarStore = usePiarStore()
 const authStore = useAuthStore()
+const studentsStore = useStudentsStore()
 const { activePiar, isLoading, error } = storeToRefs(piarStore)
 
 const estudianteId = route.params.id as string
 const estudiante = ref<any>(null)
 const entornoSalud = ref<any>(null)
+
+// Exportar expediente portable .openpiar
+const showExportModal = ref(false)
+const exportPassword = ref('')
+const exportConfirmPassword = ref('')
+const isExporting = ref(false)
+const exportError = ref('')
+
+function abrirModalExportar() {
+  showExportModal.value = true
+  exportPassword.value = ''
+  exportConfirmPassword.value = ''
+  exportError.value = ''
+}
+
+function cancelarExportar() {
+  showExportModal.value = false
+  exportPassword.value = ''
+  exportConfirmPassword.value = ''
+  exportError.value = ''
+}
+
+async function ejecutarExportar() {
+  if (exportPassword.value.length < 6) {
+    exportError.value = 'La contraseña debe tener al menos 6 caracteres.'
+    return
+  }
+  if (exportPassword.value !== exportConfirmPassword.value) {
+    exportError.value = 'Las contraseñas no coinciden.'
+    return
+  }
+
+  isExporting.value = true
+  exportError.value = ''
+  try {
+    await studentsStore.exportStudent(estudianteId, exportPassword.value)
+    showToast('Expediente exportado exitosamente.')
+    showExportModal.value = false
+  } catch (e: any) {
+    exportError.value = e.message || 'Error al exportar el expediente.'
+  } finally {
+    isExporting.value = false
+  }
+}
 
 // Pestañas
 const activeTab = ref('caracteristicas')

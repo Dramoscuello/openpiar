@@ -30,6 +30,14 @@
 **/*.svg
 **/*.webp
 
+# Excluir de ignorar imágenes en backend/assets para permitir su carga en el repositorio
+!backend/assets/**/*.png
+!backend/assets/**/*.jpg
+!backend/assets/**/*.jpeg
+!backend/assets/**/*.gif
+!backend/assets/**/*.svg
+!backend/assets/**/*.webp
+
 # Archivos Markdown
 # Ignora todos los archivos .md en cualquier nivel del proyecto, a excepción del archivo readme.md principal
 *.md
