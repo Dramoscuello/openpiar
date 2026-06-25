@@ -72,5 +72,17 @@
     "asignaturas": [
       "Ciencias Económicas y Políticas"
     ]
+  },
+  {
+    "area": "Dimensiones",
+    "asignaturas": [
+      "Socio afectiva",
+      "Corporal",
+      "Comunicativa",
+      "Cognitiva",
+      "Ética",
+      "Estética",
+      "Espiritual"
+    ]
   }
 ]

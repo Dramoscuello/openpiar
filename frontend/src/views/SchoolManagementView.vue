@@ -200,7 +200,8 @@ const STANDARD_AREAS_SUBJECTS: Record<string, string[]> = {
   "Educación Religiosa": ["Educación Religiosa"],
   "Tecnología e Informática": ["Tecnología e Informática"],
   "Filosofía": ["Filosofía"],
-  "Ciencias Económicas y Políticas": ["Ciencias Económicas y Políticas"]
+  "Ciencias Económicas y Políticas": ["Ciencias Económicas y Políticas"],
+  "Dimensiones": ["Socio afectiva", "Corporal", "Comunicativa", "Cognitiva", "Ética", "Estética", "Espiritual"]
 }
 
 const selectedStandardSubject = ref('')
@@ -225,7 +226,8 @@ const availableAreasOptions = computed(() => {
     'Educación Religiosa',
     'Tecnología e Informática',
     'Filosofía',
-    'Ciencias Económicas y Políticas'
+    'Ciencias Económicas y Políticas',
+    'Dimensiones'
   ]
   const existingNames = new Set(areas.value.map(a => a.nombre))
   return standardAreas.filter(name => !existingNames.has(name))
@@ -1090,20 +1092,6 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             <span class="material-symbols-outlined">group</span>
             <span class="font-label-md">Estudiantes</span>
           </RouterLink>
-          <RouterLink
-            to="/estudiantes"
-            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-          >
-            <span class="material-symbols-outlined">description</span>
-            <span class="font-label-md">PIARs (Anexo 2)</span>
-          </RouterLink>
-          <a
-            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            href="#"
-          >
-            <span class="material-symbols-outlined">history_edu</span>
-            <span class="font-label-md">Actas (Anexo 3)</span>
-          </a>
           <a
             class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
             href="#"

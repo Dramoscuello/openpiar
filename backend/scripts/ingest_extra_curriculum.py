@@ -147,7 +147,10 @@ GRADO_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-async def procesar_dba_ingles() -> List[dict]:
+async def procesar_dba_ingles(processed_areas: set) -> List[dict]:
+    if "Inglés" in processed_areas:
+        logger.info("ℹ️  DBA de Inglés ya se encuentran en dba_fixtures.json. Omitiendo para ahorrar tokens.")
+        return []
     logger.info("📂 Buscando PDFs de DBA de Inglés...")
     tareas = []
     
@@ -216,18 +219,25 @@ async def procesar_dba_ingles() -> List[dict]:
     return todos_dba
 
 
-async def procesar_ebc_adicionales() -> List[dict]:
-    logger.info("📂 Procesando estándares adicionales (Inglés, Educación Física, Tecnología, Artística)...")
+async def procesar_ebc_adicionales(processed_areas: set) -> List[dict]:
+    logger.info("📂 Procesando estándares adicionales (Inglés, Educación Física, Tecnología, Artística, Filosofía, Ética, Religión)...")
     tareas = []
     
     config_adicionales = [
         {"file": "EBC EDUCACIÓN FÍSICA.pdf", "area": "Educación Física", "default_range": "1-3"},
         {"file": "Estandares_Basicos_Competencia_en_Lenguas_Extranjeras_ Ingles-min.pdf", "area": "Inglés", "default_range": "1-3"},
         {"file": "ORIENTACIONES PEDAGÓGICAS EN TECNOLOGÍA E INFORMÁTICA.pdf", "area": "Tecnología e Informática", "default_range": "1-3"},
-        {"file": "ORIENTACIONES PEDAGÓGICAS PARA LA EDUCACIÓN ARTÍSTICA.pdf", "area": "Educación Artística", "default_range": "1-3"}
+        {"file": "ORIENTACIONES PEDAGÓGICAS PARA LA EDUCACIÓN ARTÍSTICA.pdf", "area": "Educación Artística", "default_range": "1-3"},
+        {"file": "orientaciones filosofia.pdf", "area": "Filosofía", "default_range": "10-11"},
+        {"file": "lineamientos etica.pdf", "area": "Educación Ética y en Valores Humanos", "default_range": "1-3"},
+        {"file": "estandares religion.pdf", "area": "Educación Religiosa", "default_range": "1-3"}
     ]
     
     for config in config_adicionales:
+        if config["area"] in processed_areas:
+            logger.info("ℹ️  Estándares de %s ya se encuentran en ebc_fixtures.json. Omitiendo PDF %s para ahorrar tokens.", config["area"], config["file"])
+            continue
+            
         pdf_path = EBC_DIR / config["file"]
         if not pdf_path.exists():
             logger.warning("⚠️  PDF EBC no encontrado: %s", config["file"])
@@ -319,15 +329,36 @@ def anexar_y_guardar_fixtures(dba_nuevos: list, ebc_nuevos: list) -> None:
 
 async def main():
     logger.info("=" * 60)
-    logger.info("OpenPiar — Ingesta de Áreas Adicionales (Inglés, Deportes, Artes, Tecnología)")
+    logger.info("OpenPiar — Ingesta de Áreas Adicionales")
     logger.info("=" * 60)
     
-    dba_nuevos = await procesar_dba_ingles()
-    ebc_nuevos = await procesar_ebc_adicionales()
+    # Cargar áreas ya procesadas para evitar doble trabajo y ahorrar tokens
+    processed_dba_areas = set()
+    dba_path = FIXTURES_DIR / "dba_fixtures.json"
+    if dba_path.exists():
+        try:
+            with open(dba_path, "r", encoding="utf-8") as f:
+                existing_dba = json.load(f)
+                processed_dba_areas = {d["area"] for d in existing_dba}
+        except Exception as e:
+            logger.error("Error cargando dba_fixtures.json: %s", e)
+
+    processed_ebc_areas = set()
+    ebc_path = FIXTURES_DIR / "ebc_fixtures.json"
+    if ebc_path.exists():
+        try:
+            with open(ebc_path, "r", encoding="utf-8") as f:
+                existing_ebc = json.load(f)
+                processed_ebc_areas = {e["area"] for e in existing_ebc}
+        except Exception as e:
+            logger.error("Error cargando ebc_fixtures.json: %s", e)
+            
+    dba_nuevos = await procesar_dba_ingles(processed_dba_areas)
+    ebc_nuevos = await procesar_ebc_adicionales(processed_ebc_areas)
     
     anexar_y_guardar_fixtures(dba_nuevos, ebc_nuevos)
-    logger.info("✨ Ingesta de áreas adicionales completada exitosamente.")
-    logger.info("👉 Ejecuta 'python scripts/seed_curriculum.py' para cargarlos a la base de datos.")
+    logger.info("✨ Ingesta de áreas adicionales completada.")
+    logger.info("👉 Ejecuta '.venv/bin/python scripts/seed_curriculum.py' para cargarlos a la base de datos.")
 
 
 if __name__ == "__main__":

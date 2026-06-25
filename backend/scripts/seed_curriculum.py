@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.adapters.db.models import DerechoDBAORM, EstandarEBCORM
@@ -39,11 +40,22 @@ async def seed_referentes() -> None:
                     dba_data = json.load(f)
 
                 if dba_data:
-                    # ON CONFLICT DO NOTHING — idempotente
-                    stmt = insert(DerechoDBAORM).values(dba_data)
-                    stmt = stmt.on_conflict_do_nothing()
-                    await session.execute(stmt)
-                    logger.info("✅ DBA cargados: %d registros", len(dba_data))
+                    # Obtener los DBA ya registrados para evitar duplicados
+                    result = await session.execute(select(DerechoDBAORM.grado, DerechoDBAORM.area, DerechoDBAORM.numero))
+                    existing = {(r[0], r[1], r[2]) for r in result.all()}
+                    
+                    to_insert = [
+                        d for d in dba_data
+                        if (d["grado"], d["area"], d["numero"]) not in existing
+                    ]
+                    
+                    if to_insert:
+                        # ON CONFLICT DO NOTHING para seguridad adicional
+                        stmt = insert(DerechoDBAORM).values(to_insert).on_conflict_do_nothing()
+                        await session.execute(stmt)
+                        logger.info("✅ DBA cargados: %d registros nuevos", len(to_insert))
+                    else:
+                        logger.info("ℹ️  Todos los DBA ya existen en la base de datos. Sin cambios.")
                 else:
                     logger.warning("⚠️  dba_fixtures.json vacío. Ejecuta ingest_curriculum.py primero.")
             else:
@@ -56,10 +68,21 @@ async def seed_referentes() -> None:
                     ebc_data = json.load(f)
 
                 if ebc_data:
-                    stmt = insert(EstandarEBCORM).values(ebc_data)
-                    stmt = stmt.on_conflict_do_nothing()
-                    await session.execute(stmt)
-                    logger.info("✅ EBC cargados: %d registros", len(ebc_data))
+                    # Obtener los EBC ya registrados para evitar duplicados
+                    result = await session.execute(select(EstandarEBCORM.rango_grados, EstandarEBCORM.area, EstandarEBCORM.factor, EstandarEBCORM.enunciado))
+                    existing = {(r[0], r[1], r[2], r[3]) for r in result.all()}
+                    
+                    to_insert = [
+                        e for e in ebc_data
+                        if (e["rango_grados"], e["area"], e["factor"], e["enunciado"]) not in existing
+                    ]
+                    
+                    if to_insert:
+                        stmt = insert(EstandarEBCORM).values(to_insert).on_conflict_do_nothing()
+                        await session.execute(stmt)
+                        logger.info("✅ EBC cargados: %d registros nuevos", len(to_insert))
+                    else:
+                        logger.info("ℹ️  Todos los EBC ya existen en la base de datos. Sin cambios.")
                 else:
                     logger.warning("⚠️  ebc_fixtures.json vacío.")
             else:

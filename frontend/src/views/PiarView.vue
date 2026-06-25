@@ -252,7 +252,7 @@
                         <label class="text-[12px] font-bold text-on-surface-variant">Tipo</label>
                         <select v-model="searchType" class="bg-surface border border-outline-variant rounded-lg p-2 text-label-sm outline-none">
                           <option value="dba">Derechos Básicos (DBA)</option>
-                          <option value="ebc">Estándares (EBC)</option>
+                          <option value="ebc">Estándares (EBC - Lineamientos)</option>
                         </select>
                       </div>
                       <div class="flex flex-col gap-1">
@@ -1279,10 +1279,13 @@ const searchGrade = computed(() => {
   const cleanGrade = String(rawGrado).replace('°', '').trim().toLowerCase()
   
   if (searchType.value === 'dba') {
+    if (['pre-jardin', 'pre-jardín', 'jardin', 'jardín', 'preescolar', 'transicion', 'transición', '0'].includes(cleanGrade)) {
+      return 'transicion'
+    }
     return cleanGrade
   } else {
     // Map to EBC ranges
-    if (['transicion', '0', '1', '2', '3'].includes(cleanGrade)) return '1-3'
+    if (['transicion', 'transición', 'preescolar', 'jardin', 'jardín', 'pre-jardin', 'pre-jardín', '0', '1', '2', '3'].includes(cleanGrade)) return '1-3'
     if (['4', '5'].includes(cleanGrade)) return '4-5'
     if (['6', '7'].includes(cleanGrade)) return '6-7'
     if (['8', '9'].includes(cleanGrade)) return '8-9'
@@ -1669,7 +1672,9 @@ async function buscarCurriculo() {
 function formatGrado(grado: string | undefined | null): string {
   if (!grado) return 'No asignado'
   const clean = String(grado).replace('°', '').trim().toLowerCase()
-  if (clean === 'transicion') return 'Transición'
+  if (clean === 'transicion' || clean === 'preescolar') return 'Preescolar / Transición'
+  if (clean === 'jardin' || clean === 'jardín') return 'Jardín'
+  if (clean === 'pre-jardin' || clean === 'pre-jardín') return 'Pre-jardín'
   return `Grado ${clean}°`
 }
 
