@@ -22,6 +22,77 @@ const grupos = ref<any[]>([])
 const loadingSedesGrupos = ref(false)
 const selectedSedeId = ref<string>('')
 
+// Soporte médico (PDF)
+const medicalSupportFile = ref<File | null>(null)
+const isDeletingSupport = ref(false)
+const isDownloadingSupport = ref(false)
+const supportInputRef = ref<HTMLInputElement | null>(null)
+
+async function downloadMedicalSupport() {
+  const studentId = route.params.id as string
+  if (!studentId) return
+  
+  isDownloadingSupport.value = true
+  try {
+    const blob = await studentsStore.downloadMedicalSupport(studentId)
+    const url = window.URL.createObjectURL(blob)
+    
+    // Open PDF in a new tab
+    const a = document.createElement('a')
+    a.href = url
+    a.target = '_blank'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url)
+    }, 15000)
+  } catch (e: any) {
+    alert(e.message || 'Error al descargar el soporte médico.')
+  } finally {
+    isDownloadingSupport.value = false
+  }
+}
+
+function onSupportFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    if (file && file.name.toLowerCase().endsWith('.pdf')) {
+      medicalSupportFile.value = file
+    } else {
+      alert('El soporte médico debe ser un archivo PDF (.pdf).')
+      target.value = ''
+    }
+  }
+}
+
+async function removeExistingSupport() {
+  const studentId = route.params.id as string
+  if (!studentId) {
+    medicalSupportFile.value = null
+    studentsStore.draft.salud.soporte_medico_nombre = null
+    return
+  }
+  
+  if (confirm('¿Estás seguro de que deseas eliminar permanentemente el soporte médico del diagnóstico?')) {
+    isDeletingSupport.value = true
+    try {
+      await studentsStore.deleteMedicalSupport(studentId)
+      medicalSupportFile.value = null
+    } catch (e: any) {
+      alert(e.message || 'Error al eliminar el soporte médico.')
+    } finally {
+      isDeletingSupport.value = false
+    }
+  }
+}
+
+function triggerSupportFileSelect() {
+  supportInputRef.value?.click()
+}
+
 const filteredGrupos = computed(() => {
   if (!selectedSedeId.value) return []
   return grupos.value.filter(g => g.sede && g.sede.id === selectedSedeId.value)
@@ -366,7 +437,7 @@ const save = async () => {
   if (!validateStep(4)) return
 
   const studentId = route.params.id as string
-  const success = await studentsStore.saveStudent(studentId)
+  const success = await studentsStore.saveStudent(studentId, medicalSupportFile.value)
 
   if (success) {
     router.push('/estudiantes')
@@ -870,6 +941,82 @@ const save = async () => {
                   rows="2"
                   placeholder="Escribe el diagnóstico tal cual figura en la historia clínica"
                 ></textarea>
+
+                <!-- Soporte Médico PDF -->
+                <div class="mt-4 space-y-xs">
+                  <label class="font-label-md text-label-md text-on-surface-variant">Soporte Médico del Diagnóstico (PDF)</label>
+                  
+                  <!-- Caso 1: Ya existe un soporte guardado en el servidor -->
+                  <div v-if="studentsStore.draft.salud.soporte_medico_nombre" class="flex items-center justify-between bg-surface border border-outline-variant/30 p-3 rounded-lg">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-red-500">picture_as_pdf</span>
+                      <span class="font-body-md text-on-surface font-semibold max-w-[200px] truncate" :title="studentsStore.draft.salud.soporte_medico_nombre">
+                        {{ studentsStore.draft.salud.soporte_medico_nombre }}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        @click="downloadMedicalSupport"
+                        :disabled="isDownloadingSupport"
+                        class="text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg text-label-sm font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span v-if="isDownloadingSupport" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                        <span v-else class="material-symbols-outlined text-[18px]">visibility</span>
+                        Ver / Descargar
+                      </button>
+                      <button
+                        type="button"
+                        @click="removeExistingSupport"
+                        :disabled="isDeletingSupport"
+                        class="text-error hover:bg-error/10 px-3 py-1.5 rounded-lg text-label-sm font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span v-if="isDeletingSupport" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                        <span v-else class="material-symbols-outlined text-[18px]">delete</span>
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Caso 2: Se seleccionó un nuevo soporte local -->
+                  <div v-else-if="medicalSupportFile" class="flex items-center justify-between bg-green-50/50 border border-green-200 p-3 rounded-lg">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-green-600">check_circle</span>
+                      <span class="font-body-md text-on-surface font-semibold max-w-[200px] truncate" :title="medicalSupportFile.name">
+                        {{ medicalSupportFile.name }}
+                      </span>
+                      <span class="text-xs text-outline">
+                        ({{ (medicalSupportFile.size / 1024).toFixed(1) }} KB)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      @click="removeExistingSupport"
+                      class="text-error hover:bg-error/10 px-3 py-1.5 rounded-lg text-label-sm font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">close</span>
+                      Remover
+                    </button>
+                  </div>
+
+                  <!-- Caso 3: No hay soporte cargado ni seleccionado -->
+                  <div
+                    v-else
+                    @click="triggerSupportFileSelect"
+                    class="border-2 border-dashed border-outline-variant/60 rounded-xl p-6 text-center cursor-pointer hover:border-primary/60 transition-all bg-surface/50 flex flex-col items-center justify-center gap-1"
+                  >
+                    <input
+                      ref="supportInputRef"
+                      type="file"
+                      accept=".pdf"
+                      @change="onSupportFileChange"
+                      style="display: none;"
+                    />
+                    <span class="material-symbols-outlined text-outline text-[28px]">picture_as_pdf</span>
+                    <span class="font-label-sm text-outline font-semibold">Haz clic para adjuntar el dictamen/soporte PDF</span>
+                    <span class="text-[11px] text-outline">Solo archivos PDF (Max. 10MB)</span>
+                  </div>
+                </div>
               </div>
             </div>
 

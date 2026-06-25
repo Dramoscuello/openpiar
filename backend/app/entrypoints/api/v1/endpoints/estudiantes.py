@@ -509,6 +509,113 @@ async def actualizar_entorno_salud(
     return EntornoSaludResponse.model_validate(salud)
 
 
+@router.post(
+    "/{estudiante_id}/salud/soporte",
+    response_model=BaseResponse,
+    summary="Subir soporte médico del diagnóstico en PDF",
+)
+async def subir_soporte_medico(
+    estudiante_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> BaseResponse:
+    await check_write_permission(current_user, db)
+    
+    # Validar formato de archivo
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El archivo de soporte debe ser un PDF (.pdf).",
+        )
+        
+    # Validar tamaño máximo (10 MB)
+    contenido = await file.read()
+    if len(contenido) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="El soporte médico no puede superar los 10 MB.",
+        )
+        
+    result = await db.execute(
+        select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
+    )
+    salud = result.scalars().first()
+    if not salud:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Primero debes crear el entorno de salud del estudiante.",
+        )
+        
+    salud.soporte_medico_nombre = file.filename
+    salud.soporte_medico_archivo = contenido
+    
+    await db.flush()
+    return BaseResponse(
+        success=True,
+        message=f"Soporte médico '{file.filename}' cargado exitosamente."
+    )
+
+
+@router.get(
+    "/{estudiante_id}/salud/soporte",
+    summary="Descargar soporte médico del diagnóstico",
+)
+async def descargar_soporte_medico(
+    estudiante_id: uuid.UUID,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
+    )
+    salud = result.scalars().first()
+    if not salud or not salud.soporte_medico_archivo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Soporte médico no encontrado para este estudiante.",
+        )
+        
+    return Response(
+        content=salud.soporte_medico_archivo,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{salud.soporte_medico_nombre}"'
+        }
+    )
+
+
+@router.delete(
+    "/{estudiante_id}/salud/soporte",
+    response_model=BaseResponse,
+    summary="Eliminar soporte médico del diagnóstico",
+)
+async def eliminar_soporte_medico(
+    estudiante_id: uuid.UUID,
+    current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
+) -> BaseResponse:
+    await check_write_permission(current_user, db)
+    result = await db.execute(
+        select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
+    )
+    salud = result.scalars().first()
+    if not salud or not salud.soporte_medico_archivo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El estudiante no tiene soporte médico registrado.",
+        )
+        
+    salud.soporte_medico_nombre = None
+    salud.soporte_medico_archivo = None
+    
+    await db.flush()
+    return BaseResponse(
+        success=True,
+        message="Soporte médico eliminado exitosamente."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Entorno Hogar — GET / POST / PATCH
 # ---------------------------------------------------------------------------

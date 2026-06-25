@@ -46,6 +46,7 @@ export interface StudentSalud {
   medicamentos_detalle: string
   productos_apoyo_movilidad: boolean
   productos_apoyo_cual: string
+  soporte_medico_nombre?: string | null
 }
 
 export interface StudentHogar {
@@ -161,6 +162,7 @@ const createDefaultDraft = (): StudentDraft => ({
     medicamentos_detalle: '',
     productos_apoyo_movilidad: false,
     productos_apoyo_cual: '',
+    soporte_medico_nombre: null,
   },
   hogar: {
     nombre_madre: '',
@@ -355,6 +357,7 @@ export const useStudentsStore = defineStore('students', {
             medicamentos_detalle: dataSalud.medicamentos_detalle || '',
             productos_apoyo_movilidad: dataSalud.productos_apoyo_movilidad || false,
             productos_apoyo_cual: dataSalud.productos_apoyo_cual || '',
+            soporte_medico_nombre: dataSalud.soporte_medico_nombre || null,
           }
         }
 
@@ -418,7 +421,7 @@ export const useStudentsStore = defineStore('students', {
      * Sincroniza el borrador local (general, salud, hogar, trayectoria y matrícula) con el servidor.
      * Si `estudianteId` existe, edita; de lo contrario, registra un nuevo estudiante.
      */
-    async saveStudent(estudianteId?: string): Promise<boolean> {
+    async saveStudent(estudianteId?: string, medicalSupportFile?: File | null): Promise<boolean> {
       const authStore = useAuthStore()
       this.submitting = true
       this.error = null
@@ -500,6 +503,23 @@ export const useStudentsStore = defineStore('students', {
         const payloadSalud = { ...this.draft.salud }
         if (payloadSalud.regimen === '') delete (payloadSalud as any).regimen
         await syncSubResource(`/api/v1/estudiantes/${id}/salud`, payloadSalud)
+
+        // --- 2b. Sincronizar Soporte Médico si aplica ---
+        if (medicalSupportFile) {
+          const formData = new FormData()
+          formData.append('file', medicalSupportFile)
+          const uploadRes = await fetch(`/api/v1/estudiantes/${id}/salud/soporte`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${authStore.token}`,
+            },
+            body: formData,
+          })
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json().catch(() => ({}))
+            throw new Error(errData.detail || 'Error al subir el soporte médico del diagnóstico.')
+          }
+        }
 
         // --- 3. Sincronizar Entorno Hogar ---
         const payloadHogar = { ...this.draft.hogar }
@@ -622,6 +642,93 @@ export const useStudentsStore = defineStore('students', {
         throw err
       } finally {
         this.submitting = false
+      }
+    },
+
+    async uploadMedicalSupport(studentId: string, file: File): Promise<string> {
+      const authStore = useAuthStore()
+      this.submitting = true
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch(`/api/v1/estudiantes/${studentId}/salud/soporte`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`,
+          },
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Error al subir el soporte médico.')
+        }
+
+        // Update draft value
+        this.draft.salud.soporte_medico_nombre = file.name
+        this.saveDraft()
+        
+        return file.name
+      } catch (err: any) {
+        this.error = err.message || 'Error al subir el soporte médico.'
+        throw err
+      } finally {
+        this.submitting = false
+      }
+    },
+
+    async deleteMedicalSupport(studentId: string): Promise<boolean> {
+      const authStore = useAuthStore()
+      this.submitting = true
+      this.error = null
+      try {
+        const response = await fetch(`/api/v1/estudiantes/${studentId}/salud/soporte`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Error al eliminar el soporte médico.')
+        }
+
+        // Update draft value
+        this.draft.salud.soporte_medico_nombre = null
+        this.saveDraft()
+        
+        return true
+      } catch (err: any) {
+        this.error = err.message || 'Error al eliminar el soporte médico.'
+        throw err
+      } finally {
+        this.submitting = false
+      }
+    },
+
+    async downloadMedicalSupport(studentId: string): Promise<Blob> {
+      const authStore = useAuthStore()
+      this.error = null
+      try {
+        const response = await fetch(`/api/v1/estudiantes/${studentId}/salud/soporte`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Error al descargar el soporte médico.')
+        }
+
+        return await response.blob()
+      } catch (err: any) {
+        this.error = err.message || 'Error al descargar el soporte médico.'
+        throw err
       }
     },
   },

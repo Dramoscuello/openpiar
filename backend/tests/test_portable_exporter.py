@@ -146,3 +146,6 @@ async def test_full_export_import_cycle():
         
         # Deshacer cambios
         await session.rollback()
+
+    from app.adapters.db.session import engine
+    await engine.dispose()

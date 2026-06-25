@@ -238,6 +238,7 @@ class EntornoSaludRequest(BaseModel):
     medicamentos_detalle: Optional[str] = None
     productos_apoyo_movilidad: bool = False
     productos_apoyo_cual: Optional[str] = None
+    soporte_medico_nombre: Optional[str] = None
 
 
 class EntornoSaludResponse(EntornoSaludRequest, BaseResponse):

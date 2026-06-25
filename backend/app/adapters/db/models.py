@@ -23,6 +23,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Text,
     UniqueConstraint,
     Table,
@@ -253,6 +254,8 @@ class EntornoSaludORM(Base):
     medicamentos_detalle: Mapped[Optional[str]] = mapped_column(Text)
     productos_apoyo_movilidad: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     productos_apoyo_cual: Mapped[Optional[str]] = mapped_column(Text)
+    soporte_medico_nombre: Mapped[Optional[str]] = mapped_column(Text)
+    soporte_medico_archivo: Mapped[Optional[bytes]] = mapped_column(LargeBinary)
     updated_at: Mapped[datetime] = mapped_column(
         default=_now, onupdate=_now, server_default=func.now()
     )

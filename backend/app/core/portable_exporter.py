@@ -103,6 +103,9 @@ def model_to_dict(instance, exclude_fields=None) -> Optional[dict]:
                 res[col.name] = val.isoformat()
             elif isinstance(val, uuid.UUID):
                 res[col.name] = str(val)
+            elif isinstance(val, bytes):
+                import base64
+                res[col.name] = base64.b64encode(val).decode('utf-8')
             else:
                 res[col.name] = val
     return res
@@ -120,11 +123,14 @@ def populate_orm(model_class, data_dict: dict, **kwargs) -> Any:
     for k, v in data_dict.items():
         col = model_class.__table__.columns.get(k)
         if col is not None and v is not None:
-            from sqlalchemy import Date, DateTime
+            from sqlalchemy import Date, DateTime, LargeBinary
             if isinstance(col.type, Date) and isinstance(v, str):
                 clean_dict[k] = date.fromisoformat(v)
             elif isinstance(col.type, DateTime) and isinstance(v, str):
                 clean_dict[k] = datetime.fromisoformat(v)
+            elif isinstance(col.type, LargeBinary) and isinstance(v, str):
+                import base64
+                clean_dict[k] = base64.b64decode(v.encode('utf-8'))
             else:
                 clean_dict[k] = v
         else:
