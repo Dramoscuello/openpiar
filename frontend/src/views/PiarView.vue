@@ -854,29 +854,63 @@
 
             <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 16px 0;">
               Estás exportando el historial de <strong style="color:#111827;">{{ estudiante?.nombres }} {{ estudiante?.apellidos }}</strong>.
-              Ingresa una contraseña para cifrar el archivo de forma segura. Quien lo importe necesitará esta contraseña.
+              Se ha generado una clave aleatoria segura de 16 caracteres para cifrar este archivo.
             </p>
 
-            <!-- Password input -->
-            <div style="margin-bottom:16px;">
-              <label style="display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px;">Contraseña de cifrado (mínimo 6 caracteres)</label>
-              <input
-                type="password"
-                v-model="exportPassword"
-                placeholder="••••••"
-                style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;"
-              />
+            <!-- Clave de cifrado generada -->
+            <div style="margin-bottom:12px;">
+              <label style="display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px;">Clave segura generada</label>
+              <div style="position:relative; display:flex; align-items:center;">
+                <input
+                  :type="showPassword ? 'text' : 'password'"
+                  v-model="exportPassword"
+                  readonly
+                  style="width:100%; padding:12px 48px 12px 14px; border:2px solid #e5e7eb; border-radius:10px; font-size:15px; font-family:monospace; font-weight:600; color:#111827; background:#f9fafb; box-sizing:border-box; letter-spacing:0.05em;"
+                />
+                <button
+                  type="button"
+                  @click="showPassword = !showPassword"
+                  style="position:absolute; right:12px; background:none; border:none; color:#6b7280; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"
+                >
+                  <span class="material-symbols-outlined" style="font-size:20px;">
+                    {{ showPassword ? 'visibility_off' : 'visibility' }}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <!-- Confirm Password input -->
-            <div style="margin-bottom:16px;">
-              <label style="display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px;">Confirmar contraseña</label>
-              <input
-                type="password"
-                v-model="exportConfirmPassword"
-                placeholder="••••••"
-                style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; box-sizing:border-box;"
-              />
+            <!-- Botones de respaldo -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+              <button
+                type="button"
+                @click="copiarClave"
+                style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:13px; font-weight:600; color:#374151; cursor:pointer; transition:all 0.2s;"
+                :style="hasCopiedPassword ? { borderColor:'#10b981', background:'#ecfdf5', color:'#047857' } : {}"
+              >
+                <span class="material-symbols-outlined" style="font-size:18px;">
+                  {{ hasCopiedPassword ? 'check_circle' : 'content_copy' }}
+                </span>
+                {{ hasCopiedPassword ? 'Copiada' : 'Copiar Clave' }}
+              </button>
+              <button
+                type="button"
+                @click="descargarClaveTxt"
+                style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:13px; font-weight:600; color:#374151; cursor:pointer; transition:all 0.2s;"
+                :style="hasDownloadedPassword ? { borderColor:'#10b981', background:'#ecfdf5', color:'#047857' } : {}"
+              >
+                <span class="material-symbols-outlined" style="font-size:18px;">
+                  {{ hasDownloadedPassword ? 'check_circle' : 'download' }}
+                </span>
+                {{ hasDownloadedPassword ? 'Descargada' : 'Descargar .txt' }}
+              </button>
+            </div>
+
+            <!-- Advertencia de seguridad -->
+            <div style="background:#fffbeb; border:1px solid #fef3c7; border-radius:10px; padding:12px; display:flex; gap:10px; margin-bottom:18px;">
+              <span class="material-symbols-outlined" style="color:#d97706; font-size:20px; flex-shrink:0;">warning</span>
+              <span style="font-size:12px; color:#92400e; line-height:1.5;">
+                Guarda esta clave. Sin ella, no se podrá descifrar la información en el colegio de destino. No se puede recuperar después de exportar.
+              </span>
             </div>
 
             <!-- Error -->
@@ -888,11 +922,14 @@
             </div>
 
             <!-- Actions -->
-            <div style="display:flex; justify-content:flex-end; gap:12px;">
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap:12px;">
+              <span v-if="!hasCopiedPassword && !hasDownloadedPassword" style="font-size:11px; color:#ef4444; font-weight:500; margin-right:auto;">
+                Respalda la clave para continuar
+              </span>
               <button
                 @click="cancelarExportar"
                 :disabled="isExporting"
-                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
+                style="padding:10px 16px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
                 @mouseenter="($event.target as HTMLElement).style.background='#f9fafb'"
                 @mouseleave="($event.target as HTMLElement).style.background='transparent'"
               >
@@ -900,9 +937,9 @@
               </button>
               <button
                 @click="ejecutarExportar"
-                :disabled="isExporting || exportPassword.length < 6 || exportPassword !== exportConfirmPassword"
+                :disabled="isExporting || (!hasCopiedPassword && !hasDownloadedPassword)"
                 style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; color:#fff; background:#4f46e5; border:none; cursor:pointer; transition:opacity .15s;"
-                :style="{ opacity: (isExporting || exportPassword.length < 6 || exportPassword !== exportConfirmPassword) ? 0.6 : 1 }"
+                :style="{ opacity: (isExporting || (!hasCopiedPassword && !hasDownloadedPassword)) ? 0.5 : 1, cursor: (isExporting || (!hasCopiedPassword && !hasDownloadedPassword)) ? 'not-allowed' : 'pointer' }"
               >
                 <span v-if="isExporting">Exportando...</span>
                 <span v-else>Cifrar y Descargar</span>
@@ -936,31 +973,85 @@ const entornoSalud = ref<any>(null)
 // Exportar expediente portable .openpiar
 const showExportModal = ref(false)
 const exportPassword = ref('')
-const exportConfirmPassword = ref('')
+const showPassword = ref(false)
+const hasCopiedPassword = ref(false)
+const hasDownloadedPassword = ref(false)
 const isExporting = ref(false)
 const exportError = ref('')
 
+function generarClaveSegura(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const len = 16
+  let password = ''
+  const temp = new Uint8Array(1)
+  while (password.length < len) {
+    window.crypto.getRandomValues(temp)
+    const val = temp[0] ?? 0
+    if (val < 248) {
+      password += chars[val % chars.length]
+    }
+  }
+  return password
+}
+
 function abrirModalExportar() {
   showExportModal.value = true
-  exportPassword.value = ''
-  exportConfirmPassword.value = ''
+  exportPassword.value = generarClaveSegura()
+  showPassword.value = false
+  hasCopiedPassword.value = false
+  hasDownloadedPassword.value = false
   exportError.value = ''
 }
 
 function cancelarExportar() {
   showExportModal.value = false
   exportPassword.value = ''
-  exportConfirmPassword.value = ''
+  showPassword.value = false
+  hasCopiedPassword.value = false
+  hasDownloadedPassword.value = false
   exportError.value = ''
 }
 
+async function copiarClave() {
+  try {
+    await navigator.clipboard.writeText(exportPassword.value)
+    hasCopiedPassword.value = true
+    showToast('Clave copiada al portapapeles.')
+  } catch (e) {
+    alert('No se pudo copiar automáticamente. Por favor selecciónala y cópiala manualmente.')
+  }
+}
+
+function descargarClaveTxt() {
+  const content = `CLAVE DE SEGURIDAD OPENPIAR\n` +
+                  `==========================\n` +
+                  `Estudiante: ${estudiante.value?.nombres} ${estudiante.value?.apellidos}\n` +
+                  `Fecha de Exportación: ${new Date().toLocaleString()}\n` +
+                  `Clave de Cifrado (16 caracteres): ${exportPassword.value}\n\n` +
+                  `IMPORTANTE:\n` +
+                  `Guarda este archivo en un lugar seguro. Necesitarás esta clave para importar\n` +
+                  `el expediente (.openpiar) en el colegio de destino.\n`
+                  
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `clave_openpiar_${estudiante.value?.nombres || 'estudiante'}_${estudiante.value?.apellidos || 'expediente'}.txt`.toLowerCase().replace(/\s+/g, '_')
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+  hasDownloadedPassword.value = true
+  showToast('Archivo de clave descargado.')
+}
+
 async function ejecutarExportar() {
-  if (exportPassword.value.length < 6) {
-    exportError.value = 'La contraseña debe tener al menos 6 caracteres.'
+  if (exportPassword.value.length < 16) {
+    exportError.value = 'La clave debe tener al menos 16 caracteres.'
     return
   }
-  if (exportPassword.value !== exportConfirmPassword.value) {
-    exportError.value = 'Las contraseñas no coinciden.'
+  if (!hasCopiedPassword.value && !hasDownloadedPassword.value) {
+    exportError.value = 'Debes copiar o descargar la clave para continuar.'
     return
   }
 
