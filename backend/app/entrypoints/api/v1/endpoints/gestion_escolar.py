@@ -443,12 +443,15 @@ async def list_asignaturas(
         query = (
             select(AsignaturaORM)
             .join(CargaAcademicaORM, AsignaturaORM.id == CargaAcademicaORM.asignatura_id)
-            .join(AsignaturaORM.area)
             .options(selectinload(AsignaturaORM.area))
             .where(CargaAcademicaORM.docente_id == current_user.id)
-            .order_by(AreaORM.nombre, AsignaturaORM.nombre)
-            .distinct()
         )
+        result = await db.execute(query)
+        # De-duplicar por ID en memoria
+        unique_asigs = list({a.id: a for a in result.scalars().all()}.values())
+        # Ordenar por área y asignatura
+        unique_asigs.sort(key=lambda a: (a.area.nombre if a.area else "", a.nombre))
+        asigs = unique_asigs
     else:
         query = (
             select(AsignaturaORM)
@@ -456,9 +459,8 @@ async def list_asignaturas(
             .options(selectinload(AsignaturaORM.area))
             .order_by(AreaORM.nombre, AsignaturaORM.nombre)
         )
-
-    result = await db.execute(query)
-    asigs = result.scalars().all()
+        result = await db.execute(query)
+        asigs = result.scalars().all()
     
     return [
         AsignaturaResponse(
