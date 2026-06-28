@@ -171,6 +171,38 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
+  async function puntuarAjuste(ajusteId: string, puntuacion: number, comentario: string | null) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${ajusteId}/puntuacion`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify({ puntuacion, comentario })
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.detail || 'Error al puntuar ajuste')
+      }
+      const updatedAjuste = await response.json()
+      const index = activePiar.value.ajustes_razonables.findIndex((a: any) => a.id === ajusteId)
+      if (index !== -1) {
+        activePiar.value.ajustes_razonables[index] = {
+          ...activePiar.value.ajustes_razonables[index],
+          ...updatedAjuste,
+        }
+      }
+      return updatedAjuste
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
   async function updatePiar(docentesElaboran: string, caracteristicas?: { descripcion_gustos_intereses: string, descripcion_habilidades: string }) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
@@ -351,6 +383,7 @@ export const usePiarStore = defineStore('piar', () => {
     saveAjuste,
     updateAjuste,
     deleteAjuste,
+    puntuarAjuste,
     updatePiar,
     addRecomendacionPMI,
     updateRecomendacionPMI,

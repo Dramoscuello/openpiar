@@ -36,6 +36,7 @@ from app.entrypoints.api.schemas import (
     PiarResponse,
     AjusteRazonableCreate,
     AjusteRazonableResponse,
+    AjustePuntuacionRequest,
     GenerarAjustesRequest,
     GenerarPlanCompletoRequest,
     PlanCompletoIAResponse,
@@ -98,6 +99,21 @@ async def get_piar_by_estudiante(
     
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado para este estudiante.")
+
+    es_directivo = current_user.rol.es_directivo
+    es_director = False
+    if not es_directivo:
+        estudiante = await db.get(EstudianteORM, estudiante_id)
+        if estudiante and estudiante.grupo_id:
+            grupo = await db.get(GrupoORM, estudiante.grupo_id)
+            if grupo and grupo.director_id == current_user.id:
+                es_director = True
+
+    if not es_directivo and not es_director:
+        piar.ajustes_razonables = [
+            a for a in piar.ajustes_razonables
+            if a.creado_por == current_user.id
+        ]
     
     return piar
 
@@ -162,6 +178,7 @@ async def add_ajuste_razonable(
     nuevo_ajuste = AjusteRazonableORM(
         piar_id=piar_id,
         periodo_id=periodo_activo.id,
+        creado_por=current_user.id,
         area=data.area,
         titulo_tema=data.titulo_tema,
         objetivos_propositos=data.objetivos_propositos,
@@ -418,6 +435,31 @@ async def update_ajuste_razonable(
     await db.commit()
     await db.refresh(ajuste)
     return ajuste
+
+
+@router.patch("/{piar_id}/ajustes/{ajuste_id}/puntuacion", response_model=AjusteRazonableResponse)
+async def puntuar_ajuste(
+    piar_id: uuid.UUID,
+    ajuste_id: uuid.UUID,
+    data: AjustePuntuacionRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """Puntúa un ajuste razonable (1-5) con comentario. Solo el creador puede hacerlo."""
+    ajuste = await db.get(AjusteRazonableORM, ajuste_id)
+    if not ajuste or ajuste.piar_id != piar_id:
+        raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
+
+    if ajuste.creado_por != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede puntuarlo.")
+
+    ajuste.puntuacion = data.puntuacion
+    ajuste.comentario_puntuacion = data.comentario
+
+    await db.commit()
+    await db.refresh(ajuste)
+    return ajuste
+
 
 @router.delete("/{piar_id}/ajustes/{ajuste_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_ajuste_razonable(

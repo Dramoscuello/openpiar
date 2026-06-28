@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col h-screen bg-background overflow-hidden font-body-md text-on-surface">
-    <!-- Header -->
-    <header class="h-20 w-full flex-shrink-0 bg-surface flex justify-between items-center px-lg border-b border-outline-variant/30 shadow-sm z-20">
+  <div class="flex-1 flex flex-col overflow-hidden font-body-md text-on-surface">
+    <!-- PIAR Context Banner -->
+    <div class="flex-shrink-0 bg-surface px-lg py-4 border-b border-outline-variant/30 shadow-sm flex justify-between items-center flex-wrap gap-3">
       <div class="flex items-center gap-4">
         <router-link to="/estudiantes" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-high active:scale-95 transition-all text-on-surface-variant cursor-pointer">
           <span class="material-symbols-outlined">arrow_back</span>
@@ -9,7 +9,7 @@
         <div>
           <h1 class="text-headline-md font-bold text-primary flex items-center gap-2">
             <span class="material-symbols-outlined">description</span>
-            Anexo 2: Plan Individual de Ajustes Razonables (PIAR)
+            Anexo 2: PIAR
           </h1>
           <p v-if="estudiante" class="text-body-md text-on-surface-variant">
             Estudiante: <strong class="text-on-surface font-semibold">{{ estudiante.nombres }} {{ estudiante.apellidos }}</strong> ({{ estudiante.tipo_documento }} {{ estudiante.numero_documento }})
@@ -24,7 +24,7 @@
           Estado: {{ activePiar.estado }}
         </span>
       </div>
-    </header>
+    </div>
 
     <!-- Loading / Error States -->
     <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center">
@@ -393,21 +393,30 @@
               <p class="text-label-sm max-w-[24rem] mx-auto">Utiliza el formulario de la izquierda para agregar objetivos de aprendizaje y estrategias adaptadas para el estudiante.</p>
             </div>
 
-            <div v-else class="space-y-lg max-h-[70vh] overflow-y-auto pr-xs">
-              <div v-for="grupo in periodosConAjustes" :key="grupo.periodo.id" class="space-y-sm">
-                <!-- Header del periodo -->
-                <div class="flex items-center gap-2 border-b border-outline-variant/20 pb-xs mb-xs mt-sm">
+            <div v-else class="space-y-sm max-h-[70vh] overflow-y-auto pr-xs">
+              <div v-for="grupo in periodosConAjustes" :key="grupo.periodo.id">
+                <!-- Header del periodo — acordeón -->
+                <button
+                  @click="togglePeriodo(grupo.periodo.id)"
+                  class="w-full flex items-center gap-2 py-2.5 border-b border-outline-variant/20 hover:bg-surface-container-low/50 transition-colors rounded-lg px-2 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-outline-variant text-[20px] transition-transform duration-200"
+                    :class="periodosExpandidos[grupo.periodo.id] ? 'rotate-90' : ''"
+                  >chevron_right</span>
                   <span class="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
-                  <span class="font-bold text-on-surface text-body-lg">
+                  <span class="font-bold text-on-surface text-body-md">
                     {{ grupo.periodo.nombre }}
                   </span>
-                  <span v-if="grupo.periodo.activo" class="bg-success/15 text-success border border-success/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider">
+                  <span class="bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded-full text-[11px] font-bold">
+                    {{ grupo.ajustes?.length || 0 }}
+                  </span>
+                  <span v-if="grupo.periodo.activo" class="bg-success/15 text-success border border-success/30 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ml-auto">
                     Activo
                   </span>
-                </div>
+                </button>
 
                 <!-- Lista de ajustes para este periodo -->
-                <div class="space-y-sm">
+                <div v-show="periodosExpandidos[grupo.periodo.id]" class="space-y-sm pl-7 pt-2 pb-1">
                   <article 
                     v-for="ajuste in grupo.ajustes" 
                     :key="ajuste.id" 
@@ -469,6 +478,59 @@
                         <span class="material-symbols-outlined text-[14px]">fact_check</span> Evaluación de Ajuste
                       </h4>
                       <p class="text-on-surface-variant leading-snug">{{ ajuste.evaluacion_ajustes }}</p>
+                    </div>
+
+                    <!-- Puntuación del ajuste (solo visible para el creador) -->
+                    <div v-if="ajuste.creado_por === authStore.user?.id" class="border-t border-outline-variant/20 pt-sm mt-xs">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <h4 class="font-bold text-amber-700 text-xs uppercase tracking-wider flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[14px]">star</span>
+                          {{ ajuste.puntuacion ? 'Tu valoración' : '¿Te funcionó este ajuste?' }}
+                        </h4>
+                        <span v-if="ajuste.puntuacion" class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold">
+                          {{ ajuste.puntuacion }}/5
+                        </span>
+                      </div>
+                      <p v-if="!ajuste.puntuacion" class="text-[11px] text-on-surface-variant mb-1.5">
+                        Califica del 1 al 5 qué tan efectivo fue en el aula.
+                      </p>
+                      <div class="flex items-center gap-0.5 mb-1.5">
+                        <button
+                          v-for="star in 5"
+                          :key="star"
+                          @click="puntuarAjuste(ajuste, star)"
+                          class="text-xl transition-all cursor-pointer hover:scale-125"
+                          :class="(ajuste.puntuacion || 0) >= star ? 'text-amber-500' : 'text-outline-variant'"
+                          :title="`${star} estrella(s)`"
+                        >
+                          {{ (ajuste.puntuacion || 0) >= star ? '★' : '☆' }}
+                        </button>
+                      </div>
+                      <div v-if="ajuste.puntuacion" class="space-y-1.5">
+                        <textarea
+                          v-model="ajuste._comentarioPuntuacion"
+                          class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm outline-none focus:border-amber-500 transition-all resize-none text-xs h-14"
+                          placeholder="Explica brevemente por qué funcionó o no este ajuste..."
+                        ></textarea>
+                        <div class="flex items-center justify-between">
+                          <span v-if="ajuste._comentarioPuntuacion === ajuste._comentarioGuardado && ajuste._comentarioGuardado" class="text-[10px] text-green-600 flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-[14px]">check_circle</span> Guardado
+                          </span>
+                          <span v-else class="text-[10px] text-amber-600">
+                            Sin guardar
+                          </span>
+                          <button
+                            @click="guardarComentarioPuntuacion(ajuste)"
+                            :disabled="ajuste._comentarioPuntuacion === ajuste._comentarioGuardado"
+                            class="text-[11px] font-bold px-3 py-1 rounded-lg transition-all cursor-pointer"
+                            :class="ajuste._comentarioPuntuacion === ajuste._comentarioGuardado
+                              ? 'bg-green-50 text-green-600 cursor-default'
+                              : 'bg-amber-500 text-white hover:bg-amber-600'"
+                          >
+                            Guardar comentario
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </article>
                 </div>
@@ -1216,6 +1278,13 @@ const periodoEdicionNombre = computed(() => {
   return ''
 })
 
+// Acordeón de periodos
+const periodosExpandidos = ref<Record<number, boolean>>({})
+
+function togglePeriodo(periodoId: number) {
+  periodosExpandidos.value[periodoId] = !periodosExpandidos.value[periodoId]
+}
+
 const ajustesPorPeriodo = computed(() => {
   if (!activePiar.value || !activePiar.value.ajustes_razonables) return {}
   const grouped: Record<number, any[]> = {}
@@ -1252,6 +1321,14 @@ const periodosConAjustes = computed(() => {
   
   return list
 })
+
+watch(periodosConAjustes, (grupos) => {
+  grupos.forEach((g) => {
+    if (g.periodo.activo && periodosExpandidos.value[g.periodo.id] === undefined) {
+      periodosExpandidos.value[g.periodo.id] = true
+    }
+  })
+}, { immediate: true })
 
 // TAB 2: Formulario Ajuste
 const AREAS_VALIDAS = ['Matemáticas', 'Ciencias', 'Lenguaje', 'Convivencia', 'Socialización', 'Participación', 'Autonomía', 'Autocontrol'] as const
@@ -1414,11 +1491,19 @@ async function cargarAsignaturas() {
 async function cargarPiar() {
   await piarStore.fetchPiarForStudent(estudianteId)
   inicializarFormularios()
+  if (activePiar.value?.ajustes_razonables) {
+    activePiar.value.ajustes_razonables.forEach((a: any) => {
+      if (a._comentarioPuntuacion === undefined) {
+        a._comentarioPuntuacion = a.comentario_puntuacion || ''
+        a._comentarioGuardado = a.comentario_puntuacion || ''
+      }
+    })
+  }
 }
 
 function inicializarFormularios() {
   if (activePiar.value) {
-    docentesElaboran.value = activePiar.value.docentes_elaboran || (authStore.user ? `${authStore.user.nombre} ${authStore.user.apellido}` : '')
+    docentesElaboran.value = authStore.user ? `${authStore.user.nombre} ${authStore.user.apellido}` : ''
     gustos.value = activePiar.value.caracteristicas?.descripcion_gustos_intereses || ''
     habilidades.value = activePiar.value.caracteristicas?.descripcion_habilidades || ''
     cargarActaDesdePiar()
@@ -1545,6 +1630,44 @@ async function eliminarAjuste(ajusteId: string) {
     } catch (e: any) {
       showToast("Error al eliminar el ajuste razonable.", true)
     }
+  }
+}
+
+async function puntuarAjuste(ajuste: any, star: number) {
+  if (!authStore.user) return
+  ajuste.puntuacion = star
+  const comentario = ajuste._comentarioPuntuacion || ''
+  try {
+    const updated = await piarStore.puntuarAjuste(ajuste.id, star, comentario)
+    // Re-sincronizar desde el array actualizado
+    const current = activePiar.value?.ajustes_razonables?.find((a: any) => a.id === ajuste.id)
+    if (current) {
+      current._comentarioGuardado = comentario
+      current._comentarioPuntuacion = comentario
+      current.puntuacion = updated.puntuacion ?? star
+      current.comentario_puntuacion = updated.comentario_puntuacion
+    }
+    showToast(`Ajuste valorado con ${star} estrella(s).`)
+  } catch (e: any) {
+    showToast(e.message || 'Error al puntuar.', true)
+  }
+}
+
+async function guardarComentarioPuntuacion(ajuste: any) {
+  if (!ajuste.puntuacion) return
+  const comentario = ajuste._comentarioPuntuacion || ''
+  try {
+    const updated = await piarStore.puntuarAjuste(ajuste.id, ajuste.puntuacion, comentario)
+    // Re-sincronizar desde el array actualizado
+    const current = activePiar.value?.ajustes_razonables?.find((a: any) => a.id === ajuste.id)
+    if (current) {
+      current._comentarioGuardado = comentario
+      current._comentarioPuntuacion = comentario
+      current.comentario_puntuacion = updated.comentario_puntuacion
+    }
+    showToast('Comentario guardado.')
+  } catch (e: any) {
+    showToast(e.message || 'Error al guardar comentario.', true)
   }
 }
 

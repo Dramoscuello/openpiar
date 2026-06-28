@@ -233,109 +233,7 @@ async function ejecutarImportar() {
 </script>
 
 <template>
-  <div class="flex bg-background text-on-background min-h-screen transition-colors duration-300">
-    <!-- SideNavBar -->
-    <aside
-      class="w-64 h-screen fixed left-0 top-0 flex flex-col bg-surface-container-lowest border-r border-outline-variant z-40 transition-colors duration-300"
-    >
-      <div class="px-gutter py-8">
-        <div class="flex items-center gap-3 mb-10">
-          <span class="material-symbols-outlined text-primary text-headline-md star-icon">star</span>
-          <h1 class="text-headline-md font-display font-bold text-primary">OpenPiar</h1>
-        </div>
-        
-        <nav class="space-y-1">
-          <p class="text-label-sm uppercase tracking-wider text-outline mb-4 px-4 select-none">VISTA GENERAL</p>
-          <RouterLink
-            to="/dashboard"
-            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
-          >
-            <span class="material-symbols-outlined">dashboard</span>
-            <span class="font-label-md">Dashboard</span>
-          </RouterLink>
-          <RouterLink
-            to="/estudiantes"
-            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
-          >
-            <span class="material-symbols-outlined">group</span>
-            <span class="font-label-md">Estudiantes</span>
-          </RouterLink>
-          <a
-            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            href="#"
-          >
-            <span class="material-symbols-outlined">school</span>
-            <span class="font-label-md">Currículo</span>
-          </a>
-          <RouterLink
-            v-if="authStore.user?.rol === 'directivo'"
-            to="/gestion-escolar"
-            class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-            active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
-          >
-            <span class="material-symbols-outlined">domain</span>
-            <span class="font-label-md">Gestión Escolar</span>
-          </RouterLink>
-        </nav>
-      </div>
-
-      <!-- Sidebar Footer -->
-      <div class="mt-auto p-gutter">
-        <div class="bg-inverse-surface rounded-xxl p-md text-white relative overflow-hidden group">
-          <div class="absolute -right-4 -top-4 w-16 h-16 bg-primary/20 rounded-full transition-transform group-hover:scale-150"></div>
-          <div class="relative z-10">
-            <div class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center mb-3">
-              <span class="material-symbols-outlined text-on-primary-container">support_agent</span>
-            </div>
-            <h3 class="font-headline-md text-[16px] mb-1">Centro de Soporte</h3>
-            <p class="text-label-sm opacity-70 mb-4">¿Necesitas ayuda con los anexos?</p>
-            <button
-              class="w-full bg-white text-zinc-900 hover:bg-zinc-100 py-2.5 rounded-xl font-label-md transition-all active:scale-95 cursor-pointer"
-            >
-              Ayuda Offline
-            </button>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Main Content Area -->
-    <main class="ml-64 flex-1 min-h-screen flex flex-col">
-      <!-- Header -->
-      <header
-        class="h-20 w-full sticky top-0 z-30 bg-background/85 backdrop-blur-md flex justify-between items-center px-gutter border-b border-outline-variant/30 transition-colors duration-300"
-      >
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-primary text-[28px]">group</span>
-          <h2 class="font-headline-md text-headline-md text-on-surface">Gestión de Estudiantes</h2>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <!-- Import Student Button -->
-          <button
-            v-if="authStore.user?.rol === 'directivo'"
-            @click="abrirModalImportar"
-            class="bg-secondary-container hover:opacity-90 text-on-secondary-container px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-sm border border-outline-variant/30 transition-all active:scale-95"
-          >
-            <span class="material-symbols-outlined text-[20px]">upload_file</span>
-            Importar Estudiante
-          </button>
-
-          <!-- Add Student Button -->
-          <button
-            v-if="authStore.canCreateStudent"
-            @click="goToAddStudent"
-            class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
-          >
-            <span class="material-symbols-outlined text-[20px]">person_add</span>
-            Registrar Estudiante
-          </button>
-        </div>
-      </header>
-
-      <!-- Content Grid -->
+  <!-- Content Grid -->
       <div class="p-gutter max-w-screen-2xl mx-auto space-y-gutter flex-grow w-full">
         <!-- Controls Bar -->
         <div class="flex flex-col md:flex-row justify-between items-center gap-sm bg-surface-container-lowest p-md border border-outline-variant/30 rounded-xxl shadow-sm transition-colors duration-300">
@@ -481,12 +379,8 @@ async function ejecutarImportar() {
               </button>
             </div>
           </div>
-        </div>
       </div>
-    </main>
   </div>
-
-  <!-- Modal de confirmación de eliminación -->
   <Teleport to="body">
     <Transition name="modal">
       <div

@@ -28,6 +28,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Table,
     Column,
+    false,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -118,6 +119,9 @@ class UsuarioORM(Base):
     apellido: Mapped[str] = mapped_column(Text, nullable=False)
     rol: Mapped[str] = mapped_column(Text, nullable=False)
     cargo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tour_completado: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         default=_now, server_default=func.now()
     )
@@ -137,6 +141,9 @@ class UsuarioORM(Base):
     )
     carga_academica: Mapped[list["CargaAcademicaORM"]] = relationship(
         "CargaAcademicaORM", back_populates="docente"
+    )
+    ajustes_creados: Mapped[list["AjusteRazonableORM"]] = relationship(
+        "AjusteRazonableORM", back_populates="creador", foreign_keys="AjusteRazonableORM.creado_por"
     )
 
     __table_args__ = (
@@ -491,21 +498,34 @@ class AjusteRazonableORM(Base):
         ForeignKey("periodos_academicos.id", ondelete="CASCADE"),
         nullable=False,
     )
+    creado_por: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     area: Mapped[str] = mapped_column(Text, nullable=False)
     titulo_tema: Mapped[Optional[str]] = mapped_column(Text)
     objetivos_propositos: Mapped[str] = mapped_column(Text, nullable=False)
     barreras_evidenciadas: Mapped[str] = mapped_column(Text, nullable=False)
     ajustes_estrategias: Mapped[str] = mapped_column(Text, nullable=False)
     evaluacion_ajustes: Mapped[Optional[str]] = mapped_column(Text)
+    puntuacion: Mapped[Optional[int]] = mapped_column(
+        Integer, CheckConstraint("puntuacion BETWEEN 1 AND 5", name="ck_ajustes_puntuacion"), nullable=True
+    )
+    comentario_puntuacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         default=_now, onupdate=_now, server_default=func.now()
     )
 
+    creador: Mapped[Optional["UsuarioORM"]] = relationship(
+        back_populates="ajustes_creados", foreign_keys=[creado_por]
+    )
     piar: Mapped["PiarORM"] = relationship(back_populates="ajustes_razonables")
     periodo: Mapped["PeriodoAcademicoORM"] = relationship()
 
     __table_args__ = (
         Index("ajustes_razonables_piar_id_idx", piar_id),
+        Index("ajustes_razonables_creado_por_idx", creado_por),
     )
 
 

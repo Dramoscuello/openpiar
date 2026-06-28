@@ -16,7 +16,7 @@ from app.entrypoints.api.dependencies import CurrentUser, get_usuario_repo
 from app.entrypoints.api.schemas import TokenResponse, UsuarioResponse, ChangePasswordRequest
 from app.use_cases.auth.login import LoginInput, LoginUseCase
 from app.adapters.db.session import get_db
-from app.adapters.db.models import GrupoORM
+from app.adapters.db.models import GrupoORM, UsuarioORM
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -63,11 +63,12 @@ async def get_me(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ) -> UsuarioResponse:
-    # Verificar si es director de algún grupo
     group_director_result = await db.execute(
         select(GrupoORM).where(GrupoORM.director_id == current_user.id)
     )
     es_director = group_director_result.scalars().first() is not None
+
+    user_orm = await db.get(UsuarioORM, current_user.id)
 
     return UsuarioResponse(
         id=current_user.id,
@@ -76,6 +77,7 @@ async def get_me(
         apellido=current_user.apellido,
         rol=str(current_user.rol),
         es_director=es_director,
+        tour_completado=user_orm.tour_completado if user_orm else False,
         created_at=current_user.created_at,
     )
 
@@ -111,3 +113,20 @@ async def change_password(
             detail=str(exc),
         )
     return {"message": "Contraseña actualizada exitosamente."}
+
+
+@router.post(
+    "/tour-completado",
+    summary="Marcar tour como completado",
+    description="Marca el tour guiado como completado para el usuario actual.",
+)
+async def mark_tour_completed(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    user_orm = await db.get(UsuarioORM, current_user.id)
+    if not user_orm:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    user_orm.tour_completado = True
+    await db.commit()
+    return {"tour_completado": True}

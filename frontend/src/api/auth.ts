@@ -21,6 +21,7 @@ export interface UserResponse {
   apellido: string
   rol: string
   es_director?: boolean
+  tour_completado?: boolean
   created_at: string
 }
 

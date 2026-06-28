@@ -152,6 +152,7 @@ class UsuarioResponse(BaseResponse):
     rol: str
     cargo: Optional[str] = None
     es_director: bool = False
+    tour_completado: bool = False
     created_at: datetime
 
 
@@ -371,6 +372,13 @@ class AjusteRazonableResponse(AjusteRazonableCreate, BaseResponse):
     id: uuid.UUID
     piar_id: uuid.UUID
     periodo_id: int
+    creado_por: Optional[uuid.UUID] = None
+    puntuacion: Optional[int] = None
+    comentario_puntuacion: Optional[str] = None
+
+class AjustePuntuacionRequest(BaseModel):
+    puntuacion: int = Field(..., ge=1, le=5)
+    comentario: Optional[str] = None
 
 class RecomendacionPMICreate(BaseModel):
     actor: Literal['Familia', 'Docentes', 'Directivos', 'Administrativos', 'Pares']

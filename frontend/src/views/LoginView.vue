@@ -79,6 +79,27 @@ const togglePasswordVisibility = () => {
               </span>
             </div>
           </div>
+
+          <!-- Marco Legal -->
+          <div class="pt-md mt-sm border-t border-black/10">
+            <p class="text-label-sm text-on-surface-variant font-bold mb-xs uppercase tracking-wider opacity-70">
+              Marco Legal Colombiano
+            </p>
+            <ul class="text-label-sm text-on-surface-variant space-y-1 opacity-70">
+              <li class="flex items-start gap-1">
+                <span class="text-primary mt-0.5 shrink-0">•</span>
+                <span><strong>Decreto 1421/2017</strong> — Atención educativa a personas con discapacidad</span>
+              </li>
+              <li class="flex items-start gap-1">
+                <span class="text-primary mt-0.5 shrink-0">•</span>
+                <span><strong>Ley 2216/2022</strong> — Inclusión para estudiantes con TEAp</span>
+              </li>
+              <li class="flex items-start gap-1">
+                <span class="text-primary mt-0.5 shrink-0">•</span>
+                <span><strong>Decreto 1860/1994</strong> — Autonomía institucional y PEI</span>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <!-- Floating Abstract Element -->
