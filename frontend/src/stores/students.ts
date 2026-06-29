@@ -53,14 +53,21 @@ export interface StudentHogar {
   nombre_madre: string
   ocupacion_madre: string
   nivel_educativo_madre: string
+  telefono_madre: string
+  correo_madre: string
+  numero_documento_madre: string
   nombre_padre: string
   ocupacion_padre: string
   nivel_educativo_padre: string
+  telefono_padre: string
+  correo_padre: string
+  numero_documento_padre: string
   nombre_cuidador: string
   parentesco_cuidador: string
   nivel_educativo_cuidador: string
   telefono_cuidador: string
   correo_cuidador: string
+  acudiente_principal: string
   personas_vive_estudiante: string
   numero_hermanos: number
   lugar_que_ocupa: number | null
@@ -168,14 +175,21 @@ const createDefaultDraft = (): StudentDraft => ({
     nombre_madre: '',
     ocupacion_madre: '',
     nivel_educativo_madre: '',
+    telefono_madre: '',
+    correo_madre: '',
+    numero_documento_madre: '',
     nombre_padre: '',
     ocupacion_padre: '',
     nivel_educativo_padre: '',
+    telefono_padre: '',
+    correo_padre: '',
+    numero_documento_padre: '',
     nombre_cuidador: '',
     parentesco_cuidador: '',
     nivel_educativo_cuidador: '',
     telefono_cuidador: '',
     correo_cuidador: '',
+    acudiente_principal: '',
     personas_vive_estudiante: '',
     numero_hermanos: 0,
     lugar_que_ocupa: null,
@@ -366,14 +380,21 @@ export const useStudentsStore = defineStore('students', {
             nombre_madre: dataHogar.nombre_madre || '',
             ocupacion_madre: dataHogar.ocupacion_madre || '',
             nivel_educativo_madre: dataHogar.nivel_educativo_madre || '',
+            telefono_madre: dataHogar.telefono_madre || '',
+            correo_madre: dataHogar.correo_madre || '',
+            numero_documento_madre: dataHogar.numero_documento_madre || '',
             nombre_padre: dataHogar.nombre_padre || '',
             ocupacion_padre: dataHogar.ocupacion_padre || '',
             nivel_educativo_padre: dataHogar.nivel_educativo_padre || '',
+            telefono_padre: dataHogar.telefono_padre || '',
+            correo_padre: dataHogar.correo_padre || '',
+            numero_documento_padre: dataHogar.numero_documento_padre || '',
             nombre_cuidador: dataHogar.nombre_cuidador || '',
             parentesco_cuidador: dataHogar.parentesco_cuidador || '',
             nivel_educativo_cuidador: dataHogar.nivel_educativo_cuidador || '',
             telefono_cuidador: dataHogar.telefono_cuidador || '',
             correo_cuidador: dataHogar.correo_cuidador || '',
+            acudiente_principal: dataHogar.acudiente_principal || '',
             personas_vive_estudiante: dataHogar.personas_vive_estudiante || '',
             numero_hermanos: dataHogar.numero_hermanos || 0,
             lugar_que_ocupa: dataHogar.lugar_que_ocupa || null,

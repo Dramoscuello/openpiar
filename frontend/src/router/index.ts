@@ -50,6 +50,12 @@ const router = createRouter({
       component: () => import('../views/SchoolManagementView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/directorio',
+      name: 'directorio',
+      component: () => import('../views/DirectorioView.vue'),
+      meta: { requiresAuth: true },
+    },
     // Fallback redirect
     {
       path: '/:pathMatch(.*)*',

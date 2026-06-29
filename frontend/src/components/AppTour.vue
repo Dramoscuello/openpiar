@@ -19,7 +19,7 @@ function buildTour() {
 
   tour.addStep({
     id: 'sidebar',
-    title: 'Menú de Navegación',
+    title: 'Menú de navegación',
     text: 'Desde aquí puedes moverte entre el <strong>Dashboard</strong>, la lista de <strong>Estudiantes</strong> y la <strong>Gestión Escolar</strong>.',
     attachTo: { element: 'aside', on: 'right' },
     buttons: [
@@ -37,7 +37,7 @@ function buildTour() {
 
   tour.addStep({
     id: 'topbar',
-    title: 'Barra Superior',
+    title: 'Barra superior',
     text: 'Aquí puedes cambiar entre <strong>modo claro y oscuro</strong>, ver notificaciones, acceder a tu perfil y <strong>cerrar sesión</strong>.',
     attachTo: { element: 'header', on: 'bottom' },
     buttons: [
@@ -55,7 +55,7 @@ function buildTour() {
 
   tour.addStep({
     id: 'menu-estudiantes',
-    title: 'Gestión de Estudiantes',
+    title: 'Gestión de estudiantes',
     text: 'Desde el menú lateral, haz clic en <strong>Estudiantes</strong> para ver, registrar o editar los registros pedagógicos (Anexo 1) de tus estudiantes.',
     attachTo: { element: 'aside nav a[href="/estudiantes"], aside nav a[href$="estudiantes"]', on: 'right' },
     buttons: [

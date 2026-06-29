@@ -246,8 +246,26 @@ async function ejecutarImportar() {
               type="text"
             />
           </div>
-          <div class="flex items-center gap-xs text-label-sm text-outline">
-            Total: <span class="font-bold text-on-surface">{{ filteredStudents.length }}</span> estudiantes
+          <div class="flex items-center gap-sm">
+            <div class="flex items-center gap-xs text-label-sm text-outline">
+              Total: <span class="font-bold text-on-surface">{{ filteredStudents.length }}</span> estudiantes
+            </div>
+            <button
+              v-if="authStore.canCreateStudent"
+              @click="goToAddStudent"
+              class="bg-primary hover:bg-primary-dark text-white px-md py-2 rounded-xl font-label-md text-label-md inline-flex items-center gap-xs cursor-pointer transition-all active:scale-95 shadow-sm"
+            >
+              <span class="material-symbols-outlined text-[20px]">person_add</span>
+              Nuevo estudiante
+            </button>
+            <button
+              v-if="authStore.canCreateStudent"
+              @click="abrirModalImportar"
+              class="bg-secondary hover:bg-secondary-dark text-white px-md py-2 rounded-xl font-label-md text-label-md inline-flex items-center gap-xs cursor-pointer transition-all active:scale-95 shadow-sm"
+            >
+              <span class="material-symbols-outlined text-[20px]">upload_file</span>
+              Importar
+            </button>
           </div>
         </div>
 
@@ -281,7 +299,7 @@ async function ejecutarImportar() {
                   <th class="py-4 px-md">Identificación</th>
                   <th class="py-4 px-md">Edad</th>
                   <th class="py-4 px-md">Residencia</th>
-                  <th class="py-4 px-md">Fecha Registro</th>
+                  <th class="py-4 px-md">Fecha registro</th>
                   <th class="py-4 px-md text-right">Acciones</th>
                 </tr>
               </thead>
@@ -447,7 +465,7 @@ async function ejecutarImportar() {
     </Transition>
   </Teleport>
 
-  <!-- Modal de Importar Estudiante -->
+  <!-- Modal de importar estudiante -->
   <Teleport to="body">
     <Transition name="modal">
       <div
@@ -463,7 +481,7 @@ async function ejecutarImportar() {
             <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#e0e7ff; display:flex; align-items:center; justify-content:center;">
               <span class="material-symbols-outlined" style="color:#4f46e5; font-size:22px;">upload_file</span>
             </div>
-            <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Importar Estudiante</h3>
+            <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Importar estudiante</h3>
           </div>
 
           <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;">

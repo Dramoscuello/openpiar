@@ -301,14 +301,21 @@ class EntornoHogarORM(Base):
     nombre_madre: Mapped[Optional[str]] = mapped_column(Text)
     ocupacion_madre: Mapped[Optional[str]] = mapped_column(Text)
     nivel_educativo_madre: Mapped[Optional[str]] = mapped_column(Text)
+    telefono_madre: Mapped[Optional[str]] = mapped_column(Text)
+    correo_madre: Mapped[Optional[str]] = mapped_column(Text)
+    numero_documento_madre: Mapped[Optional[str]] = mapped_column(Text, index=True)
     nombre_padre: Mapped[Optional[str]] = mapped_column(Text)
     ocupacion_padre: Mapped[Optional[str]] = mapped_column(Text)
     nivel_educativo_padre: Mapped[Optional[str]] = mapped_column(Text)
+    telefono_padre: Mapped[Optional[str]] = mapped_column(Text)
+    correo_padre: Mapped[Optional[str]] = mapped_column(Text)
+    numero_documento_padre: Mapped[Optional[str]] = mapped_column(Text, index=True)
     nombre_cuidador: Mapped[Optional[str]] = mapped_column(Text)
     parentesco_cuidador: Mapped[Optional[str]] = mapped_column(Text)
     nivel_educativo_cuidador: Mapped[Optional[str]] = mapped_column(Text)
     telefono_cuidador: Mapped[Optional[str]] = mapped_column(Text)
     correo_cuidador: Mapped[Optional[str]] = mapped_column(Text)
+    acudiente_principal: Mapped[Optional[str]] = mapped_column(Text)
     personas_vive_estudiante: Mapped[Optional[str]] = mapped_column(Text)
     numero_hermanos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     lugar_que_ocupa: Mapped[Optional[int]] = mapped_column(Integer)
@@ -327,6 +334,10 @@ class EntornoHogarORM(Base):
         CheckConstraint(
             "lugar_que_ocupa > 0 OR lugar_que_ocupa IS NULL",
             name="ck_entornos_hogar_lugar",
+        ),
+        CheckConstraint(
+            "acudiente_principal IN ('madre', 'padre', 'cuidador') OR acudiente_principal IS NULL",
+            name="ck_entornos_hogar_acudiente",
         ),
     )
 

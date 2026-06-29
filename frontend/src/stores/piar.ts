@@ -3,8 +3,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 
-const API_URL = 'http://localhost:8000/api/v1'
-
 export const usePiarStore = defineStore('piar', () => {
   const activePiar = ref<any>(null)
   const isGeneratingAI = ref(false)
@@ -16,7 +14,7 @@ export const usePiarStore = defineStore('piar', () => {
     error.value = null
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/estudiante/${estudianteId}`, {
+      const response = await fetch(`/api/v1/piars/estudiante/${estudianteId}`, {
         headers: {
           'Authorization': `Bearer ${authStore.token}`
         }
@@ -38,7 +36,7 @@ export const usePiarStore = defineStore('piar', () => {
   async function createPiar(estudianteId: string) {
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/`, {
+      const response = await fetch(`/api/v1/piars/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +64,7 @@ export const usePiarStore = defineStore('piar', () => {
     error.value = null
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/generar_ia`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/generar_ia`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +93,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/ajustes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +123,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${data.ajusteId}`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/ajustes/${data.ajusteId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +155,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${ajusteId}`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/ajustes/${ajusteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authStore.token}`
@@ -176,7 +174,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/ajustes/${ajusteId}/puntuacion`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/ajustes/${ajusteId}/puntuacion`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -208,7 +206,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -234,7 +232,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/pmi`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/pmi`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -261,7 +259,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/pmi/${pmiId}`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/pmi/${pmiId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -290,7 +288,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/pmi/${pmiId}`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/pmi/${pmiId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authStore.token}`
@@ -318,7 +316,7 @@ export const usePiarStore = defineStore('piar', () => {
     
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`${API_URL}/piars/${activePiar.value.id}/acta`, {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/acta`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -347,7 +345,7 @@ export const usePiarStore = defineStore('piar', () => {
   function downloadActaPDF() {
     if (!activePiar.value) return
     const authStore = useAuthStore()
-    fetch(`${API_URL}/piars/${activePiar.value!.id}/acta/pdf`, {
+    fetch(`/api/v1/piars/${activePiar.value!.id}/acta/pdf`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }

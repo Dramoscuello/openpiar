@@ -83,7 +83,7 @@ const togglePasswordVisibility = () => {
           <!-- Marco Legal -->
           <div class="pt-md mt-sm border-t border-black/10">
             <p class="text-label-sm text-on-surface-variant font-bold mb-xs uppercase tracking-wider opacity-70">
-              Marco Legal Colombiano
+              Marco legal colombiano
             </p>
             <ul class="text-label-sm text-on-surface-variant space-y-1 opacity-70">
               <li class="flex items-start gap-1">
@@ -148,7 +148,7 @@ const togglePasswordVisibility = () => {
                 :class="focusedField === 'email' ? 'text-primary' : 'text-on-surface-variant'"
                 for="email"
               >
-                Correo Electrónico
+                Correo electrónico
               </label>
               <div class="relative">
                 <span
@@ -270,7 +270,7 @@ const togglePasswordVisibility = () => {
           Privacidad
         </a>
         <a class="font-label-sm text-label-sm text-outline-variant hover:text-primary transition-colors" href="#">
-          Soporte Técnico
+          Soporte técnico
         </a>
       </div>
     </footer>

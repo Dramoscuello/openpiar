@@ -102,7 +102,7 @@ const handleChangePassword = async () => {
       <!-- Offline Indicator -->
       <div class="flex items-center bg-orange-100 dark:bg-orange-950/40 px-4 py-1.5 rounded-full border border-orange-200 dark:border-orange-900/30">
         <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse mr-2"></span>
-        <span class="text-orange-700 dark:text-orange-400 font-label-md text-label-sm">Offline Mode</span>
+        <span class="text-orange-700 dark:text-orange-400 font-label-md text-label-sm">Modo offline</span>
       </div>
 
       <!-- Theme Toggle -->
@@ -111,7 +111,7 @@ const handleChangePassword = async () => {
           @click="toggleTheme(false)"
           class="p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
           :class="!isDarkMode ? 'bg-white dark:bg-zinc-800 shadow-sm text-primary' : 'text-on-surface-variant hover:bg-surface-container'"
-          title="Modo Claro"
+          title="Modo claro"
         >
           <span class="material-symbols-outlined text-[18px]">light_mode</span>
         </button>
@@ -119,7 +119,7 @@ const handleChangePassword = async () => {
           @click="toggleTheme(true)"
           class="p-2 rounded-full flex items-center justify-center transition-all cursor-pointer"
           :class="isDarkMode ? 'bg-zinc-800 shadow-sm text-primary' : 'text-on-surface-variant hover:bg-surface-container'"
-          title="Modo Oscuro"
+          title="Modo oscuro"
         >
           <span class="material-symbols-outlined text-[18px]">dark_mode</span>
         </button>
@@ -162,14 +162,14 @@ const handleChangePassword = async () => {
               class="w-full flex items-center gap-xs px-sm py-2 hover:bg-surface-container-low text-on-surface rounded-md font-label-md text-label-sm transition-all text-left cursor-pointer"
             >
               <span class="material-symbols-outlined text-[18px]">settings</span>
-              Cambiar Contraseña
+              Cambiar contraseña
             </button>
             <button
               @click="handleLogout"
               class="w-full flex items-center gap-xs px-sm py-2 hover:bg-error/5 text-error rounded-md font-label-md text-label-sm transition-all text-left cursor-pointer"
             >
               <span class="material-symbols-outlined text-[18px]">logout</span>
-              Cerrar Sesión
+              Cerrar sesión
             </button>
           </div>
         </div>
@@ -187,7 +187,7 @@ const handleChangePassword = async () => {
         @click.self="closeModal"
       >
         <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md p-8">
-          <h3 class="text-headline-md font-bold text-on-surface mb-6">Cambiar Contraseña</h3>
+          <h3 class="text-headline-md font-bold text-on-surface mb-6">Cambiar contraseña</h3>
           
           <div v-if="modalError" class="bg-error-container text-on-error-container p-3 rounded-xl text-body-sm mb-4">
             {{ modalError }}
@@ -198,7 +198,7 @@ const handleChangePassword = async () => {
 
           <div class="space-y-4">
             <div class="flex flex-col gap-1">
-              <label class="font-label-md text-label-sm text-on-surface-variant">Contraseña Actual</label>
+              <label class="font-label-md text-label-sm text-on-surface-variant">Contraseña actual</label>
               <input
                 v-model="currentPassword"
                 type="password"
@@ -206,7 +206,7 @@ const handleChangePassword = async () => {
               />
             </div>
             <div class="flex flex-col gap-1">
-              <label class="font-label-md text-label-sm text-on-surface-variant">Nueva Contraseña</label>
+              <label class="font-label-md text-label-sm text-on-surface-variant">Nueva contraseña</label>
               <input
                 v-model="newPassword"
                 type="password"
@@ -220,7 +220,7 @@ const handleChangePassword = async () => {
               </div>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="font-label-md text-label-sm text-on-surface-variant">Confirmar Contraseña</label>
+              <label class="font-label-md text-label-sm text-on-surface-variant">Confirmar contraseña</label>
               <input
                 v-model="confirmPassword"
                 type="password"

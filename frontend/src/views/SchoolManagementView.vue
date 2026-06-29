@@ -1125,21 +1125,21 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
             :class="activeTab === 'carga' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
           >
-            Carga Académica
+            Carga académica
           </button>
           <button
             @click="activeTab = 'periodos'"
             class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
             :class="activeTab === 'periodos' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
           >
-            Periodos Académicos
+            Periodos académicos
           </button>
         </div>
 
         <!-- 1. TAB: SEDES -->
         <div v-if="activeTab === 'sedes'" class="space-y-md">
           <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Sedes Educativas</h3>
+            <h3 class="font-headline-md text-[20px]">Sedes educativas</h3>
             <button
               @click="openNewSede()"
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
@@ -1192,7 +1192,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         <!-- 2. TAB: DOCENTES -->
         <div v-if="activeTab === 'docentes'" class="space-y-md">
           <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Docentes Registrados</h3>
+            <h3 class="font-headline-md text-[20px]">Docentes registrados</h3>
             <button
               @click="openNewDocente()"
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
@@ -1209,7 +1209,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
                   <th class="py-4 px-md">Nombre</th>
                   <th class="py-4 px-md">Email</th>
                   <th class="py-4 px-md">Rol / Cargo</th>
-                  <th class="py-4 px-md">Sedes Asignadas</th>
+                  <th class="py-4 px-md">Sedes asignadas</th>
                   <th class="py-4 px-md text-right">Acciones</th>
                 </tr>
               </thead>
@@ -1310,7 +1310,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         <!-- TAB: AREAS -->
         <div v-if="activeTab === 'areas'" class="space-y-md">
           <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Áreas de Aprendizaje</h3>
+            <h3 class="font-headline-md text-[20px]">Áreas de aprendizaje</h3>
             <button
               @click="openNewArea()"
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
@@ -1325,7 +1325,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               <thead>
                 <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
                   <th class="py-4 px-md">Nombre de la Área</th>
-                  <th class="py-4 px-md">Fecha Registro</th>
+                  <th class="py-4 px-md">Fecha registro</th>
                   <th class="py-4 px-md text-right">Acciones</th>
                 </tr>
               </thead>
@@ -1356,7 +1356,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         <!-- TAB: GRADOS -->
         <div v-if="activeTab === 'grados'" class="space-y-md">
           <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Grados Escolares</h3>
+            <h3 class="font-headline-md text-[20px]">Grados escolares</h3>
             <button
               @click="openNewGrado()"
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
@@ -1371,7 +1371,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               <thead>
                 <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
                   <th class="py-4 px-md">Nombre</th>
-                  <th class="py-4 px-md">Fecha Registro</th>
+                  <th class="py-4 px-md">Fecha registro</th>
                   <th class="py-4 px-md text-right">Acciones</th>
                 </tr>
               </thead>
@@ -1402,13 +1402,13 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         <!-- 4. TAB: GRUPOS -->
         <div v-if="activeTab === 'grupos'" class="space-y-md">
           <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Grupos Escolares</h3>
+            <h3 class="font-headline-md text-[20px]">Grupos escolares</h3>
             <button
               @click="openNewGrupo()"
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
             >
               <span class="material-symbols-outlined text-[20px]">groups</span>
-              Nuevo Grupo / Curso
+              Nuevo grupo / curso
             </button>
           </div>
 
@@ -1417,7 +1417,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               <thead>
                 <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
                   <th class="py-4 px-md">Grado</th>
-                  <th class="py-4 px-md">Nombre Grupo</th>
+                  <th class="py-4 px-md">Nombre grupo</th>
                   <th class="py-4 px-md">Sede</th>
                   <th class="py-4 px-md">Director de Grupo</th>
                   <th class="py-4 px-md text-right">Acciones</th>
@@ -1468,7 +1468,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
             >
               <span class="material-symbols-outlined text-[20px]">assignment_turned_in</span>
-              Asignar Carga
+              Asignar carga
             </button>
           </div>
 
@@ -1526,7 +1526,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         <div v-if="activeTab === 'periodos'" class="animate-fade-in">
           <div class="flex justify-between items-center mb-md">
             <div>
-              <h3 class="text-title-lg font-bold text-on-surface">Periodos Académicos</h3>
+              <h3 class="text-title-lg font-bold text-on-surface">Periodos académicos</h3>
               <p class="text-body-md text-on-surface-variant">
                 Gestiona los periodos escolares. Solo puede haber un periodo activo a la vez.
               </p>
@@ -1536,7 +1536,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-xl font-label-md hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
             >
               <span class="material-symbols-outlined text-[20px]">add</span>
-              Nuevo Periodo
+              Nuevo periodo
             </button>
           </div>
 
@@ -1550,10 +1550,10 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             <table class="w-full text-left border-collapse">
               <thead>
                 <tr class="bg-surface-container-low text-label-md text-on-surface-variant border-b border-outline-variant/30">
-                  <th class="px-md py-sm font-semibold">Nombre del Periodo</th>
-                  <th class="px-md py-sm font-semibold">Fecha de Inicio</th>
-                  <th class="px-md py-sm font-semibold">Fecha Fin</th>
-                  <th class="px-md py-sm font-semibold text-center">Estado (Activo)</th>
+                  <th class="px-md py-sm font-semibold">Nombre del periodo</th>
+                  <th class="px-md py-sm font-semibold">Fecha de inicio</th>
+                  <th class="px-md py-sm font-semibold">Fecha fin</th>
+                  <th class="px-md py-sm font-semibold text-center">Estado (activo)</th>
                   <th class="px-md py-sm font-semibold text-right">Acciones</th>
                 </tr>
               </thead>
@@ -1592,14 +1592,14 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
                     <button
                       @click="openEditPeriodo(periodo)"
                       class="text-primary hover:text-primary/80 transition-colors cursor-pointer"
-                      title="Editar Periodo"
+                       title="Editar periodo"
                     >
                       <span class="material-symbols-outlined text-[20px]">edit</span>
                     </button>
                     <button
                       @click="deletePeriodo(periodo.id, periodo.nombre)"
                       class="text-error hover:text-error/80 transition-colors cursor-pointer"
-                      title="Eliminar Periodo"
+                       title="Eliminar periodo"
                     >
                       <span class="material-symbols-outlined text-[20px]">delete</span>
                     </button>
@@ -1616,7 +1616,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="flex justify-between items-center">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">{{ isEditing ? 'edit_square' : 'add_circle' }}</span>
-          {{ isEditing ? 'Editar Periodo Académico' : 'Nuevo Periodo Académico' }}
+          {{ isEditing ? 'Editar periodo académico' : 'Nuevo periodo académico' }}
         </h3>
         <button @click="showPeriodoModal = false" class="text-on-surface-variant hover:text-error transition-colors cursor-pointer">
           <span class="material-symbols-outlined">close</span>
@@ -1624,7 +1624,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       </div>
       <div class="space-y-sm">
         <div class="space-y-xs">
-          <label class="font-label-md text-label-md text-on-surface-variant">Nombre del Periodo *</label>
+          <label class="font-label-md text-label-md text-on-surface-variant">Nombre del periodo *</label>
           <input
             v-model="periodoForm.nombre"
             type="text"
@@ -1634,7 +1634,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Fecha de Inicio *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Fecha de inicio *</label>
             <input
               v-model="periodoForm.fecha_inicio"
               type="date"
@@ -1642,7 +1642,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             />
           </div>
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Fecha Fin *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Fecha fin *</label>
             <input
               v-model="periodoForm.fecha_fin"
               type="date"
@@ -1662,7 +1662,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           @click="submitPeriodo"
           class="px-5 py-2.5 bg-primary text-on-primary rounded-full font-bold text-label-lg hover:bg-primary/90 transition-all cursor-pointer"
         >
-          Guardar Periodo
+          Guardar periodo
         </button>
       </div>
     </div>
@@ -1673,11 +1673,11 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">{{ isEditing ? 'edit_square' : 'add_home' }}</span>
-          {{ isEditing ? 'Editar Sede Educativa' : 'Nueva Sede Educativa' }}
+          {{ isEditing ? 'Editar sede educativa' : 'Nueva sede educativa' }}
         </h3>
         <div class="space-y-sm">
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Nombre de la Sede *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Nombre de la sede *</label>
             <input v-model="sedeForm.nombre" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white" type="text" placeholder="Ej: Sede Principal" />
           </div>
           <div class="space-y-xs">
@@ -1691,7 +1691,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showSedeModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitSede" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar Sede' : 'Guardar Sede' }}</button>
+          <button @click="submitSede" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar sede' : 'Guardar sede' }}</button>
         </div>
       </div>
     </div>
@@ -1701,7 +1701,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="bg-surface-container-lowest max-w-[512px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md overflow-y-auto max-h-[90vh]">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">{{ isEditing ? 'manage_accounts' : 'person_add' }}</span>
-          {{ isEditing ? 'Editar Docente' : 'Registrar Nuevo Docente' }}
+          {{ isEditing ? 'Editar docente' : 'Registrar nuevo docente' }}
         </h3>
         <div class="space-y-sm">
           <div class="grid grid-cols-2 gap-sm">
@@ -1726,19 +1726,19 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             <div class="space-y-xs">
               <label class="font-label-md text-label-md text-on-surface-variant">Rol de inclusión *</label>
               <select v-model="docenteForm.rol" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white">
-                <option value="docente_aula">Docente de Aula</option>
-                <option value="docente_apoyo">Docente de Apoyo</option>
-                <option value="orientador">Docente Orientador</option>
+                <option value="docente_aula">Docente de aula</option>
+                <option value="docente_apoyo">Docente de apoyo</option>
+                <option value="orientador">Docente orientador</option>
               </select>
             </div>
             <div class="space-y-xs">
-              <label class="font-label-md text-label-md text-on-surface-variant">Cargo Escolar</label>
+              <label class="font-label-md text-label-md text-on-surface-variant">Cargo escolar</label>
               <input v-model="docenteForm.cargo" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white" type="text" />
             </div>
           </div>
           
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant font-bold">Asignar Sedes *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant font-bold">Asignar sedes *</label>
             <div class="grid grid-cols-2 gap-xs bg-surface p-sm border border-outline-variant rounded-input">
               <div v-for="s in sedes" :key="s.id" class="flex items-center gap-xs">
                 <input :id="'sede-check-' + s.id" v-model="docenteForm.sede_ids" :value="s.id" type="checkbox" class="w-4 h-4" />
@@ -1750,7 +1750,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showDocenteModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitDocente" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar Docente' : 'Registrar Docente' }}</button>
+          <button @click="submitDocente" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar docente' : 'Registrar docente' }}</button>
         </div>
       </div>
     </div>
@@ -1760,12 +1760,12 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">{{ isEditing ? 'edit_note' : 'book' }}</span>
-          {{ isEditing ? 'Editar Asignatura / Materia' : 'Nueva Asignatura / Materia' }}
+          {{ isEditing ? 'Editar asignatura / materia' : 'Nueva asignatura / materia' }}
         </h3>
         <div class="space-y-sm">
           <!-- Selector de Área -->
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Área de Aprendizaje *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Área de aprendizaje *</label>
             <select
               v-model="asignaturaForm.area_id"
               @change="onAreaChange"
@@ -1813,11 +1813,11 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">category</span>
-          {{ isEditing ? 'Editar Área' : 'Registrar Nueva Área' }}
+          {{ isEditing ? 'Editar área' : 'Registrar nueva área' }}
         </h3>
         <div class="space-y-sm">
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Selecciona el Área *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Selecciona el área *</label>
             
             <select
               v-model="areaForm.nombre"
@@ -1839,7 +1839,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showAreaModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitArea" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Guardar Área</button>
+          <button @click="submitArea" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Guardar área</button>
         </div>
       </div>
     </div>
@@ -1850,11 +1850,11 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">school</span>
-          {{ isEditing ? 'Editar Grado' : 'Registrar Nuevo Grado' }}
+          {{ isEditing ? 'Editar grado' : 'Registrar nuevo grado' }}
         </h3>
         <div class="space-y-sm">
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Selecciona el Grado *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Selecciona el grado *</label>
             <select v-model="gradoForm.nombre" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white">
               <option value="" disabled>Selecciona un grado estándar...</option>
               <option v-for="val in availableGradosOptions" :key="val" :value="val">{{ val }}</option>
@@ -1863,7 +1863,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showGradoModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitGrado" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Guardar Grado</button>
+          <button @click="submitGrado" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Guardar grado</button>
         </div>
       </div>
     </div>
@@ -1873,7 +1873,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">{{ isEditing ? 'edit_square' : 'groups' }}</span>
-          {{ isEditing ? 'Editar Grupo' : 'Nuevo Grupo' }}
+          {{ isEditing ? 'Editar grupo' : 'Nuevo grupo' }}
         </h3>
         <div class="space-y-sm">
           <div class="grid grid-cols-2 gap-sm">
@@ -1895,7 +1895,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
           
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Sede Escolar *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Sede escolar *</label>
             <select v-model="grupoForm.sede_id" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white">
               <option value="">Selecciona sede...</option>
               <option v-for="s in sedes" :key="s.id" :value="s.id">{{ s.nombre }}</option>
@@ -1903,7 +1903,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
           
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Director de Grupo (Opcional)</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Director de grupo (Opcional)</label>
             <select v-model="grupoForm.director_id" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white">
               <option value="">Sin asignar director</option>
               <option v-for="d in docentes" :key="d.id" :value="d.id">{{ d.apellido }}, {{ d.nombre }}</option>
@@ -1912,7 +1912,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showGrupoModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitGrupo" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar Grupo' : 'Guardar Grupo' }}</button>
+          <button @click="submitGrupo" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar grupo' : 'Guardar grupo' }}</button>
         </div>
       </div>
     </div>
@@ -1922,11 +1922,11 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
       <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">assignment_turned_in</span>
-          {{ isEditing ? 'Editar Carga Académica' : 'Asignar Carga Académica' }}
+          {{ isEditing ? 'Editar carga académica' : 'Asignar carga académica' }}
         </h3>
         <div class="space-y-sm">
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar Docente *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar docente *</label>
             <select v-model="cargaForm.docente_id" :disabled="isEditing" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none disabled:opacity-60 disabled:bg-surface-variant dark:text-white">
               <option value="">Selecciona docente...</option>
               <option v-for="d in docentes" :key="d.id" :value="d.id">{{ d.apellido }}, {{ d.nombre }} ({{ d.rol.replace('docente_','') }})</option>
@@ -1934,7 +1934,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
 
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar Asignatura *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar asignatura *</label>
             <select v-model="cargaForm.asignatura_id" :disabled="isEditing" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none disabled:opacity-60 disabled:bg-surface-variant dark:text-white">
               <option value="">Selecciona asignatura...</option>
               <option v-for="a in asignaturas" :key="a.id" :value="a.id">{{ a.nombre }}</option>
@@ -1942,7 +1942,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
 
           <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar Grupo / Grado *</label>
+            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar grupo / grado *</label>
             <div class="max-h-[200px] overflow-y-auto border border-outline-variant rounded-input bg-surface p-2">
               <label v-for="g in grupos" :key="g.id" class="flex items-center gap-2 p-2 hover:bg-surface-container-low cursor-pointer rounded-md">
                 <input type="checkbox" :value="g.id" v-model="cargaForm.grupo_ids" class="w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2">
@@ -1954,7 +1954,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showCargaModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitCarga" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar Carga' : 'Asignar Carga' }}</button>
+          <button @click="submitCarga" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar carga' : 'Asignar carga' }}</button>
         </div>
       </div>
     </div>

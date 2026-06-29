@@ -283,6 +283,15 @@ watch(() => studentsStore.draft, () => {
   saveDraft()
 }, { deep: true })
 
+// Cuidador auto-acudiente: si se llenan datos del cuidador, es el acudiente principal
+watch(() => studentsStore.draft.hogar.nombre_cuidador, (nombre) => {
+  if (nombre && nombre.trim()) {
+    studentsStore.draft.hogar.acudiente_principal = 'cuidador'
+  } else {
+    studentsStore.draft.hogar.acudiente_principal = ''
+  }
+})
+
 // Age auto-calculator from birthdate
 watch(() => studentsStore.draft.general.fecha_nacimiento, (newDate) => {
   if (!newDate) return
@@ -490,7 +499,7 @@ const save = async () => {
           
           <!-- STEP 1: INFORMACIÓN GENERAL -->
           <div v-if="currentStep === 1" class="space-y-md">
-            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">1. Información General del Estudiante</h3>
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">1. Información general del estudiante</h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
               <div class="space-y-xs">
@@ -515,7 +524,7 @@ const save = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Tipo Documento *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Tipo documento *</label>
                 <div class="relative">
                   <select
                     v-model="studentsStore.draft.general.tipo_documento"
@@ -535,7 +544,7 @@ const save = async () => {
                 </div>
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Número Documento *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Número documento *</label>
                 <input
                   v-model="studentsStore.draft.general.numero_documento"
                   class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
@@ -544,7 +553,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Fecha de Nacimiento *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Fecha de nacimiento *</label>
                 <div class="grid grid-cols-3 gap-2">
                   <!-- Día -->
                   <div class="relative">
@@ -591,7 +600,7 @@ const save = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Edad Calculada</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Edad calculada</label>
                 <input
                   v-model.number="studentsStore.draft.general.edad"
                   readonly
@@ -600,7 +609,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs md:col-span-3">
-                <label class="font-label-md text-label-md text-on-surface-variant">Lugar de Nacimiento</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Lugar de nacimiento</label>
                 <input
                   v-model="studentsStore.draft.general.lugar_nacimiento"
                   class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -610,11 +619,11 @@ const save = async () => {
               </div>
             </div>
 
-            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">DIRECCIÓN Y CONTACTO</h4>
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">Dirección y contacto</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
               <!-- Departamento -->
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Departamento de Residencia *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Departamento de residencia *</label>
                 <div class="relative">
                   <select
                     v-model="selectedDeptoId"
@@ -630,7 +639,7 @@ const save = async () => {
               </div>
               <!-- Municipio -->
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Municipio de Residencia *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Municipio de residencia *</label>
                 <div class="relative">
                   <select
                     v-model="studentsStore.draft.general.municipio_residencia"
@@ -651,7 +660,7 @@ const save = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Dirección Física *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Dirección física *</label>
                 <input
                   v-model="studentsStore.draft.general.direccion"
                   class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -671,7 +680,7 @@ const save = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono de Contacto</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono de contacto</label>
                 <input
                   v-model="studentsStore.draft.general.telefono"
                   class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -679,7 +688,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Correo Electrónico</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Correo electrónico</label>
                 <input
                   v-model="studentsStore.draft.general.correo"
                   class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -688,7 +697,7 @@ const save = async () => {
               </div>
             </div>
 
-            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">CONDICIONES PARTICULARES</h4>
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">Condiciones particulares</h4>
             <div class="space-y-sm bg-surface-container-low p-md rounded-xl border border-outline-variant/20">
               <div class="flex items-center gap-xs">
                 <input
@@ -744,7 +753,7 @@ const save = async () => {
 
           <!-- STEP 2: ENTORNO SALUD -->
           <div v-if="currentStep === 2" class="space-y-md">
-            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">2. Entorno Salud</h3>
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">2. Entorno salud</h3>
 
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
               <div class="flex items-center gap-xs">
@@ -785,7 +794,7 @@ const save = async () => {
               </div>
 
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Lugar de Emergencias</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Lugar de emergencias</label>
                 <input
                   v-model="studentsStore.draft.salud.lugar_emergencias"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -807,7 +816,7 @@ const save = async () => {
               </div>
 
               <div v-if="studentsStore.draft.salud.atendido_sector_salud" class="space-y-xs pl-6">
-                <label class="font-label-md text-label-md text-on-surface-variant">Frecuencia de Atención</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Frecuencia de atención</label>
                 <input
                   v-model="studentsStore.draft.salud.frecuencia_atencion_salud"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -829,7 +838,7 @@ const save = async () => {
               </div>
 
               <div v-if="studentsStore.draft.salud.tiene_diagnostico_medico" class="space-y-xs pl-6">
-                <label class="font-label-md text-label-md text-on-surface-variant">Diagnóstico Médico (e.g. Autismo, TDAH, Discapacidad Auditiva) *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Diagnóstico médico (e.g. Autismo, TDAH, Discapacidad Auditiva) *</label>
                 <textarea
                   v-model="studentsStore.draft.salud.diagnostico_medico"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -839,7 +848,7 @@ const save = async () => {
 
                 <!-- Soporte Médico PDF -->
                 <div class="mt-4 space-y-xs">
-                  <label class="font-label-md text-label-md text-on-surface-variant">Soporte Médico del Diagnóstico (PDF)</label>
+                  <label class="font-label-md text-label-md text-on-surface-variant">Soporte médico del diagnóstico (PDF)</label>
                   
                   <!-- Caso 1: Ya existe un soporte guardado en el servidor -->
                   <div v-if="studentsStore.draft.salud.soporte_medico_nombre" class="flex items-center justify-between bg-surface border border-outline-variant/30 p-3 rounded-lg">
@@ -935,7 +944,7 @@ const save = async () => {
                     class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-label-sm font-bold flex items-center gap-1 cursor-pointer"
                   >
                     <span class="material-symbols-outlined text-[16px]">add</span>
-                    Añadir Terapia
+                    Añadir terapia
                   </button>
                 </div>
 
@@ -1026,12 +1035,12 @@ const save = async () => {
 
           <!-- STEP 3: ENTORNO HOGAR -->
           <div v-if="currentStep === 3" class="space-y-md">
-            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">3. Entorno Hogar y Conformación Familiar</h3>
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">3. Entorno hogar y conformación familiar</h3>
 
-            <h4 class="font-bold text-label-sm text-outline tracking-wide">INFORMACIÓN DE LOS PADRES</h4>
+            <h4 class="font-bold text-label-sm text-outline tracking-wide">Información de los padres</h4>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Nombre de la Madre</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Nombre de la madre</label>
                 <input
                   v-model="studentsStore.draft.hogar.nombre_madre"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1039,7 +1048,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Ocupación Madre</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Ocupación madre</label>
                 <input
                   v-model="studentsStore.draft.hogar.ocupacion_madre"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1047,7 +1056,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Nivel Educativo Madre</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Nivel educativo madre</label>
                 <input
                   v-model="studentsStore.draft.hogar.nivel_educativo_madre"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1056,10 +1065,46 @@ const save = async () => {
                 />
               </div>
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Nombre del Padre</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono madre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.telefono_madre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="tel"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Correo madre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.correo_madre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="email"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">N° documento madre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.numero_documento_madre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+            <div class="flex items-center gap-xs">
+              <input
+                id="acudiente-madre"
+                type="radio"
+                :value="'madre'"
+                v-model="studentsStore.draft.hogar.acudiente_principal"
+                class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+              />
+              <label for="acudiente-madre" class="font-label-md text-label-md text-on-surface select-none cursor-pointer">Es la acudiente principal</label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-md mt-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Nombre del padre</label>
                 <input
                   v-model="studentsStore.draft.hogar.nombre_padre"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1067,7 +1112,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Ocupación Padre</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Ocupación padre</label>
                 <input
                   v-model="studentsStore.draft.hogar.ocupacion_padre"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1075,7 +1120,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Nivel Educativo Padre</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Nivel educativo padre</label>
                 <input
                   v-model="studentsStore.draft.hogar.nivel_educativo_padre"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1083,11 +1128,47 @@ const save = async () => {
                 />
               </div>
             </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono padre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.telefono_padre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="tel"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Correo padre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.correo_padre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="email"
+                />
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">N° documento padre</label>
+                <input
+                  v-model="studentsStore.draft.hogar.numero_documento_padre"
+                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                  type="text"
+                />
+              </div>
+            </div>
+            <div class="flex items-center gap-xs">
+              <input
+                id="acudiente-padre"
+                type="radio"
+                :value="'padre'"
+                v-model="studentsStore.draft.hogar.acudiente_principal"
+                class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
+              />
+              <label for="acudiente-padre" class="font-label-md text-label-md text-on-surface select-none cursor-pointer">Es el acudiente principal</label>
+            </div>
 
-            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">CUIDADOR ENCARGADO (SI DIFIERE DE LOS PADRES)</h4>
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-md">Cuidador encargado (si difiere de los padres)</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Nombre del Cuidador</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Nombre del cuidador</label>
                 <input
                   v-model="studentsStore.draft.hogar.nombre_cuidador"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1105,7 +1186,7 @@ const save = async () => {
                   />
                 </div>
                 <div class="space-y-xs">
-                  <label class="font-label-md text-label-md text-on-surface-variant">Nivel Educativo</label>
+                  <label class="font-label-md text-label-md text-on-surface-variant">Nivel educativo</label>
                   <input
                     v-model="studentsStore.draft.hogar.nivel_educativo_cuidador"
                     class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1117,7 +1198,7 @@ const save = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono Cuidador</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Teléfono cuidador</label>
                 <input
                   v-model="studentsStore.draft.hogar.telefono_cuidador"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1125,7 +1206,7 @@ const save = async () => {
                 />
               </div>
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Correo Cuidador</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Correo cuidador</label>
                 <input
                   v-model="studentsStore.draft.hogar.correo_cuidador"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -1134,7 +1215,12 @@ const save = async () => {
               </div>
             </div>
 
-            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">ENTORNO SOCIAL Y CONVIVENCIA</h4>
+            <p v-if="studentsStore.draft.hogar.nombre_cuidador && studentsStore.draft.hogar.nombre_cuidador.trim()" class="text-label-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg flex items-center gap-xs">
+              <span class="material-symbols-outlined text-[18px]">info</span>
+              El cuidador se ha establecido automáticamente como acudiente principal.
+            </p>
+
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">Entorno social y convivencia</h4>
             <div class="space-y-md bg-surface-container-low p-md rounded-xl border border-outline-variant/20">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
@@ -1211,9 +1297,9 @@ const save = async () => {
 
           <!-- STEP 4: TRAYECTORIA Y MATRÍCULA -->
           <div v-if="currentStep === 4" class="space-y-md">
-            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">4. Trayectoria Educativa e Institución Actual</h3>
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">4. Trayectoria educativa e institución actual</h3>
 
-            <h4 class="font-bold text-label-sm text-outline tracking-wide">TRAYECTORIA EDUCATIVA PREVIA</h4>
+            <h4 class="font-bold text-label-sm text-outline tracking-wide">Trayectoria educativa previa</h4>
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
               <div class="flex items-center gap-xs">
                 <input
@@ -1304,11 +1390,11 @@ const save = async () => {
               </div>
             </div>
 
-            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">MATRÍCULA INSTITUCIONAL ACTUAL *</h4>
+            <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">Matrícula institucional actual *</h4>
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
-                  <label class="font-label-md text-label-md text-on-surface-variant">Sede Escolar *</label>
+                  <label class="font-label-md text-label-md text-on-surface-variant">Sede escolar *</label>
                   <div v-if="sedes.length > 0" class="relative">
                     <select
                       v-model="selectedSedeId"
@@ -1360,7 +1446,7 @@ const save = async () => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
-                  <label class="font-label-md text-label-md text-on-surface-variant">Jornada Escolar *</label>
+                  <label class="font-label-md text-label-md text-on-surface-variant">Jornada escolar *</label>
                   <div class="relative">
                     <select
                       v-model="studentsStore.draft.matricula.jornada"
@@ -1390,7 +1476,7 @@ const save = async () => {
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
-                  <label class="font-label-md text-label-md text-on-surface-variant">Distancia / Tiempo desde el hogar</label>
+                  <label class="font-label-md text-label-md text-on-surface-variant">Distancia / tiempo desde el hogar</label>
                   <input
                     v-model="studentsStore.draft.matricula.distancia_tiempo_hogar"
                     class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"

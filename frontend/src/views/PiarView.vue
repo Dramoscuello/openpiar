@@ -35,7 +35,7 @@
     <div v-else-if="error" class="flex-1 p-lg overflow-y-auto">
       <div class="bg-error-container text-on-error-container p-6 rounded-2xl max-w-[36rem] mx-auto shadow-md border border-error/20">
         <h3 class="font-bold text-headline-sm flex items-center gap-2 mb-2">
-          <span class="material-symbols-outlined text-error">error</span> Error del Servidor
+          <span class="material-symbols-outlined text-error">error</span> Error del servidor
         </h3>
         <p class="text-body-md mb-4">{{ error }}</p>
         <button @click="reintentarCarga" class="px-6 py-2.5 bg-error text-on-error rounded-xl font-bold hover:opacity-90 transition-all cursor-pointer">
@@ -73,14 +73,14 @@
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'caracteristicas' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
           <span class="material-symbols-outlined text-[20px]">person_celebrate</span>
-          1. Características del Estudiante
+          1. Características del estudiante
         </button>
         <button 
           @click="activeTab = 'ajustes'" 
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'ajustes' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
           <span class="material-symbols-outlined text-[20px]">grid_on</span>
-          2. Matriz de Ajustes Razonables
+          2. Matriz de ajustes razonables
         </button>
         <button 
           v-if="isDirectorOrAdmin"
@@ -96,7 +96,7 @@
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'acta' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
           <span class="material-symbols-outlined text-[20px]">assignment_turned_in</span>
-          4. Acta de Acuerdo (Anexo 3)
+          4. Acta de acuerdo (Anexo 3)
         </button>
       </div>
 
@@ -109,7 +109,7 @@
           <section class="glass-card p-lg space-y-md border border-outline-variant/30">
             <h2 class="text-headline-md font-bold text-primary flex items-center gap-2 border-b border-outline-variant/30 pb-xs">
               <span class="material-symbols-outlined">edit_note</span>
-              Sección 1: Características del Estudiante, Docentes y Contexto
+              Sección 1: Características del estudiante, docentes y contexto
             </h2>
 
             <div class="space-y-sm">
@@ -158,7 +158,7 @@
                 <span class="material-symbols-outlined" :class="{ 'animate-spin': isSavingCarac }">
                   {{ isSavingCarac ? 'progress_activity' : 'save' }}
                 </span>
-                Guardar Características
+                Guardar características
               </button>
             </div>
           </section>
@@ -240,7 +240,7 @@
                     <div class="flex items-center justify-between border-b border-outline-variant/30 pb-xs mb-xs">
                       <span class="font-label-md text-body-md text-primary flex items-center gap-1">
                         <span class="material-symbols-outlined text-[18px]">search</span>
-                        Mallas Curriculares Oficiales (MEN)
+                        Mallas curriculares oficiales (MEN)
                       </span>
                       <button @click="showCurriculumSearch = false" class="text-outline hover:text-error cursor-pointer">
                         <span class="material-symbols-outlined text-[18px]">close</span>
@@ -312,7 +312,7 @@
 
                 <!-- Barreras -->
                 <div class="flex flex-col gap-1">
-                  <label class="font-label-md text-label-sm text-on-surface-variant">Barreras Identificadas en el Contexto</label>
+                  <label class="font-label-md text-label-sm text-on-surface-variant">Barreras identificadas en el contexto</label>
                   <textarea 
                     v-model="ajusteForm.barreras"
                     class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-20"
@@ -323,7 +323,7 @@
                 <!-- Ajustes didácticos (DUA) -->
                 <div class="flex flex-col gap-1">
                   <label class="font-label-md text-label-sm text-on-surface-variant flex items-center justify-between">
-                    Ajustes Razonables / Estrategias (DUA)
+                    Ajustes razonables / Estrategias (DUA)
                   </label>
                   <textarea 
                     v-model="ajusteForm.ajustes"
@@ -384,7 +384,7 @@
           <div class="col-span-12 lg:col-span-7 space-y-sm">
             <h3 class="text-headline-md font-bold text-on-surface flex items-center gap-2 mb-xs">
               <span class="material-symbols-outlined text-primary">view_quilt</span>
-              Malla Escolar Inclusiva ({{ activePiar.ajustes_razonables?.length || 0 }} registros)
+              Malla escolar inclusiva ({{ activePiar.ajustes_razonables?.length || 0 }} registros)
             </h3>
 
             <div v-if="!activePiar.ajustes_razonables || activePiar.ajustes_razonables.length === 0" class="bg-surface-container p-xl rounded-2xl text-center text-outline border border-dashed border-outline-variant/50">
@@ -676,7 +676,7 @@
             <div class="glass-card p-lg space-y-md border border-outline-variant/30">
               <h3 class="text-title-lg font-bold text-primary flex items-center gap-2 border-b border-outline-variant/30 pb-xs">
                 <span class="material-symbols-outlined">school</span>
-                1. Compromisos del Establecimiento Educativo (Aula)
+                1. Compromisos del establecimiento educativo (aula)
               </h3>
               <p class="text-body-md text-on-surface-variant">
                 Define las acciones, adaptaciones curriculares y apoyos específicos que la escuela y los docentes implementarán en el aula de clases.
@@ -696,7 +696,7 @@
               <div class="flex justify-between items-center border-b border-outline-variant/30 pb-xs">
                 <h3 class="text-title-lg font-bold text-primary flex items-center gap-2">
                   <span class="material-symbols-outlined">home</span>
-                  2. Compromisos de Apoyo Familiar (Casa)
+                  2. Compromisos de apoyo familiar (Casa)
                 </h3>
                 <button 
                   @click="agregarCompromisoCasa"
@@ -780,7 +780,7 @@
             <div class="glass-card p-lg space-y-md border border-outline-variant/30 bg-surface">
               <h3 class="text-title-lg font-bold text-primary flex items-center gap-2 border-b border-outline-variant/30 pb-xs">
                 <span class="material-symbols-outlined">draw</span>
-                3. Firmas y Fecha
+                3. Firmas y fecha
               </h3>
               
               <!-- Fecha de firma -->
@@ -795,7 +795,7 @@
 
               <!-- Listado de actores que firmaron -->
               <div class="space-y-sm">
-                <label class="font-label-md text-label-sm text-on-surface-variant block">Actores Comprometidos (Firmantes)</label>
+                <label class="font-label-md text-label-sm text-on-surface-variant block">Actores comprometidos (firmantes)</label>
                 
                 <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
                   <input 
@@ -839,7 +839,7 @@
                     type="checkbox"
                     class="accent-primary w-[18px] h-[18px]"
                   />
-                  <span class="text-body-md font-semibold text-on-surface">Directivo Docente (Rector)</span>
+                  <span class="text-body-md font-semibold text-on-surface">Directivo docente (Rector)</span>
                 </label>
               </div>
 
@@ -852,7 +852,7 @@
                 >
                   <span v-if="isSavingActa" class="w-5 h-5 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></span>
                   <span v-else class="material-symbols-outlined text-[20px]">save</span>
-                  Guardar Acta y Compromisos
+                  Guardar acta y compromisos
                 </button>
 
                 <button 
@@ -861,7 +861,7 @@
                   class="bg-secondary-container text-on-secondary-container font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 transition-all disabled:opacity-50 shadow-sm border border-outline-variant/30"
                 >
                   <span class="material-symbols-outlined text-[20px]">download</span>
-                  Descargar PDF Oficial
+                  Descargar PDF oficial
                 </button>
 
                 <button 
@@ -870,7 +870,7 @@
                   class="bg-primary text-on-primary font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 transition-all shadow-sm border border-outline-variant/30 mt-3"
                 >
                   <span class="material-symbols-outlined text-[20px]">shield</span>
-                  Exportar Expediente Seguro (.openpiar)
+                  Exportar expediente seguro (.openpiar)
                 </button>
               </div>
 
@@ -911,7 +911,7 @@
               <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#e0e7ff; display:flex; align-items:center; justify-content:center;">
                 <span class="material-symbols-outlined" style="color:#4f46e5; font-size:22px;">shield</span>
               </div>
-              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Exportar Expediente Seguro</h3>
+              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Exportar expediente seguro</h3>
             </div>
 
             <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 16px 0;">
@@ -1242,7 +1242,7 @@ const periodos = ref<any[]>([])
 
 async function cargarPeriodos() {
   try {
-    const res = await fetch('http://localhost:8000/api/v1/gestion/periodos', {
+    const res = await fetch('/api/v1/gestion/periodos', {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
@@ -1439,7 +1439,7 @@ onMounted(async () => {
 
 async function cargarEstudiante() {
   try {
-    const res = await fetch(`http://localhost:8000/api/v1/estudiantes/${estudianteId}`, {
+    const res = await fetch(`/api/v1/estudiantes/${estudianteId}`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
@@ -1457,7 +1457,7 @@ async function cargarEstudiante() {
 
 async function cargarEntornoSalud() {
   try {
-    const res = await fetch(`http://localhost:8000/api/v1/estudiantes/${estudianteId}/salud`, {
+    const res = await fetch(`/api/v1/estudiantes/${estudianteId}/salud`, {
       headers: { 'Authorization': `Bearer ${authStore.token}` }
     })
     if (res.ok) {
@@ -1472,7 +1472,7 @@ async function cargarEntornoSalud() {
 async function cargarAsignaturas() {
   try {
     const authStore = useAuthStore()
-    const res = await fetch('http://localhost:8000/api/v1/gestion/asignaturas', {
+    const res = await fetch('/api/v1/gestion/asignaturas', {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
@@ -1692,7 +1692,7 @@ async function generarConIA() {
     let dbaContexto = searchResults.value.filter((r: any) => searchType.value === 'dba')
     if (dbaContexto.length === 0 && searchGrade.value) {
       try {
-        const dbaUrl = `http://localhost:8000/api/v1/curriculum/dba?grado=${searchGrade.value}&area=${searchArea.value}&limit=10`
+        const dbaUrl = `/api/v1/curriculum/dba?grado=${searchGrade.value}&area=${searchArea.value}&limit=10`
         const dbaRes = await fetch(dbaUrl, { headers: { 'Authorization': `Bearer ${authStore.token}` } })
         if (dbaRes.ok) {
           const dbaData = await dbaRes.json()
@@ -1727,7 +1727,7 @@ async function generarConIA() {
     }
 
     const res = await fetch(
-      `http://localhost:8000/api/v1/piars/${activePiar.value.id}/generar_plan_ia`,
+      `/api/v1/piars/${activePiar.value.id}/generar_plan_ia`,
       {
         method: 'POST',
         headers: {
@@ -1767,7 +1767,7 @@ async function buscarCurriculo() {
   isSearchingCurriculum.value = true
   searchResults.value = []
   try {
-    let url = `http://localhost:8000/api/v1/curriculum/${searchType.value}?`
+    let url = `/api/v1/curriculum/${searchType.value}?`
     if (searchType.value === 'dba') {
       url += `grado=${searchGrade.value}&area=${searchArea.value}`
     } else {

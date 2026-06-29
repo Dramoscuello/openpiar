@@ -206,7 +206,7 @@ const handleConfigure = async () => {
         <div>
           <div class="flex items-center gap-xs mb-xs">
             <span class="material-symbols-outlined text-[28px] text-white">construction</span>
-            <span class="font-display text-headline-md tracking-tight text-white">Configuración Inicial</span>
+            <span class="font-display text-headline-md tracking-tight text-white">Configuración inicial</span>
           </div>
           <p class="font-body-md text-body-md text-primary-fixed-dim">
             Asistente de configuración paso a paso para OpenPiar
@@ -257,13 +257,13 @@ const handleConfigure = async () => {
         <!-- STEP 1: INSTITUCIÓN -->
         <div v-if="currentStep === 1" class="space-y-md">
           <div>
-            <h2 class="font-headline-md text-headline-md text-on-surface">Datos de la Institución</h2>
+            <h2 class="font-headline-md text-headline-md text-on-surface">Datos de la institución</h2>
             <p class="font-body-md text-body-md text-on-surface-variant">Ingresa los datos oficiales de tu establecimiento educativo.</p>
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
             <div class="space-y-xs">
-              <label class="font-label-md text-label-md text-on-surface-variant" for="nombre">Nombre de la Institución *</label>
+              <label class="font-label-md text-label-md text-on-surface-variant" for="nombre">Nombre de la institución *</label>
               <input
                 id="nombre"
                 v-model="nombreInstitucion"
@@ -309,7 +309,7 @@ const handleConfigure = async () => {
             </div>
 
             <div class="space-y-xs">
-              <label class="font-label-md text-label-md text-on-surface-variant" for="telefono">Teléfono de Contacto</label>
+              <label class="font-label-md text-label-md text-on-surface-variant" for="telefono">Teléfono de contacto</label>
               <input
                 id="telefono"
                 v-model="telefonoContacto"
@@ -320,7 +320,7 @@ const handleConfigure = async () => {
             </div>
 
             <div class="space-y-xs">
-              <label class="font-label-md text-label-md text-on-surface-variant" for="correo">Correo de Contacto</label>
+              <label class="font-label-md text-label-md text-on-surface-variant" for="correo">Correo de contacto</label>
               <input
                 id="correo"
                 v-model="correoContacto"
@@ -331,7 +331,7 @@ const handleConfigure = async () => {
             </div>
 
             <div class="space-y-xs md:col-span-2">
-              <label class="font-label-md text-label-md text-on-surface-variant" for="rector">Nombre del Rector / Director rural</label>
+              <label class="font-label-md text-label-md text-on-surface-variant" for="rector">Nombre del rector / Director rural</label>
               <input
                 id="rector"
                 v-model="nombreRector"
@@ -346,7 +346,7 @@ const handleConfigure = async () => {
         <!-- STEP 2: INTELIGENCIA ARTIFICIAL -->
         <div v-if="currentStep === 2" class="space-y-md">
           <div>
-            <h2 class="font-headline-md text-headline-md text-on-surface">Configuración de Inteligencia Artificial</h2>
+            <h2 class="font-headline-md text-headline-md text-on-surface">Configuración de inteligencia artificial</h2>
             <p class="font-body-md text-body-md text-on-surface-variant">
               OpenPiar utiliza el SDK de Google Gen AI para ayudar a los docentes a diseñar planes pedagógicos.
             </p>
@@ -437,7 +437,7 @@ const handleConfigure = async () => {
         <!-- STEP 4: ADMINISTRADOR -->
         <div v-if="currentStep === 4" class="space-y-md">
           <div>
-            <h2 class="font-headline-md text-headline-md text-on-surface">Usuario Administrador</h2>
+            <h2 class="font-headline-md text-headline-md text-on-surface">Usuario administrador</h2>
             <p class="font-body-md text-body-md text-on-surface-variant">Registra los datos del docente o directivo encargado de administrar la plataforma.</p>
           </div>
           
@@ -465,7 +465,7 @@ const handleConfigure = async () => {
             </div>
 
             <div class="space-y-xs">
-              <label class="font-label-md text-label-md text-on-surface-variant" for="admin-cargo">Cargo del Administrador *</label>
+              <label class="font-label-md text-label-md text-on-surface-variant" for="admin-cargo">Cargo del administrador *</label>
               <select
                 id="admin-cargo"
                 v-model="adminCargo"
@@ -479,7 +479,7 @@ const handleConfigure = async () => {
             </div>
 
             <div class="space-y-xs">
-              <label class="font-label-md text-label-md text-on-surface-variant" for="admin-email">Correo Electrónico *</label>
+              <label class="font-label-md text-label-md text-on-surface-variant" for="admin-email">Correo electrónico *</label>
               <input
                 id="admin-email"
                 v-model="adminEmail"
@@ -520,7 +520,7 @@ const handleConfigure = async () => {
             </div>
 
             <div class="space-y-xs">
-              <label class="font-label-md text-label-md text-on-surface-variant" for="admin-confirm">Confirmar Contraseña *</label>
+              <label class="font-label-md text-label-md text-on-surface-variant" for="admin-confirm">Confirmar contraseña *</label>
               <input
                 id="admin-confirm"
                 v-model="adminConfirmPassword"

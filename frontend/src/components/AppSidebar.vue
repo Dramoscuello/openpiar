@@ -16,7 +16,7 @@ const authStore = useAuthStore()
       </div>
       
       <nav class="space-y-1">
-        <p class="text-label-sm uppercase tracking-wider text-outline mb-4 px-4 select-none">VISTA GENERAL</p>
+        <p class="text-label-sm uppercase tracking-wider text-outline mb-4 px-4 select-none">Vista general</p>
         <RouterLink
           to="/dashboard"
           class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
@@ -33,13 +33,15 @@ const authStore = useAuthStore()
           <span class="material-symbols-outlined">group</span>
           <span class="font-label-md">Estudiantes</span>
         </RouterLink>
-        <a
+        <RouterLink
+          v-if="authStore.user?.rol === 'directivo' || authStore.user?.es_director"
+          to="/directorio"
           class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md"
-          href="#"
+          active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
         >
-          <span class="material-symbols-outlined">school</span>
-          <span class="font-label-md">Currículo</span>
-        </a>
+          <span class="material-symbols-outlined">contacts</span>
+          <span class="font-label-md">Directorio</span>
+        </RouterLink>
         <RouterLink
           v-if="authStore.user?.rol === 'directivo'"
           to="/gestion-escolar"
@@ -47,28 +49,11 @@ const authStore = useAuthStore()
           active-class="text-primary font-bold border-r-4 border-primary bg-primary/5 dark:bg-primary/10 rounded-r-md"
         >
           <span class="material-symbols-outlined">domain</span>
-          <span class="font-label-md">Gestión Escolar</span>
+          <span class="font-label-md">Gestión escolar</span>
         </RouterLink>
       </nav>
     </div>
 
-    <!-- Sidebar Footer -->
-    <div class="mt-auto p-gutter">
-      <div class="bg-inverse-surface rounded-xxl p-md text-white relative overflow-hidden group">
-        <div class="absolute -right-4 -top-4 w-16 h-16 bg-primary/20 rounded-full transition-transform group-hover:scale-150"></div>
-        <div class="relative z-10">
-          <div class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center mb-3">
-            <span class="material-symbols-outlined text-on-primary-container">support_agent</span>
-          </div>
-          <h3 class="font-headline-md text-[16px] mb-1">Centro de Soporte</h3>
-          <p class="text-label-sm opacity-70 mb-4">¿Necesitas ayuda con los anexos?</p>
-          <button
-            class="w-full bg-white text-zinc-900 hover:bg-zinc-100 py-2.5 rounded-xl font-label-md transition-all active:scale-95 cursor-pointer"
-          >
-            Ayuda Offline
-          </button>
-        </div>
-      </div>
-    </div>
+
   </aside>
 </template>

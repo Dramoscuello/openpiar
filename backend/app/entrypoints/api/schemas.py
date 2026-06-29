@@ -255,14 +255,23 @@ class EntornoHogarRequest(BaseModel):
     nombre_madre: Optional[str] = None
     ocupacion_madre: Optional[str] = None
     nivel_educativo_madre: Optional[str] = None
+    telefono_madre: Optional[str] = None
+    correo_madre: Optional[EmailStr] = None
+    numero_documento_madre: Optional[str] = None
     nombre_padre: Optional[str] = None
     ocupacion_padre: Optional[str] = None
     nivel_educativo_padre: Optional[str] = None
+    telefono_padre: Optional[str] = None
+    correo_padre: Optional[EmailStr] = None
+    numero_documento_padre: Optional[str] = None
     nombre_cuidador: Optional[str] = None
     parentesco_cuidador: Optional[str] = None
     nivel_educativo_cuidador: Optional[str] = None
     telefono_cuidador: Optional[str] = None
     correo_cuidador: Optional[EmailStr] = None
+    acudiente_principal: Optional[str] = Field(
+        default=None, pattern=r"^(madre|padre|cuidador)$"
+    )
     personas_vive_estudiante: Optional[str] = None
     numero_hermanos: int = Field(default=0, ge=0)
     lugar_que_ocupa: Optional[int] = Field(default=None, gt=0)
@@ -473,3 +482,30 @@ class GenerarPlanCompletoRequest(BaseModel):
 class PlanCompletoIAResponse(BaseResponse):
     """Respuesta de la IA: solo los ajustes y estrategias DUA. Los objetivos y barreras los define el docente."""
     ajustes_estrategias: str
+
+
+# ---------------------------------------------------------------------------
+# Directorio — Contactos de padres/acudientes
+# ---------------------------------------------------------------------------
+
+class EstudianteDirectorioOut(BaseModel):
+    id: uuid.UUID
+    nombre: str
+    grado: Optional[str] = None
+    piar_id: Optional[uuid.UUID] = None
+    model_config = {"from_attributes": True}
+
+
+class ContactoDirectorioOut(BaseModel):
+    nombre: str
+    rol: str
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    numero_documento: Optional[str] = None
+    acudiente_principal: bool = False
+    estudiantes: list[EstudianteDirectorioOut] = []
+    model_config = {"from_attributes": True}
+
+
+class DirectorioResponse(BaseModel):
+    contactos: list[ContactoDirectorioOut]

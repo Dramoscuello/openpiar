@@ -40,7 +40,7 @@ const authStore = useAuthStore()
           <!-- Activity & Sync Widget (Col-4) -->
           <div class="lg:col-span-4 bg-surface-container-lowest rounded-xxl p-md md:p-lg border border-outline-variant/30 flex flex-col justify-between transition-colors duration-300">
             <div class="flex justify-between items-center mb-6">
-              <h3 class="font-headline-md text-on-surface text-[18px]">Horas de Trabajo</h3>
+              <h3 class="font-headline-md text-on-surface text-[18px]">Horas de trabajo</h3>
               <div class="flex items-center gap-1 text-label-sm text-outline px-3 py-1 bg-surface-container-low rounded-full">
                 Año <span class="material-symbols-outlined text-[16px]">expand_more</span>
               </div>
@@ -115,7 +115,7 @@ const authStore = useAuthStore()
           <!-- Processes active timeline (Col-5) -->
           <div class="lg:col-span-5 bg-surface-container-lowest border border-outline-variant/30 rounded-xxl p-md md:p-lg transition-colors duration-300">
             <div class="flex justify-between items-center mb-8">
-              <h3 class="font-headline-md text-headline-md text-on-surface">Procesos Activos</h3>
+              <h3 class="font-headline-md text-headline-md text-on-surface">Procesos activos</h3>
               <button class="text-primary font-bold text-label-sm flex items-center gap-1 cursor-pointer hover:underline">
                 Ver historial <span class="material-symbols-outlined text-[16px]">open_in_new</span>
               </button>
@@ -189,7 +189,7 @@ const authStore = useAuthStore()
             <div class="space-y-6">
               <div class="relative pl-6 border-l-4 border-secondary-container">
                 <div class="text-label-sm text-outline mb-1 font-label-sm">10:00 AM - 11:30 AM</div>
-                <h4 class="font-bold text-on-surface text-body-md mb-2">Reunión Familiar</h4>
+                <h4 class="font-bold text-on-surface text-body-md mb-2">Reunión familiar</h4>
                 <div class="bg-secondary-container text-on-secondary-container px-3 py-2 rounded-xl text-label-sm inline-flex items-center gap-2">
                   <span class="material-symbols-outlined text-[16px]">family_restroom</span>
                   Est. Juan Pérez
@@ -198,7 +198,7 @@ const authStore = useAuthStore()
 
               <div class="relative pl-6 border-l-4 border-tertiary-fixed">
                 <div class="text-label-sm text-outline mb-1 font-label-sm">03:00 PM - 04:00 PM</div>
-                <h4 class="font-bold text-on-surface text-body-md mb-2">Ajustes Matemáticas</h4>
+                <h4 class="font-bold text-on-surface text-body-md mb-2">Ajustes matemáticas</h4>
                 <div class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-2 rounded-xl text-label-sm inline-flex items-center gap-2">
                   <span class="material-symbols-outlined text-[16px]">calculate</span>
                   Grado 4°A
@@ -209,7 +209,7 @@ const authStore = useAuthStore()
                 class="p-4 bg-surface-container-low rounded-xl border border-dashed border-outline-variant/60 text-center cursor-pointer hover:bg-surface-container-high transition-all"
               >
                 <span class="material-symbols-outlined text-primary mb-1">add_circle</span>
-                <p class="text-label-sm font-bold text-primary">Agendar Actividad</p>
+                <p class="text-label-sm font-bold text-primary">Agendar actividad</p>
               </div>
             </div>
           </div>
