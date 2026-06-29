@@ -8,10 +8,11 @@ Muestra solo el acudiente principal por estudiante,
 con opción de compartir el PDF del acta de acuerdo.
 """
 
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -138,6 +139,19 @@ async def listar_directorio(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo directivos o directores de grupo pueden acceder al directorio.",
             )
+
+    # Auto-marcar PIARs vencidos
+    hoy = date.today()
+    await db.execute(
+        update(PiarORM)
+        .where(
+            PiarORM.estado.notin_(["firmado", "vencido"]),
+            PiarORM.fecha_limite_firma.isnot(None),
+            PiarORM.fecha_limite_firma < hoy,
+        )
+        .values(estado="vencido")
+    )
+    await db.commit()
 
     result = await db.execute(
         select(EntornoHogarORM).options(

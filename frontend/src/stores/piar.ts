@@ -227,6 +227,32 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
+  async function firmarPiar() {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+
+    const authStore = useAuthStore()
+    try {
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`
+        },
+        body: JSON.stringify({ estado: 'firmado' })
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.detail || 'Error al finalizar el PIAR')
+      }
+      const updatedPiar = await response.json()
+      activePiar.value = updatedPiar
+      return updatedPiar
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
+
   async function addRecomendacionPMI(actor: string, acciones: string, estrategias: string) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
@@ -383,6 +409,7 @@ export const usePiarStore = defineStore('piar', () => {
     deleteAjuste,
     puntuarAjuste,
     updatePiar,
+    firmarPiar,
     addRecomendacionPMI,
     updateRecomendacionPMI,
     deleteRecomendacionPMI,

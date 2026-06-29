@@ -75,7 +75,7 @@ const togglePasswordVisibility = () => {
                 class="px-sm py-xs bg-[#EFF6FF] text-[#1E40AF] rounded-full font-label-md text-label-md badge-pulse border border-[#DBEAFE]/50"
                 style="animation-delay: 2s;"
               >
-                100% Offline-First
+                Open Source
               </span>
             </div>
           </div>

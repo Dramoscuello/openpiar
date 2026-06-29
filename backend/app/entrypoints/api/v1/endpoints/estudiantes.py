@@ -338,15 +338,18 @@ async def obtener_estudiante(
 async def eliminar_estudiante(
     estudiante_id: uuid.UUID,
     current_user: CurrentUser = None,
+    db: AsyncSession = Depends(get_db),
     repo=Depends(get_estudiante_repo),
 ) -> None:
-    await check_write_permission(current_user, repo._session)
-    deleted = await repo.delete_by_id(estudiante_id)
-    if not deleted:
+    await check_write_permission(current_user, db)
+    orm = await db.get(EstudianteORM, estudiante_id)
+    if not orm:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Estudiante {estudiante_id} no encontrado.",
         )
+    await db.delete(orm)
+    await db.commit()
 
 
 # ---------------------------------------------------------------------------

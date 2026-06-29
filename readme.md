@@ -1,6 +1,6 @@
 # 🇨🇴 OpenPiar: Gestor de PIAR Comunitario Abierto
 
-¡Bienvenido a **OpenPiar**! Una plataforma de código abierto (*open-source*) y funcionamiento local (*offline-first*) diseñada específicamente para los colegios y docentes de Colombia. 
+¡Bienvenido a **OpenPiar**! Una plataforma de código abierto (*open-source*) diseñada específicamente para los colegios y docentes de Colombia. 
 
 El objetivo de esta herramienta es **sistematizar, simplificar y humanizar** la creación, seguimiento y transferencia del **Plan Individual de Ajustes Razonables (PIAR)** y la **Historia Escolar** de los estudiantes con discapacidad o Trastornos Específicos del Aprendizaje (TEAp).
 
@@ -10,10 +10,9 @@ El objetivo de esta herramienta es **sistematizar, simplificar y humanizar** la 
 
 Crear un PIAR suele convertirse en una tarea administrativa abrumadora que consume valioso tiempo que los docentes prefieren pasar enseñando. **OpenPiar** transforma este papeleo en un proceso interactivo acompañado por un **Asistente Pedagógico de Inteligencia Artificial**. 
 
-Al ser una aplicación local y comunitaria:
-1.  **Funciona sin Internet (Offline-First):** Ideal para escuelas rurales y colegios oficiales con conectividad inestable.
-2.  **Se adapta a tu colegio:** Al iniciar la plataforma, puedes cargar el **PEI (Proyecto Educativo Institucional)** de tu colegio para que las sugerencias de la IA sigan el modelo pedagógico y la identidad de tu institución.
-3.  **Es gratuito y colaborativo:** Sin costos de licencias privadas. Además, cuenta con un banco de estrategias donde los docentes de todo el país pueden compartir (de forma anónima) las adaptaciones que mejor funcionan en sus aulas.
+Al ser una aplicación comunitaria:
+1.  **Se adapta a tu colegio:** Al iniciar la plataforma, puedes cargar el **PEI (Proyecto Educativo Institucional)** de tu colegio para que las sugerencias de la IA sigan el modelo pedagógico y la identidad de tu institución.
+2.  **Es gratuito y colaborativo:** Sin costos de licencias privadas. Además, cuenta con un banco de estrategias donde los docentes de todo el país pueden compartir (de forma anónima) las adaptaciones que mejor funcionan en sus aulas.
 
 ---
 
@@ -44,7 +43,7 @@ Un formulario amigable paso a paso para recopilar la mirada integral del estudia
 *   **Dimensiones del desarrollo:** Fortalezas y necesidades cognitivas, comunicativas, socioafectivas y corporales.
 
 ### 2️⃣ Generador Inteligente de Ajustes (Anexo 2)
-*   **Búsqueda Offline del Currículo:** Selecciona el grado y área (Matemáticas, Lenguaje, Ciencias, etc.). El sistema tiene cargados en su base de datos los **Derechos Básicos de Aprendizaje (DBA)** y **Estándares Básicos de Competencias (EBC)** oficiales del país.
+*   **Búsqueda del Currículo:** Selecciona el grado y área (Matemáticas, Lenguaje, Ciencias, etc.). El sistema tiene cargados en su base de datos los **Derechos Básicos de Aprendizaje (DBA)** y **Estándares Básicos de Competencias (EBC)** oficiales del país.
 *   **Asistencia con IA DUA:** El asistente de IA toma el perfil del estudiante (Anexo 1) y el DBA seleccionado para generar una propuesta de ajustes didácticos y evaluativos basados en la Taxonomía de Bloom (por ejemplo, sugiriendo simplificar el nivel del verbo de una meta si el estudiante tiene dificultades cognitivas).
 *   **Human-in-the-loop:** La IA propone, pero tú decides. Puedes editar, borrar o complementar cualquier sugerencia para adaptarla a los recursos de tu salón de clases.
 
@@ -80,7 +79,7 @@ Añade las actividades de apoyo en casa para la familia, genera el PDF instituci
 
 ## ⚡ Carga del Currículo Nacional (DBA y EBC)
 
-Para que el buscador de **Mallas Curriculares Oficiales** funcione en los computadores del colegio sin necesidad de internet (Offline-First), el proyecto viene con los listados de Derechos Básicos de Aprendizaje y Estándares listos en archivos locales.
+El proyecto viene con los listados de Derechos Básicos de Aprendizaje y Estándares precargados en archivos locales para consulta inmediata.
 
 Si estás instalando la aplicación, debes pasar estos datos a la base de datos del programa. Para hacerlo, abre una terminal y ejecuta el siguiente comando:
 
@@ -90,5 +89,5 @@ cd backend
 ```
 
 > [!NOTE]
-> Este paso es **completamente offline** (se realiza dentro de tu propio computador) y **no consume créditos ni tokens** de Inteligencia Artificial. Una vez ejecutado, el buscador de asignaturas y competencias estará disponible inmediatamente para todos los docentes.
+> Este paso **no consume créditos ni tokens** de Inteligencia Artificial. Una vez ejecutado, el buscador de asignaturas y competencias estará disponible inmediatamente para todos los docentes.
 

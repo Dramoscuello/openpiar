@@ -509,3 +509,46 @@ class ContactoDirectorioOut(BaseModel):
 
 class DirectorioResponse(BaseModel):
     contactos: list[ContactoDirectorioOut]
+
+
+# ---------------------------------------------------------------------------
+# Dashboard — Estadísticas institucionales
+# ---------------------------------------------------------------------------
+
+class EstadoCount(BaseModel):
+    estado: str
+    total: int
+
+
+class AreaCount(BaseModel):
+    area: str
+    total: int
+
+
+class GradoCount(BaseModel):
+    grado: str
+    total: int
+
+
+class ActividadItem(BaseModel):
+    tipo: str
+    descripcion: str
+    estudiante_nombre: str
+    fecha: str
+
+
+class DashboardResponse(BaseModel):
+    total_estudiantes: int
+    total_piars: int
+    total_ajustes: int
+    piars_activos: int
+    piars_firmados: int
+    piars_vencidos: int
+    actas_firmas_incompletas: int
+    piars_por_estado: list[EstadoCount]
+    ajustes_por_area: list[AreaCount]
+    estudiantes_por_grado: list[GradoCount]
+    periodo_activo_nombre: Optional[str] = None
+    ajustes_este_periodo: int
+    puntuacion_promedio: Optional[float] = None
+    actividad_reciente: list[ActividadItem]

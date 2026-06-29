@@ -99,12 +99,6 @@ const handleChangePassword = async () => {
   >
     <!-- Top bar actions & profile -->
     <div class="flex items-center gap-6 ml-auto">
-      <!-- Offline Indicator -->
-      <div class="flex items-center bg-orange-100 dark:bg-orange-950/40 px-4 py-1.5 rounded-full border border-orange-200 dark:border-orange-900/30">
-        <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse mr-2"></span>
-        <span class="text-orange-700 dark:text-orange-400 font-label-md text-label-sm">Modo offline</span>
-      </div>
-
       <!-- Theme Toggle -->
       <div class="flex items-center bg-surface-container-low p-1 rounded-full border border-outline-variant/30">
         <button
@@ -130,9 +124,6 @@ const handleChangePassword = async () => {
         <button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all relative cursor-pointer">
           <span class="material-symbols-outlined">notifications</span>
           <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
-        </button>
-        <button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all cursor-pointer" title="Base de Datos en Sincronía">
-          <span class="material-symbols-outlined">cloud_done</span>
         </button>
       </div>
 

@@ -3,7 +3,7 @@
 Puertos (interfaces abstractas) del dominio OpenPiar.
 
 Los puertos definen los contratos que el núcleo de dominio espera.
-Las implementaciones concretas (PostgreSQL, SQLite, InMemory) viven
+Las implementaciones concretas (PostgreSQL, InMemory) viven
 en app/adapters/ e implementan estas interfaces.
 """
 
@@ -103,8 +103,7 @@ class IAgentePedagogico(ABC):
     Contrato para el agente de IA que genera ajustes razonables DUA.
 
     Implementaciones posibles:
-    - GeminiAgentAdapter: Usa la API de Google Gemini (requiere internet)
-    - OllamaAgentAdapter: Usa un modelo local (offline-first)
+    - GeminiAgentAdapter: Usa la API de Google Gemini
     - MockAgentAdapter: Para tests unitarios sin IA real
     """
 

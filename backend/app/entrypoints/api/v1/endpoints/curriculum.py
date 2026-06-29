@@ -1,10 +1,10 @@
 # Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
 """
-Endpoints de Currículum — DBA y EBC offline.
+Endpoints de Currículum — DBA y EBC.
 Ruta: /api/v1/curriculum/
 
 Proporciona búsqueda local de Derechos Básicos de Aprendizaje
-y Estándares Básicos de Competencias sin necesitar conexión a internet.
+y Estándares Básicos de Competencias.
 """
 
 from typing import Optional
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/curriculum", tags=["Currículum MEN — DBA y EBC"])
     response_model=DBAListResponse,
     summary="Buscar Derechos Básicos de Aprendizaje",
     description=(
-        "Consulta offline los DBA del Ministerio de Educación Nacional. "
+        "Consulta los DBA del Ministerio de Educación Nacional. "
         "Filtra por grado y/o área curricular."
     ),
 )
@@ -93,7 +93,7 @@ async def buscar_dba(
     response_model=EBCListResponse,
     summary="Buscar Estándares Básicos de Competencias",
     description=(
-        "Consulta offline los EBC del MEN. "
+        "Consulta los EBC del MEN. "
         "Filtra por rango de grados y/o área curricular."
     ),
 )

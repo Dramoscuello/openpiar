@@ -855,6 +855,21 @@
                   Guardar acta y compromisos
                 </button>
 
+                <button
+                  v-if="piarPuedeFirmarse && activePiar?.estado !== 'firmado'"
+                  @click="finalizarPiar"
+                  :disabled="isFirmando"
+                  class="bg-emerald-600 text-white font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-98 transition-all disabled:opacity-50 shadow-md"
+                >
+                  <span v-if="isFirmando" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span v-else class="material-symbols-outlined text-[20px]">check_circle</span>
+                  Finalizar PIAR
+                </button>
+
+                <div v-if="activePiar?.estado === 'borrador' && activePiar?.acta_acuerdo && !firmasCompletas" class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800 text-label-sm">
+                  ⚠️ Marca todas las firmas (5/5 actores) para habilitar la finalización del PIAR.
+                </div>
+
                 <button 
                   @click="descargarPDFActa"
                   :disabled="!activePiar?.acta_acuerdo"
@@ -1235,6 +1250,35 @@ const guardarActaAcuerdo = async () => {
 
 const descargarPDFActa = () => {
   piarStore.downloadActaPDF()
+}
+
+const firmasCompletas = computed(() => {
+  return actaForm.value.firmadoEstudiante &&
+    actaForm.value.firmadoAcudiente &&
+    actaForm.value.firmadoDocenteApoyo &&
+    actaForm.value.firmadoDocentesAula &&
+    actaForm.value.firmadoDirectivo
+})
+
+const piarPuedeFirmarse = computed(() => {
+  if (!activePiar.value) return false
+  const estado = activePiar.value.estado
+  return (estado === 'borrador' || estado === 'en_revision') && firmasCompletas.value && !!activePiar.value.acta_acuerdo
+})
+
+const isFirmando = ref(false)
+
+const finalizarPiar = async () => {
+  if (!confirm('¿Estás seguro de finalizar este PIAR? Una vez firmado no podrá ser editado. Asegúrate de haber impreso el acta y recogido las firmas físicas de todos los actores.')) return
+  isFirmando.value = true
+  try {
+    await piarStore.firmarPiar()
+    showToast('PIAR finalizado y firmado. El documento ya no es editable.')
+  } catch (e: any) {
+    showToast(e.message || 'Error al finalizar el PIAR.', true)
+  } finally {
+    isFirmando.value = false
+  }
 }
 
 // Periodos Académicos

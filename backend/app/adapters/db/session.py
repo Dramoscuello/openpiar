@@ -21,7 +21,7 @@ settings = get_settings()
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=(settings.APP_ENV == "development"),  # Logea SQL solo en dev
+    echo=False,
     future=True,
     pool_pre_ping=True,       # Detecta conexiones muertas antes de usarlas
     pool_size=10,
