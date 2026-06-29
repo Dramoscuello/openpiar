@@ -11,7 +11,6 @@ const authStore = useAuthStore()
   >
     <div class="px-gutter py-8">
       <div class="flex items-center gap-3 mb-10">
-        <span class="material-symbols-outlined text-primary text-headline-md star-icon">star</span>
         <h1 class="text-headline-md font-display font-bold text-primary">OpenPiar</h1>
       </div>
       

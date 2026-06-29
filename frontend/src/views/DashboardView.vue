@@ -20,7 +20,6 @@ const estadoLabels: Record<string, string> = {
   generando_ia: 'Generando IA',
   en_revision: 'En revisión',
   firmado: 'Firmado',
-  vencido: 'Vencido',
 }
 
 const estadoColors: Record<string, string> = {
@@ -28,7 +27,6 @@ const estadoColors: Record<string, string> = {
   generando_ia: 'bg-amber-400',
   en_revision: 'bg-blue-400',
   firmado: 'bg-emerald-500',
-  vencido: 'bg-red-400',
 }
 
 const maxAreaCount = computed(() =>

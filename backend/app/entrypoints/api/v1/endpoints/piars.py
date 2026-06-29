@@ -101,11 +101,6 @@ async def get_piar_by_estudiante(
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado para este estudiante.")
 
-    # Auto-marcar como vencido si pasó la fecha límite sin firmar
-    if piar.estado not in ("firmado", "vencido") and piar.fecha_limite_firma and piar.fecha_limite_firma < date.today():
-        piar.estado = "vencido"
-        await db.commit()
-
     es_directivo = current_user.rol.es_directivo
     es_director = False
     if not es_directivo:
@@ -394,11 +389,11 @@ async def update_piar(
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
 
-    # Rechazar edición de PIARs firmados o vencidos
-    if piar.estado in ("firmado", "vencido") and data.estado is None:
+    # Rechazar solo cambio de estado si ya está firmado (contenido siempre editable)
+    if piar.estado == "firmado" and data.estado is not None and data.estado != "firmado":
         raise HTTPException(
             status_code=409,
-            detail="Este PIAR está firmado o vencido y no puede ser editado."
+            detail="No se puede cambiar el estado de un PIAR ya firmado."
         )
 
     if data.estado == "firmado":

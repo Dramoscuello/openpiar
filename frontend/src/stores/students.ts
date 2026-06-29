@@ -500,23 +500,33 @@ export const useStudentsStore = defineStore('students', {
 
         // Auxiliar para POST o PATCH de sub-entornos
         const syncSubResource = async (baseUrl: string, body: any) => {
-          // 1. Intentar PATCH
-          let res = await fetch(baseUrl, {
-            method: 'PATCH',
+          const res = await fetch(baseUrl, {
+            method: 'GET',
             headers,
-            body: JSON.stringify(body),
           })
-          if (res.status === 404) {
-            // 2. Si no existe, crear con POST
-            res = await fetch(baseUrl, {
+          if (res.ok) {
+            const patchRes = await fetch(baseUrl, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify(body),
+            })
+            if (!patchRes.ok) {
+              const errData = await patchRes.json()
+              throw new Error(errData.detail || 'Error al sincronizar datos complementarios.')
+            }
+          } else if (res.status === 404) {
+            const postRes = await fetch(baseUrl, {
               method: 'POST',
               headers,
               body: JSON.stringify(body),
             })
-          }
-          if (!res.ok) {
+            if (!postRes.ok) {
+              const errData = await postRes.json()
+              throw new Error(errData.detail || 'Error al sincronizar datos complementarios.')
+            }
+          } else {
             const errData = await res.json()
-            throw new Error(errData.detail || 'Error al sincronizar datos complementarios.')
+            throw new Error(errData.detail || 'Error al verificar datos complementarios.')
           }
         }
 
@@ -545,6 +555,9 @@ export const useStudentsStore = defineStore('students', {
         // --- 3. Sincronizar Entorno Hogar ---
         const payloadHogar = { ...this.draft.hogar }
         if (!payloadHogar.correo_cuidador) delete (payloadHogar as any).correo_cuidador
+        if (!payloadHogar.correo_madre) delete (payloadHogar as any).correo_madre
+        if (!payloadHogar.correo_padre) delete (payloadHogar as any).correo_padre
+        if (!payloadHogar.acudiente_principal) delete (payloadHogar as any).acudiente_principal
         await syncSubResource(`/api/v1/estudiantes/${id}/hogar`, payloadHogar)
 
         // --- 4. Sincronizar Trayectoria Educativa ---

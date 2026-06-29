@@ -427,7 +427,6 @@ class PiarORM(Base):
     )
     anio_lectivo: Mapped[int] = mapped_column(Integer, nullable=False)
     fecha_creacion: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
-    fecha_limite_firma: Mapped[Optional[date]] = mapped_column(Date)
     estado: Mapped[str] = mapped_column(Text, nullable=False, default="borrador")
     creado_por: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
@@ -455,7 +454,7 @@ class PiarORM(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "estado IN ('borrador', 'generando_ia', 'en_revision', 'firmado', 'vencido')",
+            "estado IN ('borrador', 'generando_ia', 'en_revision', 'firmado')",
             name="ck_piars_estado",
         ),
         CheckConstraint("anio_lectivo >= 2020", name="ck_piars_anio"),

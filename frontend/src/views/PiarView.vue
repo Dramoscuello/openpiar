@@ -1026,6 +1026,56 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Modal de confirmación para finalizar PIAR -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showConfirmFirmar"
+          class="fixed inset-0 z-[9999] flex items-center justify-center p-6"
+          style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
+          @click.self="cancelarFirmar"
+        >
+          <div
+            style="background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.25); width:100%; max-width:440px; padding:28px; box-sizing:border-box;"
+          >
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+              <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#fef3c7; display:flex; align-items:center; justify-content:center;">
+                <span class="material-symbols-outlined" style="color:#d97706; font-size:22px;">warning</span>
+              </div>
+              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Finalizar PIAR</h3>
+            </div>
+
+            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;">
+              ¿Estás seguro de finalizar este PIAR? Podrás seguir editando los ajustes razonables durante todo el año lectivo. Asegúrate de haber impreso el acta y recogido las firmas físicas de todos los actores.
+            </p>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+              <button
+                @click="cancelarFirmar"
+                :disabled="isFirmando"
+                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
+                @mouseenter="($event.target as HTMLElement).style.background='#f9fafb'"
+                @mouseleave="($event.target as HTMLElement).style.background='transparent'"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="confirmarFirmar"
+                :disabled="isFirmando"
+                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; color:#fff; background:#059669; border:none; cursor:pointer; display:flex; align-items:center; gap:8px; transition:background .15s;"
+                @mouseenter="($event.target as HTMLElement).style.background='#047857'"
+                @mouseleave="($event.target as HTMLElement).style.background='#059669'"
+              >
+                <span v-if="isFirmando" class="material-symbols-outlined" style="font-size:18px; animation:spin 1s linear infinite;">progress_activity</span>
+                <span v-else class="material-symbols-outlined" style="font-size:18px;">check_circle</span>
+                {{ isFirmando ? 'Firmando...' : 'Sí, finalizar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1267,13 +1317,22 @@ const piarPuedeFirmarse = computed(() => {
 })
 
 const isFirmando = ref(false)
+const showConfirmFirmar = ref(false)
 
-const finalizarPiar = async () => {
-  if (!confirm('¿Estás seguro de finalizar este PIAR? Una vez firmado no podrá ser editado. Asegúrate de haber impreso el acta y recogido las firmas físicas de todos los actores.')) return
+const finalizarPiar = () => {
+  showConfirmFirmar.value = true
+}
+
+const cancelarFirmar = () => {
+  showConfirmFirmar.value = false
+}
+
+const confirmarFirmar = async () => {
+  showConfirmFirmar.value = false
   isFirmando.value = true
   try {
     await piarStore.firmarPiar()
-    showToast('PIAR finalizado y firmado. El documento ya no es editable.')
+    showToast('PIAR finalizado y firmado. Puedes seguir añadiendo ajustes durante el periodo activo.')
   } catch (e: any) {
     showToast(e.message || 'Error al finalizar el PIAR.', true)
   } finally {

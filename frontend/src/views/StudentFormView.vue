@@ -287,8 +287,6 @@ watch(() => studentsStore.draft, () => {
 watch(() => studentsStore.draft.hogar.nombre_cuidador, (nombre) => {
   if (nombre && nombre.trim()) {
     studentsStore.draft.hogar.acudiente_principal = 'cuidador'
-  } else {
-    studentsStore.draft.hogar.acudiente_principal = ''
   }
 })
 
@@ -386,6 +384,10 @@ const validateStep = (step: number): boolean => {
 
   if (step === 3) {
     const hogar = studentsStore.draft.hogar
+    if (!hogar.acudiente_principal) {
+      validationError.value = 'Selecciona el acudiente principal (madre o padre) o completa los datos del cuidador encargado.'
+      return false
+    }
     if (hogar.bajo_proteccion && !hogar.personas_vive_estudiante) {
       validationError.value = 'Describe con quiénes vive el estudiante.'
       return false
@@ -445,11 +447,14 @@ const save = async () => {
   }
   if (!validateStep(4)) return
 
+  validationError.value = null
   const studentId = route.params.id as string
   const success = await studentsStore.saveStudent(studentId, medicalSupportFile.value)
 
   if (success) {
     router.push('/estudiantes')
+  } else {
+    validationError.value = studentsStore.error || 'Error al guardar el estudiante.'
   }
 }
 </script>
@@ -489,9 +494,9 @@ const save = async () => {
         </div>
 
         <!-- Validation Alert -->
-        <div v-if="validationError" class="p-sm bg-error-container text-on-error-container rounded-xl text-body-md border border-error/20 flex gap-xs items-start">
+        <div v-if="validationError || studentsStore.error" class="p-sm bg-error-container text-on-error-container rounded-xl text-body-md border border-error/20 flex gap-xs items-start">
           <span class="material-symbols-outlined text-error">error</span>
-          <span>{{ validationError }}</span>
+          <span>{{ validationError || studentsStore.error }}</span>
         </div>
 
         <!-- Form Cards by Step -->
@@ -1534,9 +1539,6 @@ const save = async () => {
 </template>
 
 <style scoped>
-.star-icon {
-  font-variation-settings: 'FILL' 1;
-}
 input[type="checkbox"] {
   accent-color: var(--color-primary);
   width: 18px;

@@ -610,10 +610,6 @@ async function ejecutarImportar() {
 </template>
 
 <style scoped>
-.star-icon {
-  font-variation-settings: 'FILL' 1;
-}
-
 /* Modal transition */
 .modal-enter-active,
 .modal-leave-active {

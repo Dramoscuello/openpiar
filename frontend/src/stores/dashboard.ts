@@ -31,7 +31,6 @@ export interface DashboardStats {
   total_ajustes: number
   piars_activos: number
   piars_firmados: number
-  piars_vencidos: number
   actas_firmas_incompletas: number
   piars_por_estado: EstadoCount[]
   ajustes_por_area: AreaCount[]

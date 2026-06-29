@@ -149,7 +149,7 @@ class TestEntidades:
 
         piar.firmar()
         assert piar.estado == "firmado"
-        assert piar.es_editable is False
+        assert piar.es_editable is True
 
     def test_piar_no_puede_firmar_directo_desde_generando(self):
         piar = Piar.crear(estudiante_id=uuid.uuid4(), anio_lectivo=2026)

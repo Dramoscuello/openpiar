@@ -174,7 +174,7 @@ class Estudiante:
 # Entidad: PIAR (Agregado Raíz)
 # ---------------------------------------------------------------------------
 
-ESTADOS_PIAR = {"borrador", "generando_ia", "en_revision", "firmado", "vencido"}
+ESTADOS_PIAR = {"borrador", "generando_ia", "en_revision", "firmado"}
 
 
 @dataclass
@@ -194,7 +194,6 @@ class Piar:
     estado: str
     fecha_creacion: date
     creado_por: Optional[uuid.UUID] = None
-    fecha_limite_firma: Optional[date] = None
     docentes_elaboran: Optional[str] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -237,7 +236,7 @@ class Piar:
         self.estado = "en_revision"
 
     def firmar(self) -> None:
-        """El PIAR fue firmado por todos los actores. Se vuelve inmutable."""
+        """El PIAR fue firmado por todos los actores. Los ajustes razonables pueden seguir editándose."""
         if self.estado not in {"en_revision", "borrador"}:
             raise ValueError("Solo un PIAR en revisión o borrador puede firmarse.")
         self.estado = "firmado"
@@ -245,5 +244,5 @@ class Piar:
 
     @property
     def es_editable(self) -> bool:
-        """Un PIAR firmado o vencido no se puede editar."""
-        return self.estado not in {"firmado", "vencido"}
+        """Un PIAR puede editarse en cualquier estado."""
+        return True

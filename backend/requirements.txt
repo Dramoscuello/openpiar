@@ -19,7 +19,7 @@ email-validator==2.3.0
 
 # --- Seguridad / Auth ---
 passlib[bcrypt]==1.7.4    # Hash de contraseñas
-bcrypt==4.2.1             # Backend bcrypt para passlib (Python 3.13 compatible)
+bcrypt==4.0.1             # Backend bcrypt para passlib (pin para compatibilidad)
 python-jose[cryptography]==3.3.0  # JWT tokens
 python-multipart==0.0.12  # Form data (login OAuth2)
 

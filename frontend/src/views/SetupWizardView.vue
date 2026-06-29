@@ -51,6 +51,32 @@ const passwordsMatch = computed(() => adminPassword.value === adminConfirmPasswo
 // DANE validation
 const daneIsValid = computed(() => codigoDane.value.length === 12 && /^\d+$/.test(codigoDane.value))
 
+// NIT validation (Colombian format: 123456789-0 or 1234567890)
+const nitIsValid = computed(() => /^\d{8,10}-?\d$/.test(nit.value.trim()))
+
+// Telefono validation (optional, Colombian format)
+const telefonoIsValid = computed(() => {
+  const v = telefonoContacto.value.trim()
+  if (v === '') return true
+  return /^(\+?57)?\d{7,10}$/.test(v)
+})
+
+// Email validation
+const correoIsValid = computed(() => {
+  const v = correoContacto.value.trim()
+  if (v === '') return true
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+})
+
+const adminEmailIsValid = computed(() => {
+  const v = adminEmail.value.trim()
+  if (v === '') return true
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+})
+
+// Name validation (letters, spaces, hyphens, apostrophes, accented chars)
+const nombreIsValid = (v: string) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']+$/.test(v.trim())
+
 // Navigation functions
 const nextStep = () => {
   if (currentStep.value === 1) {
@@ -60,6 +86,22 @@ const nextStep = () => {
     }
     if (!daneIsValid.value) {
       errorMessage.value = 'El código DANE debe tener exactamente 12 dígitos numéricos.'
+      return
+    }
+    if (!nitIsValid.value) {
+      errorMessage.value = 'El NIT debe tener formato válido (ej: 123456789-0 o 1234567890).'
+      return
+    }
+    if (!telefonoIsValid.value) {
+      errorMessage.value = 'El teléfono debe tener formato válido (ej: 573001234567 o 3001234567).'
+      return
+    }
+    if (!correoIsValid.value) {
+      errorMessage.value = 'El correo electrónico de contacto debe tener un formato válido (ej: colegio@ejemplo.edu).'
+      return
+    }
+    if (!nombreIsValid(nombreInstitucion.value)) {
+      errorMessage.value = 'El nombre de la institución contiene caracteres no permitidos.'
       return
     }
   }
@@ -142,6 +184,21 @@ const handleConfigure = async () => {
   
   if (!passwordIsValid.value) {
     errorMessage.value = 'La contraseña no cumple con los requisitos mínimos de seguridad.'
+    return
+  }
+  
+  if (!adminEmailIsValid.value) {
+    errorMessage.value = 'El correo del administrador debe tener un formato válido (ej: admin@colegio.edu).'
+    return
+  }
+  
+  if (!nombreIsValid(adminNombre.value)) {
+    errorMessage.value = 'El nombre del administrador contiene caracteres no permitidos.'
+    return
+  }
+  
+  if (!nombreIsValid(adminApellido.value)) {
+    errorMessage.value = 'El apellido del administrador contiene caracteres no permitidos.'
     return
   }
   
@@ -267,7 +324,8 @@ const handleConfigure = async () => {
               <input
                 id="nombre"
                 v-model="nombreInstitucion"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4"
+                :class="nombreInstitucion && !nombreIsValid(nombreInstitucion) ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
                 placeholder="Ej. Colegio Integrado Nacional"
                 type="text"
               />
@@ -278,8 +336,9 @@ const handleConfigure = async () => {
               <input
                 id="nit"
                 v-model="nit"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
-                placeholder="Ej. 900.123.456-7"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4"
+                :class="nit && !nitIsValid ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
+                placeholder="Ej. 900123456-7 o 9001234567"
                 type="text"
               />
             </div>
@@ -313,8 +372,9 @@ const handleConfigure = async () => {
               <input
                 id="telefono"
                 v-model="telefonoContacto"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
-                placeholder="Ej. (601) 321-4567"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4"
+                :class="telefonoContacto && !telefonoIsValid ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
+                placeholder="Ej. 573001234567 o 3001234567"
                 type="text"
               />
             </div>
@@ -324,7 +384,8 @@ const handleConfigure = async () => {
               <input
                 id="correo"
                 v-model="correoContacto"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4"
+                :class="correoContacto && !correoIsValid ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
                 placeholder="Ej. contacto@colegio.edu.co"
                 type="email"
               />
@@ -447,7 +508,8 @@ const handleConfigure = async () => {
               <input
                 id="admin-nombre"
                 v-model="adminNombre"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4"
+                :class="adminNombre && !nombreIsValid(adminNombre) ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
                 placeholder="Ej. Ana Lucía"
                 type="text"
               />
@@ -458,7 +520,8 @@ const handleConfigure = async () => {
               <input
                 id="admin-apellido"
                 v-model="adminApellido"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4"
+                :class="adminApellido && !nombreIsValid(adminApellido) ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
                 placeholder="Ej. Ortega Restrepo"
                 type="text"
               />
@@ -483,7 +546,8 @@ const handleConfigure = async () => {
               <input
                 id="admin-email"
                 v-model="adminEmail"
-                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4"
+                :class="adminEmail && !adminEmailIsValid ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
                 placeholder="admin@colegio.edu.co"
                 type="email"
               />

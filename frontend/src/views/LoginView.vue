@@ -40,18 +40,11 @@ const togglePasswordVisibility = () => {
       <!-- Left Panel: Brand & Identity (Hidden on Mobile) -->
       <section class="left-panel-gradient hidden md:flex flex-col justify-center p-xl relative overflow-hidden">
         <div class="relative z-10 space-y-md">
-          <!-- Star Brand Logo -->
-          <div class="w-16 h-16 bg-white/80 rounded-2xl flex items-center justify-center shadow-sm">
-            <span class="material-symbols-outlined text-[48px] star-icon">star</span>
-          </div>
-
           <h1 class="font-headline-lg text-headline-lg text-on-surface leading-tight">
-            Simplificando el PIAR con Inteligencia Pedagógica
+            Simplificando el PIAR con inteligencia pedagógica
           </h1>
           
-          <p class="font-body-lg text-body-lg text-on-surface-variant max-w-[400px]">
-            Optimiza tus procesos de inclusión escolar con herramientas diseñadas para el aula real.
-          </p>
+          
 
           <!-- Animated Feature Badges -->
           <div class="flex flex-col gap-sm pt-md">
@@ -67,7 +60,7 @@ const togglePasswordVisibility = () => {
                 class="px-sm py-xs bg-[#F0FDF4] text-[#166534] rounded-full font-label-md text-label-md badge-pulse border border-[#DCFCE7]/50"
                 style="animation-delay: 1s;"
               >
-                Integración Curricular MEN
+                Integración curricular MEN
               </span>
             </div>
             <div class="flex items-center gap-xs">
@@ -90,14 +83,6 @@ const togglePasswordVisibility = () => {
                 <span class="text-primary mt-0.5 shrink-0">•</span>
                 <span><strong>Decreto 1421/2017</strong> — Atención educativa a personas con discapacidad</span>
               </li>
-              <li class="flex items-start gap-1">
-                <span class="text-primary mt-0.5 shrink-0">•</span>
-                <span><strong>Ley 2216/2022</strong> — Inclusión para estudiantes con TEAp</span>
-              </li>
-              <li class="flex items-start gap-1">
-                <span class="text-primary mt-0.5 shrink-0">•</span>
-                <span><strong>Decreto 1860/1994</strong> — Autonomía institucional y PEI</span>
-              </li>
             </ul>
           </div>
         </div>
@@ -110,15 +95,13 @@ const togglePasswordVisibility = () => {
       <section class="bg-surface-container-lowest flex flex-col justify-center p-md md:p-xl">
         <div class="max-w-[400px] mx-auto w-full">
           <!-- Mobile Logo (Hidden on Desktop) -->
-          <div class="md:hidden flex items-center gap-xs mb-lg">
-            <span class="material-symbols-outlined text-primary text-[32px] star-icon">star</span>
+          <div class="md:hidden mb-lg">
             <span class="font-display text-headline-md text-primary tracking-tight">OpenPiar</span>
           </div>
 
           <div class="mb-xl">
             <!-- Desktop Logo Header -->
-            <div class="hidden md:flex items-center gap-xs mb-sm">
-              <span class="material-symbols-outlined text-primary text-[28px] star-icon">star</span>
+            <div class="hidden md:flex items-center mb-sm">
               <span class="font-display text-headline-md text-primary tracking-tight">OpenPiar</span>
             </div>
             
@@ -240,18 +223,6 @@ const togglePasswordVisibility = () => {
               </template>
             </button>
           </form>
-
-          <!-- Setup Wizard Link -->
-          <div class="mt-xl pt-lg border-t border-outline-variant/30 text-center">
-            <p class="font-body-md text-body-md text-on-surface-variant mb-xs">¿Es tu primera vez aquí?</p>
-            <router-link
-              to="/setup"
-              class="inline-flex items-center gap-xs font-label-md text-label-md text-primary font-bold hover:gap-sm transition-all"
-            >
-              Configuración Inicial (Setup Wizard)
-              <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </router-link>
-          </div>
         </div>
       </section>
     </main>

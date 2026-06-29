@@ -114,11 +114,6 @@ select {
   background: linear-gradient(135deg, #EEF2FF 0%, #F0FDFA 100%);
 }
 
-.star-icon {
-  color: var(--primary-color);
-  font-variation-settings: 'FILL' 1;
-}
-
 /* Custom fonts definitions */
 .font-headline-lg {
   font-family: 'Plus Jakarta Sans', sans-serif;

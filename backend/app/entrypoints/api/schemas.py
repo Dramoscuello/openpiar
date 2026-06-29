@@ -73,6 +73,44 @@ class ConfigurarSistemaRequest(BaseModel):
             raise ValueError("El código DANE debe contener solo dígitos.")
         return v
 
+    @field_validator("nit")
+    @classmethod
+    def validar_nit(cls, v: str) -> str:
+        import re
+        v = v.strip()
+        if not re.match(r"^\d{8,10}-?\d$", v):
+            raise ValueError("NIT inválido. Formato esperado: 123456789-0 o 1234567890.")
+        return v
+
+    @field_validator("telefono_contacto")
+    @classmethod
+    def validar_telefono(cls, v: Optional[str]) -> Optional[str]:
+        import re
+        if v is None or v.strip() == "":
+            return v
+        v = v.strip()
+        if not re.match(r"^(\+?57)?\d{7,10}$", v):
+            raise ValueError("Teléfono inválido. Formato esperado: 573001234567 o 3001234567.")
+        return v
+
+    @field_validator("nombre_institucion")
+    @classmethod
+    def sanitizar_nombre_institucion(cls, v: str) -> str:
+        import re
+        v = v.strip()
+        if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s\-.,;:()¿?¡!/&]+$", v):
+            raise ValueError("El nombre de la institución contiene caracteres no permitidos.")
+        return v
+
+    @field_validator("admin_nombre", "admin_apellido")
+    @classmethod
+    def validar_nombre_apellido(cls, v: str) -> str:
+        import re
+        v = v.strip()
+        if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']+$", v):
+            raise ValueError("El nombre/apellido solo puede contener letras, espacios, guiones y apóstrofes.")
+        return v
+
 
 class TestDBRequest(BaseModel):
     """Credenciales de PostgreSQL para probar la conexión durante el setup."""
@@ -315,7 +353,7 @@ class MatriculaActualRequest(BaseModel):
     institucion_educativa: str
     sede: str
     grado_ingreso: str
-    jornada: Literal["mañana", "tarde", "unica", "nocturna"]
+    jornada: Literal["mañana", "tarde", "unica", "nocturna"] = "unica"
     medio_transporte: Optional[str] = None
     distancia_tiempo_hogar: Optional[str] = None
 
@@ -401,11 +439,11 @@ class RecomendacionPMIResponse(RecomendacionPMICreate, BaseResponse):
 class PiarCreate(BaseModel):
     estudiante_id: uuid.UUID
     anio_lectivo: int = Field(..., ge=2020)
-    estado: Literal['borrador', 'generando_ia', 'en_revision', 'firmado', 'vencido'] = 'borrador'
+    estado: Literal['borrador', 'generando_ia', 'en_revision', 'firmado'] = 'borrador'
     docentes_elaboran: Optional[str] = None
 
 class PiarUpdate(BaseModel):
-    estado: Optional[Literal['borrador', 'generando_ia', 'en_revision', 'firmado', 'vencido']] = None
+    estado: Optional[Literal['borrador', 'generando_ia', 'en_revision', 'firmado']] = None
     docentes_elaboran: Optional[str] = None
     caracteristicas: Optional[CaracteristicasEstudianteCreate] = None
 
@@ -443,7 +481,6 @@ class ActaAcuerdoResponse(BaseResponse):
 class PiarResponse(PiarCreate, BaseResponse):
     id: uuid.UUID
     fecha_creacion: date
-    fecha_limite_firma: Optional[date] = None
     creado_por: Optional[uuid.UUID] = None
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
     ajustes_razonables: list[AjusteRazonableResponse] = []
@@ -543,7 +580,6 @@ class DashboardResponse(BaseModel):
     total_ajustes: int
     piars_activos: int
     piars_firmados: int
-    piars_vencidos: int
     actas_firmas_incompletas: int
     piars_por_estado: list[EstadoCount]
     ajustes_por_area: list[AreaCount]

@@ -45,6 +45,19 @@ const grupoForm = ref({ nombre: '', grado_id: '', sede_id: '', director_id: '' }
 const cargaForm = ref({ docente_id: '', asignatura_id: '', grupo_ids: [] as string[] })
 const periodoForm = ref({ nombre: '', fecha_inicio: '', fecha_fin: '' })
 
+const passwordSecured = ref(false)
+
+const hasMinLength = computed(() => docenteForm.value.password.length >= 8)
+const hasLetter = computed(() => /[A-Za-z]/.test(docenteForm.value.password))
+const hasNumber = computed(() => /\d/.test(docenteForm.value.password))
+const hasSpecialChar = computed(() => /[^A-Za-z0-9]/.test(docenteForm.value.password))
+const passwordIsValid = computed(() => hasMinLength.value && hasLetter.value && hasNumber.value && hasSpecialChar.value)
+
+const puedeRegistrarDocente = computed(() => {
+  if (editingId.value) return true
+  return passwordIsValid.value && passwordSecured.value
+})
+
 // Computed properties for grouping
 const groupedCargas = computed(() => {
   const groups = new Map<string, any>()
@@ -163,6 +176,7 @@ const openEditSede = (sede: any) => {
 
 const openNewDocente = () => {
   editingId.value = null
+  passwordSecured.value = false
   docenteForm.value = {
     email: '',
     password: '',
@@ -187,6 +201,76 @@ const openEditDocente = (docente: any) => {
     sede_ids: docente.sedes.map((s: any) => s.id)
   }
   showDocenteModal.value = true
+}
+
+const generarContrasenaAleatoria = () => {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const lower = 'abcdefghijkmnpqrstuvwxyz'
+  const digits = '23456789'
+  const specials = '!@#$%&*_-+=?'
+  const all = upper + lower + digits + specials
+
+  const pool = [
+    upper[Math.floor(Math.random() * upper.length)],
+    lower[Math.floor(Math.random() * lower.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    specials[Math.floor(Math.random() * specials.length)],
+  ]
+  for (let i = pool.length; i < 12; i++) {
+    pool.push(all[Math.floor(Math.random() * all.length)])
+  }
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]]
+  }
+  docenteForm.value.password = pool.join('')
+}
+
+const copiarContrasena = async () => {
+  try {
+    const f = docenteForm.value
+    const nombreCompleto = [f.nombre, f.apellido].filter(Boolean).join(' ') || 'Docente'
+    const texto = `Email: ${f.email}\nContraseña: ${f.password}\nAccede en: ${window.location.origin}/login`
+    await navigator.clipboard.writeText(texto)
+    passwordSecured.value = true
+  } catch {
+    const f = docenteForm.value
+    const nombreCompleto = [f.nombre, f.apellido].filter(Boolean).join(' ') || 'Docente'
+    const texto = `Email: ${f.email}\nContraseña: ${f.password}\nAccede en: ${window.location.origin}/login`
+    const ta = document.createElement('textarea')
+    ta.value = texto
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    passwordSecured.value = true
+  }
+}
+
+const descargarContrasenaTxt = () => {
+  const f = docenteForm.value
+  const nombreCompleto = [f.nombre, f.apellido].filter(Boolean).join(' ') || 'Docente'
+  const contenido = [
+    'Credenciales de acceso — OpenPiar',
+    '',
+    `Nombre:   ${nombreCompleto}`,
+    `Email:    ${f.email || 'No especificado'}`,
+    `Contraseña: ${f.password}`,
+    '',
+    `Accede en: ${window.location.origin}/login`,
+  ].join('\n')
+  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `credenciales-${nombreCompleto.toLowerCase().replace(/\s+/g, '-')}.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  passwordSecured.value = true
 }
 
 const STANDARD_AREAS_SUBJECTS: Record<string, string[]> = {
@@ -412,6 +496,14 @@ const submitDocente = async () => {
   }
   if (f.sede_ids.length === 0) {
     errorMsg.value = 'Debes asignar el docente a al menos una sede.'
+    return
+  }
+  if (!editingId.value && !passwordIsValid.value) {
+    errorMsg.value = 'La contraseña no cumple con los requisitos mínimos de seguridad.'
+    return
+  }
+  if (!editingId.value && !passwordSecured.value) {
+    errorMsg.value = 'Debes copiar o descargar la contraseña antes de registrar.'
     return
   }
   errorMsg.value = null
@@ -1145,7 +1237,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
             >
               <span class="material-symbols-outlined text-[20px]">add_home</span>
-              Nueva Sede
+              Nueva sede
             </button>
           </div>
 
@@ -1720,7 +1812,51 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
           <div class="space-y-xs">
             <label class="font-label-md text-label-md text-on-surface-variant">{{ isEditing ? 'Nueva contraseña (dejar en blanco para conservar la actual)' : 'Contraseña de acceso *' }}</label>
-            <input v-model="docenteForm.password" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white" type="password" />
+            <input v-model="docenteForm.password" class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4 dark:text-white" :class="!isEditing && docenteForm.password && !passwordIsValid ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'" type="password" />
+
+            <div v-if="!isEditing && docenteForm.password" class="pt-1 grid grid-cols-2 gap-xs">
+              <span class="flex items-center gap-1 font-label-sm text-label-sm" :class="hasMinLength ? 'text-[#166534]' : 'text-on-surface-variant'">
+                <span class="material-symbols-outlined text-[16px]">{{ hasMinLength ? 'check_circle' : 'circle' }}</span> Mín. 8 caracteres
+              </span>
+              <span class="flex items-center gap-1 font-label-sm text-label-sm" :class="hasLetter ? 'text-[#166534]' : 'text-on-surface-variant'">
+                <span class="material-symbols-outlined text-[16px]">{{ hasLetter ? 'check_circle' : 'circle' }}</span> Al menos una letra
+              </span>
+              <span class="flex items-center gap-1 font-label-sm text-label-sm" :class="hasNumber ? 'text-[#166534]' : 'text-on-surface-variant'">
+                <span class="material-symbols-outlined text-[16px]">{{ hasNumber ? 'check_circle' : 'circle' }}</span> Al menos un número
+              </span>
+              <span class="flex items-center gap-1 font-label-sm text-label-sm" :class="hasSpecialChar ? 'text-[#166534]' : 'text-on-surface-variant'">
+                <span class="material-symbols-outlined text-[16px]">{{ hasSpecialChar ? 'check_circle' : 'circle' }}</span> Un carácter especial
+              </span>
+            </div>
+
+            <button
+              v-if="!isEditing"
+              @click="generarContrasenaAleatoria"
+              class="text-label-sm text-primary font-bold flex items-center gap-1 hover:underline cursor-pointer select-none"
+              type="button"
+            >
+              <span class="material-symbols-outlined text-[16px]">casino</span> Generar contraseña aleatoria
+            </button>
+
+            <div v-if="!isEditing && passwordIsValid" class="flex gap-sm pt-1">
+              <button
+                @click="copiarContrasena"
+                class="px-3 py-2 bg-surface border border-outline-variant rounded-lg text-label-sm flex items-center gap-1 hover:bg-secondary-container transition-all cursor-pointer font-bold"
+                type="button"
+              >
+                <span class="material-symbols-outlined text-[16px]">content_copy</span> Copiar
+              </button>
+              <button
+                @click="descargarContrasenaTxt"
+                class="px-3 py-2 bg-surface border border-outline-variant rounded-lg text-label-sm flex items-center gap-1 hover:bg-secondary-container transition-all cursor-pointer font-bold"
+                type="button"
+              >
+                <span class="material-symbols-outlined text-[16px]">download</span> Descargar TXT
+              </button>
+            </div>
+            <p v-if="!isEditing && passwordIsValid && !passwordSecured" class="text-amber-700 font-label-sm text-label-sm">
+              Copia o descarga la contraseña para habilitar el registro.
+            </p>
           </div>
           <div class="grid grid-cols-2 gap-sm">
             <div class="space-y-xs">
@@ -1750,7 +1886,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showDocenteModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>
-          <button @click="submitDocente" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">{{ isEditing ? 'Actualizar docente' : 'Registrar docente' }}</button>
+          <button @click="submitDocente" :disabled="!puedeRegistrarDocente" class="px-lg py-3 bg-primary text-white rounded-input font-label-md text-label-md transition-all active:scale-95" :class="puedeRegistrarDocente ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'">{{ isEditing ? 'Actualizar docente' : 'Registrar docente' }}</button>
         </div>
       </div>
     </div>
@@ -2029,10 +2165,6 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
 </template>
 
 <style scoped>
-.star-icon {
-  font-variation-settings: 'FILL' 1;
-}
-
 /* Modal transition */
 .modal-enter-active,
 .modal-leave-active {

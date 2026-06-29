@@ -7,10 +7,10 @@ Proporciona estadísticas agregadas para la vista de inicio.
 Datos institucionales — misma vista para todos los roles.
 """
 
-from datetime import date, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select, union_all, literal, update
+from sqlalchemy import func, select, union_all, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.db.models import (
@@ -44,19 +44,6 @@ async def get_dashboard(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> DashboardResponse:
-    # ── Auto-marcar PIARs vencidos ──
-    hoy = date.today()
-    await db.execute(
-        update(PiarORM)
-        .where(
-            PiarORM.estado.notin_(["firmado", "vencido"]),
-            PiarORM.fecha_limite_firma.isnot(None),
-            PiarORM.fecha_limite_firma < hoy,
-        )
-        .values(estado="vencido")
-    )
-    await db.commit()
-
     # ── Conteos básicos ──
     total_estudiantes = await db.scalar(select(func.count(EstudianteORM.id)))
     total_piars = await db.scalar(select(func.count(PiarORM.id)))
@@ -68,9 +55,6 @@ async def get_dashboard(
     )
     piars_firmados = await db.scalar(
         select(func.count(PiarORM.id)).where(PiarORM.estado == "firmado")
-    )
-    piars_vencidos = await db.scalar(
-        select(func.count(PiarORM.id)).where(PiarORM.estado == "vencido")
     )
 
     # ── Actas con firmas incompletas ──
@@ -192,7 +176,6 @@ async def get_dashboard(
         total_ajustes=total_ajustes or 0,
         piars_activos=piars_activos or 0,
         piars_firmados=piars_firmados or 0,
-        piars_vencidos=piars_vencidos or 0,
         actas_firmas_incompletas=actas_firmas_incompletas or 0,
         piars_por_estado=piars_por_estado,
         ajustes_por_area=ajustes_por_area,
