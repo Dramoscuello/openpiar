@@ -6,13 +6,14 @@ Router principal v1 — agrega todos los sub-routers de la API.
 from fastapi import APIRouter
 
 from app.entrypoints.api.v1.endpoints.auth import router as auth_router
+from app.entrypoints.api.v1.endpoints.configuracion import router as configuracion_router
 from app.entrypoints.api.v1.endpoints.curriculum import router as curriculum_router
 from app.entrypoints.api.v1.endpoints.dashboard import router as dashboard_router
 from app.entrypoints.api.v1.endpoints.directorio import router as directorio_router
 from app.entrypoints.api.v1.endpoints.estudiantes import router as estudiantes_router
-from app.entrypoints.api.v1.endpoints.setup import router as setup_router
 from app.entrypoints.api.v1.endpoints.gestion_escolar import router as gestion_router
 from app.entrypoints.api.v1.endpoints.piars import router as piars_router
+from app.entrypoints.api.v1.endpoints.setup import router as setup_router
 
 api_router = APIRouter()
 
@@ -24,3 +25,4 @@ api_router.include_router(dashboard_router)
 api_router.include_router(directorio_router)
 api_router.include_router(gestion_router)
 api_router.include_router(piars_router)
+api_router.include_router(configuracion_router)

@@ -66,6 +66,7 @@ class ConfiguracionSistemaORM(Base):
     correo_contacto: Mapped[Optional[str]] = mapped_column(Text)
     nombre_rector: Mapped[Optional[str]] = mapped_column(Text)
     gemini_api_key: Mapped[Optional[str]] = mapped_column(Text)  # Encriptada en reposo
+    contexto_institucion: Mapped[Optional[str]] = mapped_column(Text)
     pei_nombre_archivo: Mapped[Optional[str]] = mapped_column(Text)
     pei_modelo_pedagogico: Mapped[Optional[str]] = mapped_column(Text)
     pei_valores_principios: Mapped[dict] = mapped_column(

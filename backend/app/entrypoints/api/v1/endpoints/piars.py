@@ -88,6 +88,7 @@ async def get_piar_by_estudiante(
         select(PiarORM)
         .where(PiarORM.estudiante_id == estudiante_id)
         .options(
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.director),
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables),
             selectinload(PiarORM.recomendaciones_pmi),
@@ -110,13 +111,20 @@ async def get_piar_by_estudiante(
             if grupo and grupo.director_id == current_user.id:
                 es_director = True
 
+    director_nombre = None
+    if piar.estudiante and piar.estudiante.grupo and piar.estudiante.grupo.director:
+        d = piar.estudiante.grupo.director
+        director_nombre = f"{d.nombre} {d.apellido}"
+
+    response = PiarResponse.model_validate(piar)
+    response.director_nombre = director_nombre
+
     if not es_directivo and not es_director:
-        piar.ajustes_razonables = [
-            a for a in piar.ajustes_razonables
+        response.ajustes_razonables = [
+            a for a in response.ajustes_razonables
             if a.creado_por == current_user.id
         ]
-    
-    return piar
+    return response
 
 @router.post("/", response_model=PiarResponse)
 async def create_piar(
@@ -256,6 +264,11 @@ async def generar_plan_completo_ia(
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
 
+        # --- Obtener contexto institucional para la IA ---
+        result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+        config = result.scalars().first()
+        contexto_institucion = config.contexto_institucion if config else None
+
         # --- Construir bloque de perfil del estudiante ---
         perfil_parts = [f"Nombre: {data.estudiante_nombre}"]
         if data.edad is not None:
@@ -305,6 +318,12 @@ BARRERAS IDENTIFICADAS POR EL DOCENTE EN ESTE CONTEXTO:
 
 REFERENCIA CURRICULAR (para contexto de los ajustes):
 {curricular_texto}{instrucciones_extra}
+{("""
+CONTEXTO INSTITUCIONAL:
+""" + contexto_institucion + """
+
+IMPORTANTE SOBRE EL CONTEXTO INSTITUCIONAL: Los ajustes razonables que propongas deben ser realistas y viables dentro del contexto real de esta institución. No sugieras recursos tecnológicos, infraestructura, personal especializado o apoyos externos que no estén disponibles en este entorno específico. Por ejemplo: si la institución es rural y tiene conectividad limitada, no propongas estrategias que dependan de internet de alta velocidad, laboratorios especializados o equipos sofisticados. Adapta tus sugerencias a los recursos y posibilidades reales del entorno escolar descrito.
+""") if contexto_institucion else ""}
 
 MARCO NORMATIVO A CONSIDERAR PARA LOS AJUSTES:
 - Decreto 1421 de 2017 (Inclusión y Ajustes Razonables): Proponer adaptaciones eficaces basadas en las necesidades específicas del estudiante, promoviendo la máxima autonomía y permanencia dentro del aula regular junto a sus pares, sin segregación.
@@ -408,8 +427,6 @@ async def update_piar(
             firmas_faltantes.append("Estudiante")
         if not acta.firmado_acudiente:
             firmas_faltantes.append("Acudiente / Familia")
-        if not acta.firmado_docente_apoyo:
-            firmas_faltantes.append("Docente de Apoyo")
         if not acta.firmado_docentes_aula:
             firmas_faltantes.append("Docentes de Aula")
         if not acta.firmado_directivo:
@@ -675,6 +692,7 @@ async def download_acta_pdf(
         .options(
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.grado),
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.sede),
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.director),
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.carga).selectinload(CargaAcademicaORM.asignatura),
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_salud),
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_hogar),

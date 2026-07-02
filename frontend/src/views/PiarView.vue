@@ -688,6 +688,15 @@
                   class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all font-semibold resize-y"
                   placeholder="Ej: Se ubicará al estudiante en primera fila, se dará apoyo visual durante explicaciones y se flexibilizarán los tiempos de evaluación escrita..."
                 ></textarea>
+                <button 
+                  @click="guardarActaAcuerdo"
+                  :disabled="isSavingActa"
+                  class="bg-secondary-container text-on-secondary-container font-bold text-label-sm px-4 py-2 rounded-xl flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 self-end"
+                >
+                  <span v-if="isSavingActa" class="w-4 h-4 border-2 border-on-secondary-container border-t-transparent rounded-full animate-spin"></span>
+                  <span v-else class="material-symbols-outlined text-[18px]">save</span>
+                  Guardar compromisos
+                </button>
               </div>
             </div>
 
@@ -759,13 +768,24 @@
                         </select>
                       </td>
                       <td class="p-2 text-center">
-                        <button 
-                          @click="removerCompromisoCasa(index)"
-                          class="text-error hover:bg-error-container/20 p-1.5 rounded-lg active:scale-95 transition-all"
-                          title="Eliminar actividad"
-                        >
-                          <span class="material-symbols-outlined text-[20px]">delete</span>
-                        </button>
+                        <div class="flex items-center justify-center gap-0.5">
+                          <button 
+                            @click="guardarActaAcuerdo"
+                            :disabled="isSavingActa"
+                            class="text-primary hover:bg-primary/10 p-1.5 rounded-lg active:scale-95 transition-all disabled:opacity-50"
+                            title="Guardar actividad"
+                          >
+                            <span v-if="isSavingActa" class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin block"></span>
+                            <span v-else class="material-symbols-outlined text-[20px]">save</span>
+                          </button>
+                          <button 
+                            @click="removerCompromisoCasa(index)"
+                            class="text-error hover:bg-error-container/20 p-1.5 rounded-lg active:scale-95 transition-all"
+                            title="Eliminar actividad"
+                          >
+                            <span class="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -785,7 +805,7 @@
               
               <!-- Fecha de firma -->
               <div class="flex flex-col gap-1">
-                <label class="font-label-md text-label-sm text-on-surface-variant">Fecha de Firma del Acta</label>
+                <label class="font-label-md text-label-sm text-on-surface-variant">Fecha de Firma del acta</label>
                 <input 
                   v-model="actaForm.fechaFirma"
                   type="date"
@@ -821,7 +841,7 @@
                     type="checkbox"
                     class="accent-primary w-[18px] h-[18px]"
                   />
-                  <span class="text-body-md font-semibold text-on-surface">Docente de Apoyo</span>
+                  <span class="text-body-md font-semibold text-on-surface">Docente de Apoyo (Opcional)</span>
                 </label>
 
                 <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
@@ -830,7 +850,7 @@
                     type="checkbox"
                     class="accent-primary w-[18px] h-[18px]"
                   />
-                  <span class="text-body-md font-semibold text-on-surface">Docentes de Aula</span>
+                  <span class="text-body-md font-semibold text-on-surface">Docentes de Aula <span v-if="activePiar?.director_nombre" class="text-on-surface-variant font-normal text-label-sm">— {{ activePiar.director_nombre }}</span></span>
                 </label>
 
                 <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-all">
@@ -867,7 +887,7 @@
                 </button>
 
                 <div v-if="activePiar?.estado === 'borrador' && activePiar?.acta_acuerdo && !firmasCompletas" class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800 text-label-sm">
-                  ⚠️ Marca todas las firmas (5/5 actores) para habilitar la finalización del PIAR.
+                  Marca las 4 firmas obligatorias para finalizar (docente de apoyo es opcional).
                 </div>
 
                 <button 
@@ -1269,8 +1289,9 @@ const removerCompromisoCasa = (index: number) => {
 
 const guardarActaAcuerdo = async () => {
   isSavingActa.value = true
+  const copiaCompromisos = [...actaForm.value.compromisosCasa]
   try {
-    for (const comp of actaForm.value.compromisosCasa) {
+    for (const comp of copiaCompromisos) {
       if (!comp.nombre_actividad.trim() || !comp.descripcion_estrategia.trim()) {
         throw new Error('Todas las actividades y estrategias en casa deben tener contenido.')
       }
@@ -1284,7 +1305,7 @@ const guardarActaAcuerdo = async () => {
       firmadoDocenteApoyo: actaForm.value.firmadoDocenteApoyo,
       firmadoDocentesAula: actaForm.value.firmadoDocentesAula,
       firmadoDirectivo: actaForm.value.firmadoDirectivo,
-      compromisosCasa: actaForm.value.compromisosCasa.map(c => ({
+      compromisosCasa: copiaCompromisos.map(c => ({
         nombre_actividad: c.nombre_actividad.trim(),
         descripcion_estrategia: c.descripcion_estrategia.trim(),
         frecuencia: c.frecuencia
@@ -1294,6 +1315,7 @@ const guardarActaAcuerdo = async () => {
   } catch (e: any) {
     showToast(e.message || 'Error al guardar el acta.', true)
   } finally {
+    actaForm.value.compromisosCasa = copiaCompromisos
     isSavingActa.value = false
   }
 }
@@ -1305,7 +1327,6 @@ const descargarPDFActa = () => {
 const firmasCompletas = computed(() => {
   return actaForm.value.firmadoEstudiante &&
     actaForm.value.firmadoAcudiente &&
-    actaForm.value.firmadoDocenteApoyo &&
     actaForm.value.firmadoDocentesAula &&
     actaForm.value.firmadoDirectivo
 })
@@ -1618,7 +1639,7 @@ function inicializarFormularios() {
 
 // Escuchar cambios en activePiar por si se crea o carga asíncronamente
 watch(activePiar, (newPiar) => {
-  if (newPiar) {
+  if (newPiar && !isSavingActa.value) {
     inicializarFormularios()
   }
 }, { deep: true })

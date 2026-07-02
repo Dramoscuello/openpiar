@@ -45,9 +45,22 @@ class ConfigurarSistemaRequest(BaseModel):
     correo_contacto: Optional[EmailStr] = None
     nombre_rector: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    contexto_institucion: Optional[str] = None
     pei_nombre_archivo: Optional[str] = None
     pei_modelo_pedagogico: Optional[str] = None
     pei_valores_principios: Optional[dict] = Field(default_factory=dict)
+
+    @field_validator("contexto_institucion")
+    @classmethod
+    def validar_contexto_institucion(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip():
+            if len(v.strip()) < 100:
+                raise ValueError(
+                    "El contexto institucional debe tener al menos 100 caracteres "
+                    "o dejarse vacío."
+                )
+            return v.strip()
+        return None
 
     # Administrador inicial
     admin_email: EmailStr
@@ -124,6 +137,38 @@ class TestDBRequest(BaseModel):
 class TestDBResponse(BaseResponse):
     success: bool
     message: str
+
+
+class ConfiguracionSistemaResponse(BaseResponse):
+    nombre_institucion: str
+    nit: str
+    codigo_dane: str
+    direccion: str
+    telefono_contacto: Optional[str] = None
+    correo_contacto: Optional[str] = None
+    nombre_rector: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    contexto_institucion: Optional[str] = None
+    pei_modelo_pedagogico: Optional[str] = None
+
+
+class ActualizarConfiguracionRequest(BaseModel):
+    gemini_api_key: Optional[str] = None
+    contexto_institucion: Optional[str] = Field(default=None)
+
+    @field_validator("contexto_institucion")
+    @classmethod
+    def validar_contexto(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip():
+            if len(v.strip()) < 100:
+                raise ValueError(
+                    "El contexto institucional debe tener al menos 100 caracteres "
+                    "o dejarse vacío."
+                )
+            return v.strip()
+        if v is not None and not v.strip():
+            return None
+        return v
 
 
 # ---------------------------------------------------------------------------
@@ -482,6 +527,7 @@ class PiarResponse(PiarCreate, BaseResponse):
     id: uuid.UUID
     fecha_creacion: date
     creado_por: Optional[uuid.UUID] = None
+    director_nombre: Optional[str] = None
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
     ajustes_razonables: list[AjusteRazonableResponse] = []
     recomendaciones_pmi: list[RecomendacionPMIResponse] = []

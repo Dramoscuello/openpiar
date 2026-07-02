@@ -830,7 +830,12 @@ def generate_acta_pdf(piar: PiarORM, config: Optional[ConfiguracionSistemaORM], 
     if acta and acta.fecha_firma:
         fecha_firma_str = acta.fecha_firma.strftime("%d/%m/%Y")
         
-    docentes_nombres = piar.docentes_elaboran if piar.docentes_elaboran else "Docentes de Aula"
+    if grupo and grupo.director:
+        docentes_nombres = f"{grupo.director.nombre} {grupo.director.apellido}"
+    elif piar.docentes_elaboran:
+        docentes_nombres = piar.docentes_elaboran
+    else:
+        docentes_nombres = "Docentes de Aula"
     
     nombre_familiar = "No especificado"
     parentesco_familiar = "No especificado"

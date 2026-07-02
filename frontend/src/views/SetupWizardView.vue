@@ -18,6 +18,7 @@ const direccion = ref('')
 const telefonoContacto = ref('')
 const correoContacto = ref('')
 const nombreRector = ref('')
+const contextoInstitucion = ref('')
 
 // Step 2: Gemini
 const geminiApiKey = ref('')
@@ -77,6 +78,8 @@ const adminEmailIsValid = computed(() => {
 // Name validation (letters, spaces, hyphens, apostrophes, accented chars)
 const nombreIsValid = (v: string) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']+$/.test(v.trim())
 
+const contextoCharCount = computed(() => contextoInstitucion.value.length)
+
 // Navigation functions
 const nextStep = () => {
   if (currentStep.value === 1) {
@@ -102,6 +105,10 @@ const nextStep = () => {
     }
     if (!nombreIsValid(nombreInstitucion.value)) {
       errorMessage.value = 'El nombre de la institución contiene caracteres no permitidos.'
+      return
+    }
+    if (contextoInstitucion.value.trim() && contextoInstitucion.value.trim().length < 100) {
+      errorMessage.value = 'El contexto institucional debe tener al menos 100 caracteres si decides completarlo. También puedes dejarlo vacío para configurarlo después.'
       return
     }
   }
@@ -225,6 +232,7 @@ const handleConfigure = async () => {
         correo_contacto: correoContacto.value || null,
         nombre_rector: nombreRector.value || null,
         gemini_api_key: geminiApiKey.value || null,
+        contexto_institucion: contextoInstitucion.value.trim() || null,
         pei_nombre_archivo: peiData.value?.nombre_archivo || null,
         pei_modelo_pedagogico: peiData.value?.perfil_extraido?.modelo_pedagogico || null,
         pei_valores_principios: peiData.value?.perfil_extraido || {},
@@ -400,6 +408,28 @@ const handleConfigure = async () => {
                 placeholder="Ej. Lic. Carlos Gómez Soler"
                 type="text"
               />
+            </div>
+
+            <div class="space-y-xs md:col-span-2">
+              <div class="flex justify-between items-center">
+                <label class="font-label-md text-label-md text-on-surface-variant" for="contexto">
+                  Contexto de la institución <span class="text-on-surface-variant/60 font-normal">(opcional)</span>
+                </label>
+                <span class="font-label-sm text-label-sm" :class="contextoCharCount > 0 && contextoCharCount < 100 ? 'text-error' : 'text-on-surface-variant'">
+                  {{ contextoCharCount }}/100 caracteres mínimo
+                </span>
+              </div>
+              <textarea
+                id="contexto"
+                v-model="contextoInstitucion"
+                rows="4"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4 resize-y"
+                :class="contextoInstitucion && contextoCharCount < 100 ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
+                placeholder="Describe el contexto de tu institución para que la IA pueda sugerir ajustes razonables realistas. Por ejemplo: Institución rural ubicada en el municipio de San Vicente de Ferrer, con limitada conectividad a internet. Cuenta con una sola sede, 8 docentes y no dispone de sala de tecnología ni laboratorio. Los estudiantes son mayoritariamente de familias campesinas con acceso limitado a útiles escolares especializados."
+              ></textarea>
+              <p class="font-label-sm text-label-sm text-on-surface-variant">
+                Este contexto ayudará al Asistente de IA a proponer ajustes razonables viables, evitando sugerir estrategias que no se ajusten a la realidad de tu institución. Podrás editarlo posteriormente desde Gestión Escolar.
+              </p>
             </div>
           </div>
         </div>

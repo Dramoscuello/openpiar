@@ -148,6 +148,7 @@ async def configurar_sistema(
         correo_contacto=body.correo_contacto,
         nombre_rector=body.nombre_rector,
         gemini_api_key=body.gemini_api_key,
+        contexto_institucion=body.contexto_institucion,
         pei_nombre_archivo=body.pei_nombre_archivo,
         pei_modelo_pedagogico=body.pei_modelo_pedagogico,
         pei_valores_principios=body.pei_valores_principios,

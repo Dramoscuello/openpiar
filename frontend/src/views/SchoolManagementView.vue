@@ -8,7 +8,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // State management
-const activeTab = ref('sedes') // 'sedes', 'docentes', 'grados', 'grupos', 'asignaturas', 'carga', 'periodos'
+const activeTab = ref('sedes') // 'sedes', 'docentes', 'grados', 'grupos', 'asignaturas', 'carga', 'periodos', 'configuracion'
 const loading = ref(false)
 const isSubmitting = ref(false)
 const errorMsg = ref<string | null>(null)
@@ -44,6 +44,9 @@ const asignaturaForm = ref({ nombre: '', area_id: '' })
 const grupoForm = ref({ nombre: '', grado_id: '', sede_id: '', director_id: '' })
 const cargaForm = ref({ docente_id: '', asignatura_id: '', grupo_ids: [] as string[] })
 const periodoForm = ref({ nombre: '', fecha_inicio: '', fecha_fin: '' })
+
+const configForm = ref({ gemini_api_key: '', contexto_institucion: '' })
+const configSaving = ref(false)
 
 const passwordSecured = ref(false)
 
@@ -134,6 +137,55 @@ onMounted(async () => {
   }
   await loadData()
 })
+
+const loadConfig = async () => {
+  if (!authStore.token) return
+  loading.value = true
+  try {
+    const headers = { 'Authorization': `Bearer ${authStore.token}` }
+    const res = await fetch('/api/v1/configuracion', { headers })
+    if (res.ok) {
+      const data = await res.json()
+      configForm.value = {
+        gemini_api_key: data.gemini_api_key || '',
+        contexto_institucion: data.contexto_institucion || ''
+      }
+    }
+  } catch {
+    errorMsg.value = 'Error al cargar la configuración del sistema.'
+  } finally {
+    loading.value = false
+  }
+}
+
+const submitConfig = async () => {
+  if (!authStore.token) return
+  configSaving.value = true
+  errorMsg.value = null
+  successMsg.value = null
+  try {
+    const headers = {
+      'Authorization': `Bearer ${authStore.token}`,
+      'Content-Type': 'application/json'
+    }
+    const body: any = {
+      gemini_api_key: configForm.value.gemini_api_key || null,
+      contexto_institucion: configForm.value.contexto_institucion.trim() || null
+    }
+    const res = await fetch('/api/v1/configuracion', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(body)
+    })
+    await handleResponse(res, 'Error al actualizar la configuración.')
+    await loadConfig()
+    successMsg.value = 'Configuración actualizada correctamente.'
+  } catch (err: any) {
+    errorMsg.value = err.message
+  } finally {
+    configSaving.value = false
+  }
+}
 
 // Helper for API responses
 const handleResponse = async (res: Response, defaultError: string) => {
@@ -1226,6 +1278,13 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           >
             Periodos académicos
           </button>
+          <button
+            @click="activeTab = 'configuracion'; loadConfig()"
+            class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
+            :class="activeTab === 'configuracion' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
+          >
+            Configuración
+          </button>
         </div>
 
         <!-- 1. TAB: SEDES -->
@@ -1699,6 +1758,71 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- CONFIGURACIÓN DEL SISTEMA -->
+        <div v-if="activeTab === 'configuracion'" class="animate-fade-in">
+          <div class="mb-md">
+            <h3 class="text-title-lg font-bold text-on-surface">Configuración del sistema</h3>
+            <p class="text-body-md text-on-surface-variant">
+              Ajusta el contexto institucional y la clave de IA. Estos datos se utilizan para que el Asistente de IA genere ajustes razonables acordes a la realidad de tu institución.
+            </p>
+          </div>
+
+          <div v-if="loading" class="py-10 text-center text-outline">
+            Cargando configuración...
+          </div>
+          <div v-else class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-md space-y-md">
+            <div class="space-y-xs">
+              <label class="font-label-md text-label-md text-on-surface-variant" for="config-gemini">
+                Gemini API Key
+              </label>
+              <input
+                id="config-gemini"
+                v-model="configForm.gemini_api_key"
+                class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                placeholder="Ingresa tu API Key de Gemini"
+                type="password"
+              />
+              <p class="font-label-sm text-label-sm text-on-surface-variant">
+                La API Key se usa para que el asistente de IA genere sugerencias de ajustes razonables. Puedes obtener una gratuita en <a href="https://aistudio.google.com/" target="_blank" class="text-primary underline">Google AI Studio</a>.
+              </p>
+            </div>
+
+            <div class="space-y-xs">
+              <div class="flex justify-between items-center">
+                <label class="font-label-md text-label-md text-on-surface-variant" for="config-contexto">
+                  Contexto de la institución <span class="text-on-surface-variant/60 font-normal">(opcional)</span>
+                </label>
+                <span class="font-label-sm text-label-sm" :class="configForm.contexto_institucion.length > 0 && configForm.contexto_institucion.length < 100 ? 'text-error' : 'text-on-surface-variant'">
+                  {{ configForm.contexto_institucion.length }}/100 caracteres mínimo
+                </span>
+              </div>
+              <textarea
+                id="config-contexto"
+                v-model="configForm.contexto_institucion"
+                rows="5"
+                class="w-full px-4 py-3 bg-surface border rounded-input font-body-md focus:outline-none focus:ring-4 resize-y"
+                :class="configForm.contexto_institucion && configForm.contexto_institucion.length < 100 ? 'border-error ring-error/10 focus:ring-error/10' : 'border-outline-variant focus:border-primary focus:ring-primary/10'"
+                placeholder="Describe el contexto de tu institución para que la IA pueda sugerir ajustes razonables realistas. Por ejemplo: Institución rural ubicada en el municipio de San Vicente de Ferrer, con limitada conectividad a internet. Cuenta con una sola sede, 8 docentes y no dispone de sala de tecnología ni laboratorio. Los estudiantes son mayoritariamente de familias campesinas con acceso limitado a útiles escolares especializados."
+              ></textarea>
+              <p class="font-label-sm text-label-sm text-on-surface-variant">
+                Este contexto ayudará al Asistente de IA a proponer ajustes razonables viables, evitando sugerir estrategias que no se ajusten a la realidad de tu institución. El contexto no se usa directamente para formular los ajustes, sino para saber qué recursos y estrategias son pertinentes.
+              </p>
+            </div>
+
+            <div class="flex justify-end pt-sm border-t border-outline-variant/30">
+              <button
+                @click="submitConfig"
+                :disabled="configSaving || (configForm.contexto_institucion.trim() !== '' && configForm.contexto_institucion.trim().length < 100)"
+                class="px-lg py-3 bg-primary text-on-primary font-label-md text-label-md rounded-xl shadow-md flex items-center gap-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-primary/90 active:scale-95"
+              >
+                <span v-if="configSaving" class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                <span v-else class="material-symbols-outlined text-[20px]">save</span>
+                {{ configSaving ? 'Guardando...' : 'Guardar configuración' }}
+              </button>
+            </div>
           </div>
         </div>
 
