@@ -40,6 +40,9 @@ const toggleTheme = (dark: boolean) => {
 }
 
 const handleLogout = () => {
+  document.documentElement.classList.remove('dark')
+  localStorage.setItem('theme', 'light')
+  isDarkMode.value = false
   authStore.logout()
   router.push('/login')
 }
@@ -177,13 +180,13 @@ const handleChangePassword = async () => {
         style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
         @click.self="closeModal"
       >
-        <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full p-[32px]" style="max-width:448px">
           <h3 class="text-headline-md font-bold text-on-surface mb-6">Cambiar contraseña</h3>
           
           <div v-if="modalError" class="bg-error-container text-on-error-container p-3 rounded-xl text-body-sm mb-4">
             {{ modalError }}
           </div>
-          <div v-if="modalSuccess" class="bg-[#caead6] text-[#042014] p-3 rounded-xl text-body-sm mb-4">
+          <div v-if="modalSuccess" class="bg-[#caead6] dark:bg-green-800 text-[#042014] dark:text-green-100 p-3 rounded-xl text-body-sm mb-4">
             {{ modalSuccess }}
           </div>
 
@@ -193,7 +196,7 @@ const handleChangePassword = async () => {
               <input
                 v-model="currentPassword"
                 type="password"
-                class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all"
+                class="w-full bg-surface dark:bg-zinc-800 border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all"
               />
             </div>
             <div class="flex flex-col gap-1">
@@ -201,13 +204,13 @@ const handleChangePassword = async () => {
               <input
                 v-model="newPassword"
                 type="password"
-                class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all"
+                class="w-full bg-surface dark:bg-zinc-800 border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all"
               />
               <div class="flex flex-wrap gap-2 mt-1">
-                <span :class="hasMinLength ? 'text-green-600' : 'text-red-400'" class="text-xs">8+ caracteres</span>
-                <span :class="hasLetter ? 'text-green-600' : 'text-red-400'" class="text-xs">Letras</span>
-                <span :class="hasNumber ? 'text-green-600' : 'text-red-400'" class="text-xs">Números</span>
-                <span :class="hasSpecialChar ? 'text-green-600' : 'text-red-400'" class="text-xs">Especiales</span>
+                <span :class="hasMinLength ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-400'" class="text-xs">8+ caracteres</span>
+                <span :class="hasLetter ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-400'" class="text-xs">Letras</span>
+                <span :class="hasNumber ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-400'" class="text-xs">Números</span>
+                <span :class="hasSpecialChar ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-400'" class="text-xs">Especiales</span>
               </div>
             </div>
             <div class="flex flex-col gap-1">
@@ -215,7 +218,7 @@ const handleChangePassword = async () => {
               <input
                 v-model="confirmPassword"
                 type="password"
-                class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all"
+                class="w-full bg-surface dark:bg-zinc-800 border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all"
                 :class="confirmPassword && !passwordsMatch ? 'border-error' : ''"
               />
               <span v-if="confirmPassword && !passwordsMatch" class="text-error text-xs">No coinciden</span>

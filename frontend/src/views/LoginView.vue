@@ -32,7 +32,7 @@ const togglePasswordVisibility = () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4 md:p-8 bg-[#F8F9FD]">
+  <div class="min-h-screen flex items-center justify-center p-4 md:p-8 bg-[#F8F9FD] dark:bg-[#0b0c16]">
     <!-- Main Shell -->
     <main
       class="w-full max-w-[1100px] grid grid-cols-1 md:grid-cols-2 glass-card overflow-hidden h-full min-h-[600px] md:min-h-[700px]"
@@ -50,14 +50,14 @@ const togglePasswordVisibility = () => {
           <div class="flex flex-col gap-sm pt-md">
             <div class="flex items-center gap-xs">
               <span
-                class="px-sm py-xs bg-[#FDF2F8] text-[#9D174D] rounded-full font-label-md text-label-md badge-pulse border border-[#FBCFE8]/50"
+                class="px-sm py-xs bg-[#FDF2F8] dark:bg-pink-950 text-[#9D174D] dark:text-pink-200 rounded-full font-label-md text-label-md badge-pulse border border-[#FBCFE8]/50 dark:border-pink-800/50"
               >
                 Diseño Universal para el Aprendizaje (DUA)
               </span>
             </div>
             <div class="flex items-center gap-xs">
               <span
-                class="px-sm py-xs bg-[#F0FDF4] text-[#166534] rounded-full font-label-md text-label-md badge-pulse border border-[#DCFCE7]/50"
+                class="px-sm py-xs bg-[#F0FDF4] dark:bg-green-950 text-[#166534] dark:text-green-200 rounded-full font-label-md text-label-md badge-pulse border border-[#DCFCE7]/50 dark:border-green-800/50"
                 style="animation-delay: 1s;"
               >
                 Integración curricular MEN
@@ -65,7 +65,7 @@ const togglePasswordVisibility = () => {
             </div>
             <div class="flex items-center gap-xs">
               <span
-                class="px-sm py-xs bg-[#EFF6FF] text-[#1E40AF] rounded-full font-label-md text-label-md badge-pulse border border-[#DBEAFE]/50"
+                class="px-sm py-xs bg-[#EFF6FF] dark:bg-blue-950 text-[#1E40AF] dark:text-blue-200 rounded-full font-label-md text-label-md badge-pulse border border-[#DBEAFE]/50 dark:border-blue-800/50"
                 style="animation-delay: 2s;"
               >
                 Open Source
@@ -74,7 +74,7 @@ const togglePasswordVisibility = () => {
           </div>
 
           <!-- Marco Legal -->
-          <div class="pt-md mt-sm border-t border-black/10">
+          <div class="pt-md mt-sm border-t border-black/10 dark:border-white/10">
             <p class="text-label-sm text-on-surface-variant font-bold mb-xs uppercase tracking-wider opacity-70">
               Marco legal colombiano
             </p>

@@ -213,6 +213,8 @@ select {
   
   --color-background: #0b0c16;
   --color-on-background: #f3f4f6;
+  --color-surface: #0b0c16;
+  --color-surface-variant: #1e203c;
   --color-surface-container-lowest: #111222;
   --color-surface-container-low: #18192f;
   --color-surface-container: #1e203c;
@@ -225,4 +227,18 @@ select {
   --color-brand-periwinkle: #6366F1;
   --color-surface-dim: #1f213b;
   --color-surface-bright: #18192f;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark textarea,
+.dark select {
+  color: var(--color-on-surface);
+}
+
+html.dark .glass-card {
+  background: rgba(17, 18, 34, 0.95);
+}
+
+html.dark .left-panel-gradient {
+  background: linear-gradient(135deg, #111222 0%, #0b0c16 100%);
 }

@@ -473,7 +473,7 @@
                       <p class="text-on-surface leading-snug whitespace-pre-wrap font-medium">{{ ajuste.ajustes_estrategias }}</p>
                     </div>
 
-                    <div v-if="ajuste.evaluacion_ajustes" class="border-t border-outline-variant/20 pt-sm mt-xs bg-[#caead6]/10 p-2.5 rounded-xl border border-[#caead6]/30">
+                    <div v-if="ajuste.evaluacion_ajustes" class="border-t border-outline-variant/20 pt-sm mt-xs bg-[#caead6]/10 dark:bg-green-950/40 p-2.5 rounded-xl border border-[#caead6]/30 dark:border-green-800/40">
                       <h4 class="font-bold text-tertiary text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px]">fact_check</span> Evaluación de Ajuste
                       </h4>
@@ -487,7 +487,7 @@
                           <span class="material-symbols-outlined text-[14px]">star</span>
                           {{ ajuste.puntuacion ? 'Tu valoración' : '¿Te funcionó este ajuste?' }}
                         </h4>
-                        <span v-if="ajuste.puntuacion" class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold">
+                        <span v-if="ajuste.puntuacion" class="text-[10px] text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded-full font-bold">
                           {{ ajuste.puntuacion }}/5
                         </span>
                       </div>
@@ -524,7 +524,7 @@
                             :disabled="ajuste._comentarioPuntuacion === ajuste._comentarioGuardado"
                             class="text-[11px] font-bold px-3 py-1 rounded-lg transition-all cursor-pointer"
                             :class="ajuste._comentarioPuntuacion === ajuste._comentarioGuardado
-                              ? 'bg-green-50 text-green-600 cursor-default'
+                              ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-300 cursor-default'
                               : 'bg-amber-500 text-white hover:bg-amber-600'"
                           >
                             Guardar comentario
@@ -886,7 +886,7 @@
                   Finalizar PIAR
                 </button>
 
-                <div v-if="activePiar?.estado === 'borrador' && activePiar?.acta_acuerdo && !firmasCompletas" class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800 text-label-sm">
+                <div v-if="activePiar?.estado === 'borrador' && activePiar?.acta_acuerdo && !firmasCompletas" class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-amber-800 dark:text-amber-200 text-label-sm">
                   Marca las 4 firmas obligatorias para finalizar (docente de apoyo es opcional).
                 </div>
 
@@ -920,7 +920,7 @@
 
     <!-- Floating Notifications -->
     <div v-if="successMessage || localError" class="fixed bottom-6 right-6 z-[9999] max-w-[28rem] animate-fade-in flex flex-col gap-2">
-      <div v-if="successMessage" class="bg-[#caead6] text-[#042014] p-4 pr-6 rounded-xl shadow-lg border border-[#afceba] flex items-center gap-3">
+      <div v-if="successMessage" class="bg-[#caead6] dark:bg-green-800 text-[#042014] dark:text-green-100 p-4 pr-6 rounded-xl shadow-lg border border-[#afceba] dark:border-green-700 flex items-center gap-3">
         <span class="material-symbols-outlined text-tertiary shrink-0">check_circle</span>
         <span class="font-semibold text-body-md">{{ successMessage }}</span>
       </div>
@@ -940,34 +940,35 @@
           @click.self="cancelarExportar"
         >
           <div
-            style="background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.25); width:100%; max-width:440px; padding:28px; box-sizing:border-box;"
+            class="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[440px] p-7"
           >
             <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
-              <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#e0e7ff; display:flex; align-items:center; justify-content:center;">
+              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
                 <span class="material-symbols-outlined" style="color:#4f46e5; font-size:22px;">shield</span>
               </div>
-              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Exportar expediente seguro</h3>
+              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;" class="dark:text-gray-100">Exportar expediente seguro</h3>
             </div>
 
-            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 16px 0;">
-              Estás exportando el historial de <strong style="color:#111827;">{{ estudiante?.nombres }} {{ estudiante?.apellidos }}</strong>.
+            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 16px 0;" class="dark:text-gray-300">
+              Estás exportando el historial de <strong style="color:#111827;" class="dark:text-gray-100">{{ estudiante?.nombres }} {{ estudiante?.apellidos }}</strong>.
               Se ha generado una clave aleatoria segura de 16 caracteres para cifrar este archivo.
             </p>
 
-            <!-- Clave de cifrado generada -->
             <div style="margin-bottom:12px;">
-              <label style="display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px;">Clave segura generada</label>
+              <label style="display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px;" class="dark:text-gray-300">Clave segura generada</label>
               <div style="position:relative; display:flex; align-items:center;">
                 <input
                   :type="showPassword ? 'text' : 'password'"
                   v-model="exportPassword"
                   readonly
-                  style="width:100%; padding:12px 48px 12px 14px; border:2px solid #e5e7eb; border-radius:10px; font-size:15px; font-family:monospace; font-weight:600; color:#111827; background:#f9fafb; box-sizing:border-box; letter-spacing:0.05em;"
+                  class="w-full px-3.5 py-3 border-2 border-outline-variant dark:border-outline rounded-input text-[15px] font-mono font-semibold text-on-surface bg-surface dark:bg-zinc-800 tracking-[0.05em]"
+                  style="padding-right:48px;"
                 />
                 <button
                   type="button"
                   @click="showPassword = !showPassword"
                   style="position:absolute; right:12px; background:none; border:none; color:#6b7280; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"
+                  class="dark:text-gray-300"
                 >
                   <span class="material-symbols-outlined" style="font-size:20px;">
                     {{ showPassword ? 'visibility_off' : 'visibility' }}
@@ -976,13 +977,12 @@
               </div>
             </div>
 
-            <!-- Botones de respaldo -->
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
               <button
                 type="button"
                 @click="copiarClave"
-                style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:13px; font-weight:600; color:#374151; cursor:pointer; transition:all 0.2s;"
-                :style="hasCopiedPassword ? { borderColor:'#10b981', background:'#ecfdf5', color:'#047857' } : {}"
+                class="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-outline-variant dark:border-outline bg-surface dark:bg-zinc-800 text-[13px] font-semibold text-on-surface-variant transition-all duration-200"
+                :class="hasCopiedPassword ? '!border-green-500 dark:!border-green-600 !bg-green-50 dark:!bg-green-950 !text-green-700 dark:!text-green-300' : ''"
               >
                 <span class="material-symbols-outlined" style="font-size:18px;">
                   {{ hasCopiedPassword ? 'check_circle' : 'content_copy' }}
@@ -992,8 +992,8 @@
               <button
                 type="button"
                 @click="descargarClaveTxt"
-                style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:13px; font-weight:600; color:#374151; cursor:pointer; transition:all 0.2s;"
-                :style="hasDownloadedPassword ? { borderColor:'#10b981', background:'#ecfdf5', color:'#047857' } : {}"
+                class="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-outline-variant dark:border-outline bg-surface dark:bg-zinc-800 text-[13px] font-semibold text-on-surface-variant transition-all duration-200"
+                :class="hasDownloadedPassword ? '!border-green-500 dark:!border-green-600 !bg-green-50 dark:!bg-green-950 !text-green-700 dark:!text-green-300' : ''"
               >
                 <span class="material-symbols-outlined" style="font-size:18px;">
                   {{ hasDownloadedPassword ? 'check_circle' : 'download' }}
@@ -1002,41 +1002,36 @@
               </button>
             </div>
 
-            <!-- Advertencia de seguridad -->
-            <div style="background:#fffbeb; border:1px solid #fef3c7; border-radius:10px; padding:12px; display:flex; gap:10px; margin-bottom:18px;">
-              <span class="material-symbols-outlined" style="color:#d97706; font-size:20px; flex-shrink:0;">warning</span>
-              <span style="font-size:12px; color:#92400e; line-height:1.5;">
+            <div class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl p-3 flex gap-2.5 mb-[18px]">
+              <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[20px] shrink-0">warning</span>
+              <span class="text-[12px] text-amber-800 dark:text-amber-200 leading-[1.5]">
                 Guarda esta clave. Sin ella, no se podrá descifrar la información en el colegio de destino. No se puede recuperar después de exportar.
               </span>
             </div>
 
-            <!-- Error -->
             <div
               v-if="exportError"
-              style="background:#fee2e2; color:#dc2626; border-radius:10px; padding:12px 16px; font-size:13px; margin-bottom:16px;"
+              class="bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-300 rounded-xl p-3 text-[13px] mb-4"
             >
               {{ exportError }}
             </div>
 
             <!-- Actions -->
             <div style="display:flex; justify-content:flex-end; align-items:center; gap:12px;">
-              <span v-if="!hasCopiedPassword && !hasDownloadedPassword" style="font-size:11px; color:#ef4444; font-weight:500; margin-right:auto;">
+              <span v-if="!hasCopiedPassword && !hasDownloadedPassword" class="text-[11px] text-red-500 font-medium mr-auto">
                 Respalda la clave para continuar
               </span>
               <button
                 @click="cancelarExportar"
                 :disabled="isExporting"
-                style="padding:10px 16px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
-                @mouseenter="($event.target as HTMLElement).style.background='#f9fafb'"
-                @mouseleave="($event.target as HTMLElement).style.background='transparent'"
+                class="px-4 py-2.5 rounded-xl text-[14px] font-medium text-on-surface-variant dark:text-gray-300 bg-transparent dark:bg-transparent border border-outline-variant dark:border-outline cursor-pointer transition-colors hover:bg-surface-container-low dark:hover:bg-zinc-800"
               >
                 Cancelar
               </button>
               <button
                 @click="ejecutarExportar"
                 :disabled="isExporting || (!hasCopiedPassword && !hasDownloadedPassword)"
-                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; color:#fff; background:#4f46e5; border:none; cursor:pointer; transition:opacity .15s;"
-                :style="{ opacity: (isExporting || (!hasCopiedPassword && !hasDownloadedPassword)) ? 0.5 : 1, cursor: (isExporting || (!hasCopiedPassword && !hasDownloadedPassword)) ? 'not-allowed' : 'pointer' }"
+                class="px-5 py-2.5 rounded-xl text-[14px] font-semibold text-white bg-indigo-600 hover:bg-indigo-700 border-none cursor-pointer transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span v-if="isExporting">Exportando...</span>
                 <span v-else>Cifrar y Descargar</span>
@@ -1057,16 +1052,16 @@
           @click.self="cancelarFirmar"
         >
           <div
-            style="background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.25); width:100%; max-width:440px; padding:28px; box-sizing:border-box;"
+            class="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[440px] p-7"
           >
             <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
-              <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#fef3c7; display:flex; align-items:center; justify-content:center;">
+              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
                 <span class="material-symbols-outlined" style="color:#d97706; font-size:22px;">warning</span>
               </div>
-              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Finalizar PIAR</h3>
+              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;" class="dark:text-gray-100">Finalizar PIAR</h3>
             </div>
 
-            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;">
+            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;" class="dark:text-gray-300">
               ¿Estás seguro de finalizar este PIAR? Podrás seguir editando los ajustes razonables durante todo el año lectivo. Asegúrate de haber impreso el acta y recogido las firmas físicas de todos los actores.
             </p>
 
@@ -1074,18 +1069,14 @@
               <button
                 @click="cancelarFirmar"
                 :disabled="isFirmando"
-                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
-                @mouseenter="($event.target as HTMLElement).style.background='#f9fafb'"
-                @mouseleave="($event.target as HTMLElement).style.background='transparent'"
+                class="px-5 py-2.5 rounded-xl text-[14px] font-medium text-on-surface-variant dark:text-gray-300 bg-transparent border border-outline-variant dark:border-outline cursor-pointer transition-colors hover:bg-surface-container-low dark:hover:bg-zinc-800"
               >
                 Cancelar
               </button>
               <button
                 @click="confirmarFirmar"
                 :disabled="isFirmando"
-                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; color:#fff; background:#059669; border:none; cursor:pointer; display:flex; align-items:center; gap:8px; transition:background .15s;"
-                @mouseenter="($event.target as HTMLElement).style.background='#047857'"
-                @mouseleave="($event.target as HTMLElement).style.background='#059669'"
+                class="px-5 py-2.5 rounded-xl text-[14px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 border-none cursor-pointer flex items-center gap-2 transition-colors"
               >
                 <span v-if="isFirmando" class="material-symbols-outlined" style="font-size:18px; animation:spin 1s linear infinite;">progress_activity</span>
                 <span v-else class="material-symbols-outlined" style="font-size:18px;">check_circle</span>
@@ -2004,6 +1995,9 @@ function getPMIForActor(actor: string) {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(99, 102, 241, 0.04);
+}
+.dark .glass-card {
+  background: rgba(17, 18, 34, 0.95);
 }
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
