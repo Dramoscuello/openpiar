@@ -44,6 +44,7 @@
 **/*.md
 !readme.md
 !README.md
+!deploy.md
 
 # Archivos del Sistema Operativo
 .DS_Store

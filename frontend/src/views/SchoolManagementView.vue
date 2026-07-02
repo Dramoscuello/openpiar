@@ -1244,18 +1244,18 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             Grados
           </button>
           <button
-            @click="activeTab = 'areas'"
-            class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
-            :class="activeTab === 'areas' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
-          >
-            Áreas
-          </button>
-          <button
             @click="activeTab = 'grupos'"
             class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
             :class="activeTab === 'grupos' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
           >
             Grupos
+          </button>
+          <button
+            @click="activeTab = 'areas'"
+            class="pb-sm px-2 font-label-md text-label-md transition-all relative cursor-pointer"
+            :class="activeTab === 'areas' ? 'text-primary border-b-2 border-primary font-bold' : 'text-outline hover:text-on-surface'"
+          >
+            Áreas
           </button>
           <button
             @click="activeTab = 'asignaturas'"
@@ -1407,104 +1407,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
         </div>
 
-        <!-- 3. TAB: ASIGNATURAS -->
-        <div v-if="activeTab === 'asignaturas'" class="space-y-md">
-          <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Asignaturas / Materias</h3>
-            <button
-              @click="openNewAsignatura()"
-              class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
-            >
-              <span class="material-symbols-outlined text-[20px]">book</span>
-              Nueva Asignatura
-            </button>
-          </div>
-
-          <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl overflow-hidden shadow-sm transition-colors duration-300">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
-                  <th class="py-4 px-md">Nombre de la Asignatura</th>
-                  <th class="py-4 px-md">Área de Aprendizaje</th>
-                  <th class="py-4 px-md text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-outline-variant/20 text-body-md text-on-surface">
-                <tr v-for="a in asignaturas" :key="a.id" class="hover:bg-surface-container-low/40">
-                  <td class="py-4 px-md font-semibold text-primary">{{ a.nombre }}</td>
-                  <td class="py-4 px-md text-on-surface-variant">{{ a.area_nombre }}</td>
-                  <td class="py-4 px-md text-right flex justify-end gap-xs">
-                    <button
-                      @click="openEditAsignatura(a)"
-                      class="text-primary hover:bg-primary/10 p-2 rounded-full cursor-pointer transition-all"
-                      title="Editar Asignatura"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">edit</span>
-                    </button>
-                    <button
-                      @click="deleteAsignatura(a.id, a.nombre)"
-                      class="text-error hover:bg-error/10 p-2 rounded-full cursor-pointer transition-all"
-                      title="Eliminar Asignatura"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
-                  </td>
-                </tr>
-                <tr v-if="asignaturas.length === 0">
-                  <td colspan="3" class="py-8 text-center text-outline">No hay asignaturas registradas.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- TAB: AREAS -->
-        <div v-if="activeTab === 'areas'" class="space-y-md">
-          <div class="flex justify-between items-center">
-            <h3 class="font-headline-md text-[20px]">Áreas de aprendizaje</h3>
-            <button
-              @click="openNewArea()"
-              class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
-            >
-              <span class="material-symbols-outlined text-[20px]">category</span>
-              Nueva Área
-            </button>
-          </div>
-
-          <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl overflow-hidden shadow-sm transition-colors duration-300">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
-                  <th class="py-4 px-md">Nombre de la Área</th>
-                  <th class="py-4 px-md">Fecha registro</th>
-                  <th class="py-4 px-md text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-outline-variant/20 text-body-md">
-                <tr v-if="areas.length === 0">
-                  <td colspan="3" class="py-8 text-center text-outline">
-                    No hay áreas de aprendizaje registradas. Registra una para poder crear asignaturas.
-                  </td>
-                </tr>
-                <tr v-else v-for="ar in areas" :key="ar.id" class="hover:bg-surface-container-low/50 transition-colors">
-                  <td class="py-4 px-md font-medium text-on-surface">{{ ar.nombre }}</td>
-                  <td class="py-4 px-md text-on-surface-variant">{{ new Date(ar.created_at).toLocaleDateString() }}</td>
-                  <td class="py-4 px-md text-right">
-                    <button
-                      @click="promptDelete(ar.id, ar.nombre, 'area', 'Eliminar área de aprendizaje', 'Se eliminarán todas las asignaturas vinculadas a esta área y sus cargas académicas relacionadas.')"
-                      class="text-outline hover:text-error transition-colors p-1 cursor-pointer"
-                      title="Eliminar"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- TAB: GRADOS -->
+        <!-- 3. TAB: GRADOS -->
         <div v-if="activeTab === 'grados'" class="space-y-md">
           <div class="flex justify-between items-center">
             <h3 class="font-headline-md text-[20px]">Grados escolares</h3>
@@ -1550,7 +1453,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           </div>
         </div>
 
-        <!-- 4. TAB: GRUPOS -->
+        <!-- TAB: GRUPOS -->
         <div v-if="activeTab === 'grupos'" class="space-y-md">
           <div class="flex justify-between items-center">
             <h3 class="font-headline-md text-[20px]">Grupos escolares</h3>
@@ -1604,6 +1507,103 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
                 </tr>
                 <tr v-if="grupos.length === 0">
                   <td colspan="5" class="py-8 text-center text-outline">No hay grupos registrados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: AREAS -->
+        <div v-if="activeTab === 'areas'" class="space-y-md">
+          <div class="flex justify-between items-center">
+            <h3 class="font-headline-md text-[20px]">Áreas de aprendizaje</h3>
+            <button
+              @click="openNewArea()"
+              class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[20px]">category</span>
+              Nueva Área
+            </button>
+          </div>
+
+          <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl overflow-hidden shadow-sm transition-colors duration-300">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
+                  <th class="py-4 px-md">Nombre de la Área</th>
+                  <th class="py-4 px-md">Fecha registro</th>
+                  <th class="py-4 px-md text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20 text-body-md">
+                <tr v-if="areas.length === 0">
+                  <td colspan="3" class="py-8 text-center text-outline">
+                    No hay áreas de aprendizaje registradas. Registra una para poder crear asignaturas.
+                  </td>
+                </tr>
+                <tr v-else v-for="ar in areas" :key="ar.id" class="hover:bg-surface-container-low/50 transition-colors">
+                  <td class="py-4 px-md font-medium text-on-surface">{{ ar.nombre }}</td>
+                  <td class="py-4 px-md text-on-surface-variant">{{ new Date(ar.created_at).toLocaleDateString() }}</td>
+                  <td class="py-4 px-md text-right">
+                    <button
+                      @click="promptDelete(ar.id, ar.nombre, 'area', 'Eliminar área de aprendizaje', 'Se eliminarán todas las asignaturas vinculadas a esta área y sus cargas académicas relacionadas.')"
+                      class="text-outline hover:text-error transition-colors p-1 cursor-pointer"
+                      title="Eliminar"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. TAB: ASIGNATURAS -->
+        <div v-if="activeTab === 'asignaturas'" class="space-y-md">
+          <div class="flex justify-between items-center">
+            <h3 class="font-headline-md text-[20px]">Asignaturas / Materias</h3>
+            <button
+              @click="openNewAsignatura()"
+              class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
+            >
+              <span class="material-symbols-outlined text-[20px]">book</span>
+              Nueva Asignatura
+            </button>
+          </div>
+
+          <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl overflow-hidden shadow-sm transition-colors duration-300">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
+                  <th class="py-4 px-md">Nombre de la Asignatura</th>
+                  <th class="py-4 px-md">Área de Aprendizaje</th>
+                  <th class="py-4 px-md text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20 text-body-md text-on-surface">
+                <tr v-for="a in asignaturas" :key="a.id" class="hover:bg-surface-container-low/40">
+                  <td class="py-4 px-md font-semibold text-primary">{{ a.nombre }}</td>
+                  <td class="py-4 px-md text-on-surface-variant">{{ a.area_nombre }}</td>
+                  <td class="py-4 px-md text-right flex justify-end gap-xs">
+                    <button
+                      @click="openEditAsignatura(a)"
+                      class="text-primary hover:bg-primary/10 p-2 rounded-full cursor-pointer transition-all"
+                      title="Editar Asignatura"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">edit</span>
+                    </button>
+                    <button
+                      @click="deleteAsignatura(a.id, a.nombre)"
+                      class="text-error hover:bg-error/10 p-2 rounded-full cursor-pointer transition-all"
+                      title="Eliminar Asignatura"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="asignaturas.length === 0">
+                  <td colspan="3" class="py-8 text-center text-outline">No hay asignaturas registradas.</td>
                 </tr>
               </tbody>
             </table>
