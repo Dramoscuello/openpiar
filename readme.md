@@ -87,7 +87,9 @@ Si estás instalando la aplicación, debes pasar estos datos a la base de datos 
 python backend/scripts/seed_curriculum.py
 ```
 
-Para instrucciones detalladas de instalacion en un servidor propio (VPS), consulta [deploy.md](deploy.md).
+Para instrucciones detalladas de instalacion en un servidor propio (VPS), consulta:
+- [deploy-docker.md](deploy-docker.md) — despliegue con Docker Compose (recomendado).
+- [deploy.md](deploy.md) — instalacion tradicional sin Docker.
 
 > [!NOTE]
 > Este paso **no consume créditos ni tokens** de Inteligencia Artificial. Una vez ejecutado, el buscador de asignaturas y competencias estará disponible inmediatamente para todos los docentes.

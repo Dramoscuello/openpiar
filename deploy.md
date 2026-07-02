@@ -1,4 +1,6 @@
-# Guia de despliegue en VPS
+# Guia de despliegue en VPS (instalacion tradicional)
+
+> Si preferis usar Docker, consulta [deploy-docker.md](deploy-docker.md) para un despliegue simplificado con Docker Compose.
 
 Esta guia describe paso a paso como instalar y poner en produccion OpenPiar en un VPS con Ubuntu 24.04 LTS. Se asume que tienes acceso root o un usuario con `sudo` y un dominio apuntando al servidor (ej: `openpiar.mi-colegio.edu.co`).
 
@@ -12,7 +14,7 @@ Usuario → Nginx (puerto 80/443)
             └── resto        → archivos estaticos (frontend/dist/)
 ```
 
-- **Nginx** sirve el前端 compilado y redirige las peticiones de la API al backend.
+- **Nginx** sirve el frontend compilado y redirige las peticiones de la API al backend.
 - **Uvicorn** corre como servicio de systemd, reiniciandose automaticamente si falla.
 - **PostgreSQL** almacena todos los datos de la aplicacion.
 

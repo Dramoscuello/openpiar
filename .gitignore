@@ -45,6 +45,7 @@
 !readme.md
 !README.md
 !deploy.md
+!deploy-docker.md
 
 # Archivos del Sistema Operativo
 .DS_Store

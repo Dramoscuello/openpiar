@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: openpiar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-openpiar_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-openpiar_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-openpiar_user} -d ${DB_NAME:-openpiar_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openpiar-net
+
+  backend:
+    build: ./backend
+    container_name: openpiar-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - openpiar-net
+
+  frontend:
+    build: ./frontend
+    container_name: openpiar-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    networks:
+      - openpiar-net
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  openpiar-net:
+    driver: bridge
