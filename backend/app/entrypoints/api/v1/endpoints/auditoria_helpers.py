@@ -99,6 +99,14 @@ def serializar_estado_piar(estado: str) -> dict:
     return {"estado": estado}
 
 
+def serializar_evidencia(nombre_archivo: str, descripcion: str, fecha) -> dict:
+    return {
+        "nombre_archivo": nombre_archivo,
+        "descripcion": descripcion,
+        "fecha": str(fecha) if fecha else None,
+    }
+
+
 async def registrar_cambio(
     db: AsyncSession,
     entidad_tipo: str,

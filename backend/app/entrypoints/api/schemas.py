@@ -465,8 +465,13 @@ class AjusteRazonableResponse(AjusteRazonableCreate, BaseResponse):
     piar_id: uuid.UUID
     periodo_id: int
     creado_por: Optional[uuid.UUID] = None
+    creador_nombre: Optional[str] = None
     puntuacion: Optional[int] = None
     comentario_puntuacion: Optional[str] = None
+
+
+class AjusteRazonableConEvidenciasResponse(AjusteRazonableResponse):
+    evidencias: list["EvidenciaAjusteResponse"] = []
 
 class AjustePuntuacionRequest(BaseModel):
     puntuacion: int = Field(..., ge=1, le=5)
@@ -529,7 +534,7 @@ class PiarResponse(PiarCreate, BaseResponse):
     creado_por: Optional[uuid.UUID] = None
     director_nombre: Optional[str] = None
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
-    ajustes_razonables: list[AjusteRazonableResponse] = []
+    ajustes_razonables: list[AjusteRazonableConEvidenciasResponse] = []
     recomendaciones_pmi: list[RecomendacionPMIResponse] = []
     acta_acuerdo: Optional[ActaAcuerdoResponse] = None
 
@@ -657,3 +662,25 @@ class AuditoriaCambioResponse(BaseResponse):
 class AuditoriaListResponse(BaseResponse):
     total: int
     items: list[AuditoriaCambioResponse]
+
+
+# ---------------------------------------------------------------------------
+# Portafolio de Evidencias
+# ---------------------------------------------------------------------------
+
+class EvidenciaAjusteCreate(BaseModel):
+    descripcion: str = Field(..., min_length=2)
+    fecha: date
+
+
+class EvidenciaAjusteResponse(BaseResponse):
+    id: uuid.UUID
+    ajuste_razonable_id: uuid.UUID
+    piar_id: uuid.UUID
+    nombre_archivo: str
+    tipo_archivo: str
+    descripcion: str
+    fecha: date
+    creado_por: Optional[uuid.UUID] = None
+    creador_nombre: Optional[str] = None
+    fecha_subida: datetime

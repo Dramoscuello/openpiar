@@ -1033,7 +1033,69 @@ def generate_acta_pdf(piar: PiarORM, config: Optional[ConfiguracionSistemaORM], 
     ]))
     signatures.append(signatures_table)
     story.append(KeepTogether(signatures))
-    
+
+    # ─────────────────────────────────────
+    # ANEXO 4: PORTAFOLIO DE EVIDENCIAS
+    # ─────────────────────────────────────
+    todas_evidencias = []
+    for ajuste in piar.ajustes_razonables:
+        for ev in (ajuste.evidencias or []):
+            todas_evidencias.append((ajuste, ev))
+
+    if todas_evidencias:
+        story.append(PageBreak())
+        story.extend(get_header_table("ANEXO 4", "PORTAFOLIO DE EVIDENCIAS DEL ESTUDIANTE"))
+        story.append(Paragraph(
+            "Evidencias de la implementación de los ajustes razonables DUA en el aula.",
+            subtitle_style,
+        ))
+        story.append(Spacer(1, 12))
+
+        row_items = []
+        for ajuste, ev in todas_evidencias:
+            area_text = ajuste.area
+            periodo_nombre = ajuste.periodo.nombre if ajuste.periodo else "—"
+            fecha_str = ev.fecha.strftime("%d/%m/%Y") if ev.fecha else ""
+            creador = f"{ev.creador.nombre} {ev.creador.apellido}" if ev.creador else "—"
+
+            if ev.tipo_archivo == "imagen" and os.path.exists(ev.ruta_archivo):
+                try:
+                    img = Image(ev.ruta_archivo, width=180, height=120)
+                except Exception:
+                    img = Paragraph(
+                        '<font size="9" color="#94a3b8">[Imagen no disponible]</font>',
+                        body_style,
+                    )
+            else:
+                img = Paragraph(
+                    '<font size="9" color="#64748b"><b>PDF</b><br/>'
+                    f'{ev.nombre_archivo}</font>',
+                    body_style,
+                )
+
+            info = Paragraph(
+                f'<font size="8"><b>Área:</b> {area_text} | <b>Periodo:</b> {periodo_nombre}</font><br/>'
+                f'<font size="8"><b>Fecha:</b> {fecha_str} | <b>Subido por:</b> {creador}</font><br/>'
+                f'<font size="8.5">{ev.descripcion}</font>',
+                body_style,
+            )
+
+            row_items.append([img, info])
+
+        ev_table = Table(
+            row_items,
+            colWidths=[200, 332],
+        )
+        ev_table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (1, 0), (1, -1), 12),
+            ("GRID", (0, 0), (-1, -1), 0.5, border_color),
+            ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+        ]))
+        story.append(ev_table)
+
     def add_footer(canvas, doc):
         canvas.saveState()
         canvas.setFont('Helvetica', 7.5)

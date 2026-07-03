@@ -2,7 +2,7 @@ import uuid
 import json
 from datetime import date
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -16,6 +16,7 @@ from app.adapters.db.models import (
     PiarORM,
     CaracteristicasEstudianteORM,
     AjusteRazonableORM,
+    EvidenciaAjusteORM,
     PeriodoAcademicoORM,
     EstudianteORM,
     RecomendacionPMIORM,
@@ -50,6 +51,9 @@ from app.entrypoints.api.schemas import (
     ActaAcuerdoResponse,
     AuditoriaCambioResponse,
     AuditoriaListResponse,
+    EvidenciaAjusteCreate,
+    EvidenciaAjusteResponse,
+    AjusteRazonableConEvidenciasResponse,
 )
 from app.entrypoints.api.dependencies import CurrentUser
 
@@ -60,10 +64,46 @@ from app.entrypoints.api.v1.endpoints.auditoria_helpers import (
     serializar_acta,
     serializar_caracteristicas,
     serializar_estado_piar,
+    serializar_evidencia,
 )
 
 router = APIRouter(prefix="/piars", tags=["piars"])
 settings = get_settings()
+
+
+def _build_ajustes_response(ajustes_orm: list) -> list:
+    items = []
+    for a in ajustes_orm:
+        evidence_list = []
+        for ev in (a.evidencias or []):
+            evidence_list.append(EvidenciaAjusteResponse(
+                id=ev.id,
+                ajuste_razonable_id=ev.ajuste_razonable_id,
+                piar_id=ev.piar_id,
+                nombre_archivo=ev.nombre_archivo,
+                tipo_archivo=ev.tipo_archivo,
+                descripcion=ev.descripcion,
+                fecha=ev.fecha,
+                creado_por=ev.creado_por,
+                creador_nombre=f"{ev.creador.nombre} {ev.creador.apellido}" if ev.creador else None,
+                fecha_subida=ev.fecha_subida,
+            ))
+        items.append(AjusteRazonableConEvidenciasResponse(
+            id=a.id,
+            piar_id=a.piar_id,
+            periodo_id=a.periodo_id,
+            creado_por=a.creado_por,
+            area=a.area,
+            titulo_tema=a.titulo_tema,
+            objetivos_propositos=a.objetivos_propositos,
+            barreras_evidenciadas=a.barreras_evidenciadas,
+            ajustes_estrategias=a.ajustes_estrategias,
+            evaluacion_ajustes=a.evaluacion_ajustes,
+            puntuacion=a.puntuacion,
+            comentario_puntuacion=a.comentario_puntuacion,
+            evidencias=evidence_list,
+        ))
+    return items
 
 
 async def get_gemini_key(db: AsyncSession) -> str:
@@ -103,7 +143,7 @@ async def get_piar_by_estudiante(
         .options(
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.director),
             selectinload(PiarORM.caracteristicas),
-            selectinload(PiarORM.ajustes_razonables),
+            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias),
             selectinload(PiarORM.recomendaciones_pmi),
             selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
@@ -130,6 +170,8 @@ async def get_piar_by_estudiante(
         director_nombre = f"{d.nombre} {d.apellido}"
 
     response = PiarResponse.model_validate(piar)
+
+    response.ajustes_razonables = _build_ajustes_response(piar.ajustes_razonables)
     response.director_nombre = director_nombre
 
     if not es_directivo and not es_director:
@@ -178,7 +220,7 @@ async def create_piar(
         .where(PiarORM.id == nuevo_piar.id)
         .options(
             selectinload(PiarORM.caracteristicas),
-            selectinload(PiarORM.ajustes_razonables),
+            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias),
             selectinload(PiarORM.recomendaciones_pmi),
             selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
@@ -432,7 +474,7 @@ async def update_piar(
         .where(PiarORM.id == piar_id)
         .options(
             selectinload(PiarORM.caracteristicas),
-            selectinload(PiarORM.ajustes_razonables),
+            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias),
             selectinload(PiarORM.recomendaciones_pmi),
             selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
@@ -537,6 +579,9 @@ async def update_ajuste_razonable(
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
+    if ajuste.creado_por != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
+
     datos_antes = serializar_ajuste(ajuste)
 
     ajuste.area = data.area
@@ -577,6 +622,9 @@ async def puntuar_ajuste(
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
     if ajuste.creado_por != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
+
+    if ajuste.creado_por != current_user.id:
         raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede puntuarlo.")
 
     datos_antes = serializar_ajuste(ajuste)
@@ -611,6 +659,9 @@ async def delete_ajuste_razonable(
     ajuste = await db.get(AjusteRazonableORM, ajuste_id)
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
+
+    if ajuste.creado_por != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
 
     datos_antes = serializar_ajuste(ajuste)
     ajuste_id = ajuste.id
@@ -854,6 +905,7 @@ async def download_acta_pdf(
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.matricula_actual),
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
+            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias).selectinload(EvidenciaAjusteORM.creador),
             selectinload(PiarORM.recomendaciones_pmi),
             selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
         )
@@ -903,6 +955,245 @@ async def download_acta_pdf(
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Portafolio de Evidencias del Estudiante
+# ---------------------------------------------------------------------------
+
+UPLOAD_DIR = "uploads/evidencias"
+
+@router.post(
+    "/{piar_id}/ajustes/{ajuste_id}/evidencias",
+    response_model=EvidenciaAjusteResponse,
+)
+async def upload_evidencia(
+    piar_id: uuid.UUID,
+    ajuste_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+    file: UploadFile = File(...),
+    descripcion: str = Form(..., min_length=2),
+    fecha: date = Form(...),
+):
+    """Sube una imagen o PDF como evidencia de un ajuste DUA (máx 15 MB)."""
+    ajuste = await db.get(AjusteRazonableORM, ajuste_id)
+    if not ajuste or ajuste.piar_id != piar_id:
+        raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
+
+    if ajuste.creado_por != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
+
+    filename = (file.filename or "evidencia").lower()
+    if filename.endswith((".jpg", ".jpeg", ".png")):
+        tipo = "imagen"
+    elif filename.endswith(".pdf"):
+        tipo = "pdf"
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail="Solo se permiten imágenes (JPG, PNG) o documentos PDF.",
+        )
+
+    contenido = await file.read()
+    if len(contenido) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="El archivo no puede superar 15 MB.")
+
+    import os as _os
+    upload_dir = _os.path.join(UPLOAD_DIR, str(piar_id))
+    _os.makedirs(upload_dir, exist_ok=True)
+
+    file_id = str(uuid.uuid4())
+    ext = _os.path.splitext(filename)[1]
+    stored_name = f"{file_id}{ext}"
+    file_path = _os.path.join(upload_dir, stored_name)
+
+    with open(file_path, "wb") as f:
+        f.write(contenido)
+
+    evidencia = EvidenciaAjusteORM(
+        ajuste_razonable_id=ajuste_id,
+        piar_id=piar_id,
+        nombre_archivo=filename,
+        tipo_archivo=tipo,
+        ruta_archivo=file_path,
+        descripcion=descripcion,
+        fecha=fecha,
+        creado_por=current_user.id,
+    )
+    db.add(evidencia)
+    await db.commit()
+    await db.refresh(evidencia)
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="evidencia_ajuste",
+        entidad_id=evidencia.id,
+        piar_id=piar_id,
+        accion="crear",
+        usuario_id=current_user.id,
+        datos_nuevos=serializar_evidencia(
+            evidencia.nombre_archivo, evidencia.descripcion, evidencia.fecha
+        ),
+    )
+
+    return EvidenciaAjusteResponse(
+        id=evidencia.id,
+        ajuste_razonable_id=evidencia.ajuste_razonable_id,
+        piar_id=evidencia.piar_id,
+        nombre_archivo=evidencia.nombre_archivo,
+        tipo_archivo=evidencia.tipo_archivo,
+        descripcion=evidencia.descripcion,
+        fecha=evidencia.fecha,
+        creado_por=evidencia.creado_por,
+        fecha_subida=evidencia.fecha_subida,
+    )
+
+
+@router.get(
+    "/{piar_id}/ajustes/{ajuste_id}/evidencias",
+)
+async def list_evidencias_ajuste(
+    piar_id: uuid.UUID,
+    ajuste_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Lista las evidencias de un ajuste DUA."""
+    query = (
+        select(EvidenciaAjusteORM)
+        .where(
+            EvidenciaAjusteORM.piar_id == piar_id,
+            EvidenciaAjusteORM.ajuste_razonable_id == ajuste_id,
+        )
+        .options(selectinload(EvidenciaAjusteORM.creador))
+        .order_by(EvidenciaAjusteORM.fecha.desc())
+    )
+    result = await db.execute(query)
+    items = result.scalars().all()
+    return [
+        EvidenciaAjusteResponse(
+            id=e.id,
+            ajuste_razonable_id=e.ajuste_razonable_id,
+            piar_id=e.piar_id,
+            nombre_archivo=e.nombre_archivo,
+            tipo_archivo=e.tipo_archivo,
+            descripcion=e.descripcion,
+            fecha=e.fecha,
+            creado_por=e.creado_por,
+            creador_nombre=f"{e.creador.nombre} {e.creador.apellido}" if e.creador else None,
+            fecha_subida=e.fecha_subida,
+        )
+        for e in items
+    ]
+
+
+@router.get(
+    "/{piar_id}/evidencias",
+)
+async def list_evidencias_piar(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Lista todas las evidencias del PIAR (para timeline y PDF)."""
+    query = (
+        select(EvidenciaAjusteORM)
+        .where(EvidenciaAjusteORM.piar_id == piar_id)
+        .options(selectinload(EvidenciaAjusteORM.creador))
+        .order_by(EvidenciaAjusteORM.fecha.desc())
+    )
+    result = await db.execute(query)
+    items = result.scalars().all()
+    return [
+        EvidenciaAjusteResponse(
+            id=e.id,
+            ajuste_razonable_id=e.ajuste_razonable_id,
+            piar_id=e.piar_id,
+            nombre_archivo=e.nombre_archivo,
+            tipo_archivo=e.tipo_archivo,
+            descripcion=e.descripcion,
+            fecha=e.fecha,
+            creado_por=e.creado_por,
+            creador_nombre=f"{e.creador.nombre} {e.creador.apellido}" if e.creador else None,
+            fecha_subida=e.fecha_subida,
+        )
+        for e in items
+    ]
+
+
+@router.get(
+    "/{piar_id}/evidencias/{evidencia_id}/descargar",
+)
+async def descargar_evidencia(
+    piar_id: uuid.UUID,
+    evidencia_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Descarga el archivo de una evidencia."""
+    evidencia = await db.get(EvidenciaAjusteORM, evidencia_id)
+    if not evidencia or evidencia.piar_id != piar_id:
+        raise HTTPException(status_code=404, detail="Evidencia no encontrada.")
+
+    import os as _os
+    if not _os.path.exists(evidencia.ruta_archivo):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en el servidor.")
+
+    media_type = "image/png" if evidencia.tipo_archivo == "imagen" else "application/pdf"
+    with open(evidencia.ruta_archivo, "rb") as f:
+        content = f.read()
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{evidencia.nombre_archivo}"'
+        },
+    )
+
+
+@router.delete(
+    "/{piar_id}/evidencias/{evidencia_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def eliminar_evidencia(
+    piar_id: uuid.UUID,
+    evidencia_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Elimina una evidencia y su archivo."""
+    evidencia = await db.get(EvidenciaAjusteORM, evidencia_id)
+    if not evidencia or evidencia.piar_id != piar_id:
+        raise HTTPException(status_code=404, detail="Evidencia no encontrada.")
+
+    if evidencia.creado_por != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo quien subió la evidencia puede eliminarla.")
+
+    nombre = evidencia.nombre_archivo
+    desc = evidencia.descripcion
+    fecha = evidencia.fecha
+
+    import os as _os
+    if _os.path.exists(evidencia.ruta_archivo):
+        _os.remove(evidencia.ruta_archivo)
+
+    ev_id = evidencia.id
+    await db.delete(evidencia)
+    await db.commit()
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="evidencia_ajuste",
+        entidad_id=ev_id,
+        piar_id=piar_id,
+        accion="eliminar",
+        usuario_id=current_user.id,
+        datos_anteriores=serializar_evidencia(nombre, desc, fecha),
+    )
+
+    return None
 
 
 # ---------------------------------------------------------------------------

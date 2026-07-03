@@ -536,6 +536,9 @@ class AjusteRazonableORM(Base):
     )
     piar: Mapped["PiarORM"] = relationship(back_populates="ajustes_razonables")
     periodo: Mapped["PeriodoAcademicoORM"] = relationship()
+    evidencias: Mapped[list["EvidenciaAjusteORM"]] = relationship(
+        back_populates="ajuste_razonable", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ajustes_razonables_piar_id_idx", piar_id),
@@ -680,7 +683,7 @@ class AuditoriaCambioORM(Base):
         CheckConstraint(
             "entidad_tipo IN ("
             "'ajuste_razonable', 'recomendacion_pmi', 'acta_acuerdo', "
-            "'caracteristicas_estudiante', 'compromiso_casa', 'piar_estado'"
+            "'caracteristicas_estudiante', 'compromiso_casa', 'piar_estado', 'evidencia_ajuste'"
             ")",
             name="ck_auditoria_entidad_tipo",
         ),
@@ -863,4 +866,55 @@ class CargaAcademicaORM(Base):
 
     __table_args__ = (
         UniqueConstraint("docente_id", "asignatura_id", "grupo_id", name="uq_carga_academica"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tabla: evidencias_ajuste
+# Portafolio de evidencias vinculadas a ajustes DUA
+# ---------------------------------------------------------------------------
+
+class EvidenciaAjusteORM(Base):
+    __tablename__ = "evidencias_ajuste"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    ajuste_razonable_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ajustes_razonables.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    piar_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("piars.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    nombre_archivo: Mapped[str] = mapped_column(Text, nullable=False)
+    tipo_archivo: Mapped[str] = mapped_column(Text, nullable=False)
+    ruta_archivo: Mapped[str] = mapped_column(Text, nullable=False)
+    descripcion: Mapped[str] = mapped_column(Text, nullable=False)
+    fecha: Mapped[date] = mapped_column(Date, nullable=False)
+    creado_por: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    fecha_subida: Mapped[datetime] = mapped_column(
+        default=_now, server_default=func.now()
+    )
+
+    ajuste_razonable: Mapped["AjusteRazonableORM"] = relationship(
+        back_populates="evidencias"
+    )
+    piar: Mapped["PiarORM"] = relationship()
+    creador: Mapped[Optional["UsuarioORM"]] = relationship()
+
+    __table_args__ = (
+        CheckConstraint(
+            "tipo_archivo IN ('imagen', 'pdf')",
+            name="ck_evidencias_tipo_archivo",
+        ),
+        Index("evidencias_ajuste_ajuste_id_idx", ajuste_razonable_id),
+        Index("evidencias_ajuste_piar_id_idx", piar_id),
     )

@@ -540,6 +540,107 @@
                         </div>
                       </div>
                     </div>
+
+                    <!-- Evidencias -->
+                    <div class="border-t border-outline-variant/20 pt-3 mt-1">
+                      <button
+                        @click="toggleEvidencias(ajuste)"
+                        class="flex items-center gap-1 text-xs font-bold text-outline-variant hover:text-primary transition-colors cursor-pointer"
+                      >
+                        <span class="material-symbols-outlined text-sm" :class="evidenciasExpandidas[ajuste.id] ? 'rotate-90' : ''">
+                          chevron_right
+                        </span>
+                        Evidencias ({{ ajuste.evidencias?.length || 0 }})
+                      </button>
+
+                      <div v-show="evidenciasExpandidas[ajuste.id]" class="mt-2 space-y-2">
+                        <div v-if="!ajuste.evidencias || ajuste.evidencias.length === 0" class="text-xs text-on-surface-variant py-1 pl-5">
+                          Sin evidencias. Agrega imágenes o PDFs del trabajo del estudiante.
+                        </div>
+                        <div
+                          v-for="ev in ajuste.evidencias"
+                          :key="ev.id"
+                          class="flex items-start gap-3 bg-surface-container-lowest rounded-lg p-2 border border-outline-variant/20"
+                        >
+                          <span class="material-symbols-outlined text-xl text-outline-variant shrink-0 mt-0.5">
+                            {{ ev.tipo_archivo === 'imagen' ? 'image' : 'picture_as_pdf' }}
+                          </span>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-on-surface">{{ ev.descripcion }}</p>
+                            <p class="text-[10px] text-on-surface-variant">
+                              {{ ev.nombre_archivo }} — {{ new Date(ev.fecha).toLocaleDateString('es-CO') }}
+                            </p>
+                          </div>
+                          <div class="flex gap-1 shrink-0">
+                            <a
+                              :href="`/api/v1/piars/${activePiar.id}/evidencias/${ev.id}/descargar`"
+                              target="_blank"
+                              class="p-1 hover:bg-surface-container-high rounded text-xs text-outline-variant hover:text-primary transition-all"
+                              title="Descargar"
+                            >
+                              <span class="material-symbols-outlined text-sm">download</span>
+                            </a>
+                            <button
+                              v-if="authStore.user?.id === ajuste.creado_por"
+                              @click="eliminarEvidencia(ev.id)"
+                              class="p-1 hover:bg-red-50 rounded text-xs text-outline-variant hover:text-red-600 transition-all cursor-pointer"
+                              title="Eliminar"
+                            >
+                              <span class="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <!-- Formulario de subida (solo creador del ajuste) -->
+                        <form
+                          v-if="authStore.user?.id === ajuste.creado_por"
+                          @submit.prevent="subirEvidencia(ajuste.id)"
+                          class="bg-surface-container-low border border-dashed border-outline-variant/40 rounded-lg p-3 pl-5 space-y-2"
+                        >
+                          <p class="text-[11px] font-bold text-on-surface-variant">Agregar evidencia</p>
+                          <label
+                            class="cursor-pointer flex items-center gap-2 px-3 py-2.5 bg-surface border border-outline-variant rounded-lg hover:bg-surface-container-high active:bg-surface-container-highest transition-all text-xs text-on-surface-variant w-full"
+                          >
+                            <span class="material-symbols-outlined text-primary text-sm">attach_file</span>
+                            <span class="truncate">
+                              {{ getEvidenciaForm(ajuste.id).fileName || 'Seleccionar archivo (JPG/PNG/PDF, máx 15 MB)' }}
+                            </span>
+                            <input
+                              :key="`evidencia-file-${ajuste.id}-${evidenciaFileKeys[ajuste.id] || 0}`"
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                              @change="onFileChange($event, ajuste.id)"
+                              class="hidden"
+                            />
+                          </label>
+                          <div class="flex gap-2">
+                            <input
+                              v-model="getEvidenciaForm(ajuste.id).desc"
+                              type="text"
+                              placeholder="Descripción breve..."
+                              class="flex-1 bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary transition-all"
+                            />
+                            <input
+                              v-model="getEvidenciaForm(ajuste.id).fecha"
+                              type="date"
+                              class="bg-surface border border-outline-variant rounded-lg px-2 py-1.5 text-xs outline-none focus:border-primary transition-all"
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            :disabled="!puedeSubirEvidencia(ajuste.id)"
+                            class="px-4 py-1.5 bg-primary text-on-primary rounded-lg font-bold text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer"
+                          >
+                            <span v-if="getEvidenciaForm(ajuste.id).isUploading" class="w-3 h-3 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></span>
+                            <span v-else class="material-symbols-outlined text-sm">upload</span>
+                            Subir
+                          </button>
+                          <p v-if="!puedeSubirEvidencia(ajuste.id) && (getEvidenciaForm(ajuste.id).desc.trim() || getEvidenciaForm(ajuste.id).file)" class="text-[10px] text-amber-600">
+                            {{ !getEvidenciaForm(ajuste.id).file ? 'Selecciona un archivo.' : !getEvidenciaForm(ajuste.id).desc.trim() ? 'Escribe una descripción.' : '' }}
+                          </p>
+                        </form>
+                      </div>
+                    </div>
                   </article>
                 </div>
               </div>
@@ -1374,6 +1475,133 @@ const isDirectorOrAdmin = computed(() => {
   return false
 })
 
+interface EvidenciaFormState {
+  file: File | null
+  fileName: string
+  desc: string
+  fecha: string
+  isUploading: boolean
+}
+
+// TAB 5: Evidencias
+const evidenciasExpandidas = ref<Record<string, boolean>>({})
+const evidenciaForms = ref<Record<string, EvidenciaFormState>>({})
+// Key usada para forzar la recreación del input file tras subir una evidencia
+const evidenciaFileKeys = ref<Record<string, number>>({})
+
+function ensureEvidenciaForm(ajusteId: string) {
+  if (!evidenciaForms.value[ajusteId]) {
+    evidenciaForms.value[ajusteId] = {
+      file: null,
+      fileName: '',
+      desc: '',
+      fecha: new Date().toISOString().slice(0, 10),
+      isUploading: false
+    }
+  }
+}
+
+function getEvidenciaForm(ajusteId: string): EvidenciaFormState {
+  const form = evidenciaForms.value[ajusteId]
+  if (form) return form
+  const nuevo: EvidenciaFormState = {
+    file: null,
+    fileName: '',
+    desc: '',
+    fecha: new Date().toISOString().slice(0, 10),
+    isUploading: false
+  }
+  evidenciaForms.value[ajusteId] = nuevo
+  return nuevo
+}
+
+function puedeSubirEvidencia(ajusteId: string): boolean {
+  const form = evidenciaForms.value[ajusteId]
+  return !!form && !!form.file && form.desc.trim().length > 0 && !form.isUploading
+}
+
+function onFileChange(event: Event, ajusteId: string) {
+  const target = event.target as HTMLInputElement
+  const form = getEvidenciaForm(ajusteId)
+  form.file = target.files?.[0] || null
+  form.fileName = form.file?.name || ''
+}
+
+function toggleEvidencias(ajuste: any) {
+  const wasExpanded = !!evidenciasExpandidas.value[ajuste.id]
+  evidenciasExpandidas.value[ajuste.id] = !wasExpanded
+  if (!wasExpanded) {
+    getEvidenciaForm(ajuste.id)
+  }
+}
+
+async function subirEvidencia(ajusteId: string) {
+  const form = evidenciaForms.value[ajusteId]
+  if (!form?.file || !form.desc.trim() || !activePiar.value?.id) return
+  form.isUploading = true
+  try {
+    const formData = new FormData()
+    formData.append('file', form.file)
+    formData.append('descripcion', form.desc)
+    formData.append('fecha', form.fecha)
+
+    const res = await fetch(
+      `/api/v1/piars/${activePiar.value.id}/ajustes/${ajusteId}/evidencias`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authStore.token}` },
+        body: formData,
+      }
+    )
+    if (res.ok) {
+      const nueva = await res.json()
+      const ajuste = activePiar.value.ajustes_razonables?.find((a: any) => a.id === ajusteId)
+      if (ajuste) {
+        if (!ajuste.evidencias) ajuste.evidencias = []
+        ajuste.evidencias.push(nueva)
+      }
+      // Reset form and force input file recreation so the same file can be selected again
+      form.file = null
+      form.fileName = ''
+      form.desc = ''
+      form.fecha = new Date().toISOString().slice(0, 10)
+      evidenciaFileKeys.value[ajusteId] = (evidenciaFileKeys.value[ajusteId] || 0) + 1
+      showToast('Evidencia agregada correctamente.')
+    } else {
+      const err = await res.json()
+      showToast(err.detail || 'Error al subir evidencia.', true)
+    }
+  } catch (e: any) {
+    showToast(e.message || 'Error de conexión.', true)
+  } finally {
+    form.isUploading = false
+  }
+}
+
+async function eliminarEvidencia(evidenciaId: string) {
+  if (!activePiar.value?.id) return
+  if (!confirm('¿Eliminar esta evidencia?')) return
+  try {
+    const res = await fetch(
+      `/api/v1/piars/${activePiar.value.id}/evidencias/${evidenciaId}`,
+      {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authStore.token}` },
+      }
+    )
+    if (res.ok) {
+      for (const a of activePiar.value.ajustes_razonables || []) {
+        if (a.evidencias) {
+          a.evidencias = a.evidencias.filter((e: any) => e.id !== evidenciaId)
+        }
+      }
+      showToast('Evidencia eliminada.')
+    }
+  } catch (e: any) {
+    showToast('Error al eliminar evidencia.', true)
+  }
+}
+
 // TAB 5: Historial de cambios
 const historialItems = ref<any[]>([])
 const isLoadingHistorial = ref(false)
@@ -1848,6 +2076,7 @@ async function cargarPiar() {
         a._comentarioPuntuacion = a.comentario_puntuacion || ''
         a._comentarioGuardado = a.comentario_puntuacion || ''
       }
+      ensureEvidenciaForm(a.id)
     })
   }
 }

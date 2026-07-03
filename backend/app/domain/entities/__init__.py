@@ -27,6 +27,7 @@ ENTIDADES_AUDITABLES = {
     "caracteristicas_estudiante",
     "compromiso_casa",
     "piar_estado",
+    "evidencia_ajuste",
 }
 
 ACCIONES_AUDITORIA = {"crear", "modificar", "eliminar"}
