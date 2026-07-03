@@ -13,8 +13,8 @@ asyncpg==0.30.0          # Driver async para PostgreSQL
 alembic==1.14.0          # Migraciones de base de datos
 
 # --- Configuración ---
-pydantic[email]==2.10.3
-pydantic-settings==2.6.1  # Leer .env con BaseSettings
+pydantic[email]>=2.12.5
+pydantic-settings>=2.6.1  # Leer .env con BaseSettings
 email-validator==2.3.0
 
 # --- Seguridad / Auth ---
