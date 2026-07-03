@@ -17,6 +17,22 @@ from app.domain.value_objects import Email, Rol
 
 
 # ---------------------------------------------------------------------------
+# Enums compartidos
+# ---------------------------------------------------------------------------
+
+ENTIDADES_AUDITABLES = {
+    "ajuste_razonable",
+    "recomendacion_pmi",
+    "acta_acuerdo",
+    "caracteristicas_estudiante",
+    "compromiso_casa",
+    "piar_estado",
+}
+
+ACCIONES_AUDITORIA = {"crear", "modificar", "eliminar"}
+
+
+# ---------------------------------------------------------------------------
 # Entidad: Usuario
 # ---------------------------------------------------------------------------
 
@@ -246,3 +262,55 @@ class Piar:
     def es_editable(self) -> bool:
         """Un PIAR puede editarse en cualquier estado."""
         return True
+
+
+# ---------------------------------------------------------------------------
+# Entidad: AuditoriaCambio
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AuditoriaCambio:
+    id: uuid.UUID
+    entidad_tipo: str
+    entidad_id: uuid.UUID
+    piar_id: uuid.UUID
+    accion: str
+    usuario_id: uuid.UUID
+    datos_anteriores: Optional[dict] = None
+    datos_nuevos: Optional[dict] = None
+    fecha: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    ip_origen: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if self.entidad_tipo not in ENTIDADES_AUDITABLES:
+            raise ValueError(
+                f"Tipo de entidad auditada '{self.entidad_tipo}' no válido."
+            )
+        if self.accion not in ACCIONES_AUDITORIA:
+            raise ValueError(
+                f"Acción de auditoría '{self.accion}' no válida."
+            )
+
+    @classmethod
+    def crear(
+        cls,
+        entidad_tipo: str,
+        entidad_id: uuid.UUID,
+        piar_id: uuid.UUID,
+        accion: str,
+        usuario_id: uuid.UUID,
+        datos_anteriores: Optional[dict] = None,
+        datos_nuevos: Optional[dict] = None,
+        ip_origen: Optional[str] = None,
+    ) -> "AuditoriaCambio":
+        return cls(
+            id=uuid.uuid4(),
+            entidad_tipo=entidad_tipo,
+            entidad_id=entidad_id,
+            piar_id=piar_id,
+            accion=accion,
+            usuario_id=usuario_id,
+            datos_anteriores=datos_anteriores,
+            datos_nuevos=datos_nuevos,
+            ip_origen=ip_origen,
+        )

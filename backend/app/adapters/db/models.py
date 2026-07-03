@@ -452,6 +452,9 @@ class PiarORM(Base):
     acta_acuerdo: Mapped[Optional["ActaAcuerdoORM"]] = relationship(
         back_populates="piar", cascade="all, delete-orphan"
     )
+    auditoria_entradas: Mapped[list["AuditoriaCambioORM"]] = relationship(
+        back_populates="piar", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -634,6 +637,59 @@ class CompromisoCasaORM(Base):
             name="ck_compromisos_frecuencia",
         ),
         Index("compromisos_casa_acta_id_idx", acta_id),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tabla: auditoria_cambios
+# Historial de cambios en entidades del PIAR
+# ---------------------------------------------------------------------------
+
+class AuditoriaCambioORM(Base):
+    __tablename__ = "auditoria_cambios"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    entidad_tipo: Mapped[str] = mapped_column(Text, nullable=False)
+    entidad_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    piar_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("piars.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    accion: Mapped[str] = mapped_column(Text, nullable=False)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    datos_anteriores: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    datos_nuevos: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    fecha: Mapped[datetime] = mapped_column(
+        default=_now, server_default=func.now()
+    )
+    ip_origen: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    usuario: Mapped[Optional["UsuarioORM"]] = relationship()
+    piar: Mapped["PiarORM"] = relationship(back_populates="auditoria_entradas")
+
+    __table_args__ = (
+        CheckConstraint(
+            "entidad_tipo IN ("
+            "'ajuste_razonable', 'recomendacion_pmi', 'acta_acuerdo', "
+            "'caracteristicas_estudiante', 'compromiso_casa', 'piar_estado'"
+            ")",
+            name="ck_auditoria_entidad_tipo",
+        ),
+        CheckConstraint(
+            "accion IN ('crear', 'modificar', 'eliminar')",
+            name="ck_auditoria_accion",
+        ),
+        Index("auditoria_cambios_piar_id_idx", piar_id),
+        Index("auditoria_cambios_fecha_idx", fecha.desc()),
     )
 
 

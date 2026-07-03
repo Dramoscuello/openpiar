@@ -2,7 +2,7 @@
 import io
 import os
 from datetime import date
-from typing import Optional
+from typing import Any, Optional
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -1051,6 +1051,280 @@ def generate_acta_pdf(piar: PiarORM, config: Optional[ConfiguracionSistemaORM], 
         
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
     
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
+
+def generate_auditoria_pdf(
+    piar_id,
+    auditoria_rows,
+    config: Optional[ConfiguracionSistemaORM],
+    estudiante: Any,
+) -> bytes:
+    """Genera un PDF de trazabilidad completa del PIAR con cabecera institucional."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=letter,
+        leftMargin=40, rightMargin=40,
+        topMargin=40, bottomMargin=55,
+    )
+
+    primary_color = colors.HexColor("#1A365D")
+    secondary_color = colors.HexColor("#4A5568")
+    border_color = colors.HexColor("#CBD5E1")
+
+    styles = getSampleStyleSheet()
+    body_style = ParagraphStyle(
+        "BodyTextCustom",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#334155"),
+    )
+    title_style = ParagraphStyle(
+        "DocTitle",
+        parent=styles["Heading1"],
+        fontName="Helvetica-Bold",
+        fontSize=12,
+        leading=15,
+        textColor=primary_color,
+        spaceAfter=2,
+        alignment=1,
+    )
+    subtitle_style = ParagraphStyle(
+        "DocSubtitle",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=12,
+        textColor=secondary_color,
+        spaceAfter=2,
+        alignment=1,
+    )
+    section_style = ParagraphStyle(
+        "SectionHeading",
+        parent=body_style,
+        fontName="Helvetica-Bold",
+        textColor=primary_color,
+        fontSize=10,
+        leading=14,
+        spaceBefore=8,
+        spaceAfter=4,
+    )
+    entry_header_style = ParagraphStyle(
+        "EntryHeader",
+        parent=body_style,
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=12,
+        textColor=primary_color,
+        spaceBefore=6,
+        spaceAfter=2,
+    )
+    entry_body_style = ParagraphStyle(
+        "EntryBody",
+        parent=body_style,
+        fontSize=8.5,
+        leading=12,
+    )
+    entry_label_style = ParagraphStyle(
+        "EntryLabel",
+        parent=entry_body_style,
+        fontName="Helvetica-Bold",
+        textColor=colors.HexColor("#64748b"),
+    )
+
+    story: list = []
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    assets_dir = os.path.join(base_dir, "assets")
+    gobierno_path = os.path.join(assets_dir, "gobierno.png")
+    minedu_path = os.path.join(assets_dir, "minedu.png")
+
+    logo_gobierno = None
+    logo_minedu = None
+    if os.path.exists(gobierno_path):
+        logo_gobierno = Image(gobierno_path, width=194, height=22)
+    if os.path.exists(minedu_path):
+        logo_minedu = Image(minedu_path, width=80, height=22)
+
+    header_row: list = []
+    header_row.append(logo_gobierno if logo_gobierno else "")
+    header_row.append(logo_minedu if logo_minedu else "")
+    right_text = Paragraph(
+        "<font color='#4A5568'><b>AUDITORÍA</b><br/>Decreto 1421/2017</font>",
+        ParagraphStyle(
+            "HeaderRight", parent=body_style,
+            fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=2,
+        ),
+    )
+    header_row.append(right_text)
+
+    header_table = Table([header_row], colWidths=[210, 160, 162])
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+        ("ALIGN", (1, 0), (1, 0), "LEFT"),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]))
+
+    story.append(header_table)
+
+    institucion = config.nombre_institucion if config else "INSTITUCIÓN EDUCATIVA"
+    story.append(Paragraph(institucion, title_style))
+    story.append(Paragraph(
+        f"NIT: {config.nit if config else ''} | DANE: {config.codigo_dane if config else ''}",
+        subtitle_style,
+    ))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("REGISTRO DE TRAZABILIDAD — PIAR", title_style))
+    story.append(Paragraph("Plan Individual de Ajustes Razonables — Decreto 1421 de 2017", subtitle_style))
+
+    if estudiante:
+        nombre = f"{getattr(estudiante, 'nombres', '')} {getattr(estudiante, 'apellidos', '')}"
+        doc_id = getattr(estudiante, 'numero_documento', 'N/A')
+        grado = getattr(getattr(estudiante, 'grupo', None), 'grado', None)
+        grado_nombre = getattr(grado, 'nombre', '') if grado else ''
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(
+            f"<b>Estudiante:</b> {nombre} &nbsp;|&nbsp; "
+            f"<b>Documento:</b> {doc_id} &nbsp;|&nbsp; "
+            f"<b>Grado:</b> {grado_nombre or 'No asignado'}",
+            entry_body_style,
+        ))
+
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(
+        f"<b>Total de registros de auditoría:</b> {len(auditoria_rows)}",
+        entry_body_style,
+    ))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("HISTORIAL CRONOLÓGICO DE CAMBIOS", section_style))
+    story.append(Spacer(1, 6))
+
+    etiquetas = {
+        "ajuste_razonable": "Ajuste Razonable",
+        "recomendacion_pmi": "Recomendación PMI",
+        "acta_acuerdo": "Acta de Acuerdo",
+        "caracteristicas_estudiante": "Características del Estudiante",
+        "compromiso_casa": "Compromiso Casa",
+        "piar_estado": "Estado del PIAR",
+    }
+    acciones_labels = {"crear": "CREACIÓN", "modificar": "MODIFICACIÓN", "eliminar": "ELIMINACIÓN"}
+
+    for i, entry in enumerate(auditoria_rows):
+        tipo = etiquetas.get(entry.entidad_tipo, entry.entidad_tipo)
+        accion = acciones_labels.get(entry.accion, entry.accion.upper())
+        usuario = f"{entry.usuario.nombre} {entry.usuario.apellido}" if entry.usuario else "Sistema"
+        fecha_str = entry.fecha.strftime("%d/%m/%Y %H:%M") if entry.fecha else ""
+
+        entry_num = len(auditoria_rows) - i
+        story.append(Paragraph(
+            f'<font color="#1A365D"><b>#{entry_num}</b></font> '
+            f'<b>{accion}</b> — {tipo}',
+            entry_header_style,
+        ))
+
+        meta_row = [
+            Paragraph(f"<b>Fecha:</b> {fecha_str}", entry_body_style),
+            Paragraph(f"<b>Usuario:</b> {usuario}", entry_body_style),
+            Paragraph(
+                f"<b>ID Entrada:</b> {str(entry.id)[:8]}...",
+                entry_body_style,
+            ),
+        ]
+        meta_table = Table([meta_row], colWidths=[180, 200, 152])
+        meta_table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        story.append(meta_table)
+
+        story.append(Spacer(1, 2))
+        story.append(Table([
+            [Spacer(1, 1)],
+            [Spacer(1, 1)],
+        ], colWidths=[532], rowHeights=[0.3, 0], style=[
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, border_color),
+        ]))
+
+        datos = entry.datos_nuevos or entry.datos_anteriores
+        if datos:
+            data_rows: list[list] = []
+            for key, value in datos.items():
+                if value is not None and str(value).strip():
+                    label = key.replace("_", " ").upper()
+                    val_str = str(value)[:250]
+                    data_rows.append([
+                        Paragraph(f"<b>{label}</b>", entry_label_style),
+                        Paragraph(val_str, entry_body_style),
+                    ])
+            if data_rows:
+                data_table = Table(data_rows, colWidths=[130, 402])
+                data_table.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                    ("LEFTPADDING", (0, 0), (0, -1), 0),
+                    ("LEFTPADDING", (1, 0), (1, -1), 8),
+                    ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ]))
+                story.append(data_table)
+
+        if entry.datos_anteriores and entry.datos_nuevos:
+            story.append(Spacer(1, 3))
+            story.append(Paragraph(
+                '<font color="#64748b" size="8"><b>CAMPOS MODIFICADOS:</b></font>',
+                entry_body_style,
+            ))
+            diff_rows: list[list] = []
+            all_keys = set(list(entry.datos_anteriores.keys()) + list(entry.datos_nuevos.keys()))
+            for key in sorted(all_keys):
+                antes = entry.datos_anteriores.get(key)
+                despues = entry.datos_nuevos.get(key)
+                if antes != despues:
+                    antes_str = str(antes)[:120] if antes is not None else "—"
+                    despues_str = str(despues)[:120] if despues is not None else "—"
+                    diff_rows.append([
+                        Paragraph(f"<b>{key.replace('_', ' ').upper()}</b>", entry_label_style),
+                        Paragraph(
+                            f'<font color="#DC2626"><strike>{antes_str}</strike></font>',
+                            entry_body_style,
+                        ),
+                        Paragraph(
+                            f'<font color="#16A34A"><b>{despues_str}</b></font>',
+                            entry_body_style,
+                        ),
+                    ])
+            if diff_rows:
+                diff_table = Table(diff_rows, colWidths=[120, 200, 212])
+                diff_table.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]))
+                story.append(diff_table)
+
+        story.append(Spacer(1, 10))
+
+    def add_footer(canvas, doc_obj):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 7.5)
+        canvas.setFillColor(colors.HexColor("#666666"))
+        canvas.setStrokeColor(colors.HexColor("#CBD5E1"))
+        canvas.setLineWidth(0.5)
+        canvas.line(40, 45, 572, 45)
+        canvas.drawString(40, 32, "OpenPiar — Registro de Auditoría")
+        canvas.drawString(40, 20, "Ministerio de Educación Nacional – Decreto 1421 de 2017")
+        page_num = canvas.getPageNumber()
+        canvas.drawRightString(572, 20, f"Página {page_num}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes

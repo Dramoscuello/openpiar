@@ -634,3 +634,26 @@ class DashboardResponse(BaseModel):
     ajustes_este_periodo: int
     puntuacion_promedio: Optional[float] = None
     actividad_reciente: list[ActividadItem]
+
+
+# ---------------------------------------------------------------------------
+# Auditoría de Cambios
+# ---------------------------------------------------------------------------
+
+class AuditoriaCambioResponse(BaseResponse):
+    id: uuid.UUID
+    entidad_tipo: str
+    entidad_id: uuid.UUID
+    piar_id: uuid.UUID
+    accion: str
+    usuario_id: uuid.UUID
+    usuario_nombre: Optional[str] = None
+    datos_anteriores: Optional[dict] = None
+    datos_nuevos: Optional[dict] = None
+    fecha: datetime
+    ip_origen: Optional[str] = None
+
+
+class AuditoriaListResponse(BaseResponse):
+    total: int
+    items: list[AuditoriaCambioResponse]

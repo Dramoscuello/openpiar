@@ -98,6 +98,14 @@
           <span class="material-symbols-outlined text-[20px]">assignment_turned_in</span>
           4. Acta de acuerdo (Anexo 3)
         </button>
+        <button 
+          v-if="isDirectorOrAdmin"
+          @click="activeTab = 'historial'; cargarHistorial()" 
+          :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'historial' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
+        >
+          <span class="material-symbols-outlined text-[20px]">history</span>
+          5. Historial de cambios
+        </button>
       </div>
 
       <!-- Tab Content Area -->
@@ -915,6 +923,156 @@
             </div>
           </div>
         </div>
+
+        <!-- TAB 5: Historial de Cambios -->
+        <div v-if="activeTab === 'historial' && isDirectorOrAdmin" class="max-w-5xl mx-auto space-y-md">
+          <section class="glass-card p-lg space-y-md border border-outline-variant/30">
+            <div class="flex items-center justify-between border-b border-outline-variant/30 pb-xs flex-wrap gap-3">
+              <h2 class="text-headline-md font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined">history</span>
+                Historial de cambios
+              </h2>
+              <div class="flex gap-2">
+                <button
+                  v-if="historialItems.length > 0"
+                  @click="descargarPDFHistorial"
+                  :disabled="isDownloadingHistorialPDF"
+                  class="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-xl font-bold text-label-md flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer border border-outline-variant/30"
+                >
+                  <span v-if="isDownloadingHistorialPDF" class="w-4 h-4 border-2 border-on-secondary-container border-t-transparent rounded-full animate-spin"></span>
+                  <span v-else class="material-symbols-outlined text-[18px]">download</span>
+                  Descargar PDF
+                </button>
+                <button
+                  @click="cargarHistorial"
+                  :disabled="isLoadingHistorial"
+                  class="px-4 py-2 bg-primary text-on-primary rounded-xl font-bold text-label-md flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <span v-if="isLoadingHistorial" class="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin"></span>
+                  <span v-else class="material-symbols-outlined text-[18px]">refresh</span>
+                  Actualizar
+                </button>
+              </div>
+            </div>
+
+            <p class="text-body-sm text-on-surface-variant">
+              Registro cronológico de todos los cambios realizados en este PIAR. Cada entrada muestra quién hizo el cambio, cuándo y qué se modificó.
+            </p>
+
+            <!-- Timeline -->
+            <div v-if="historialItems.length > 0" class="relative space-y-0 pl-8">
+              <!-- Línea vertical -->
+              <div class="absolute left-3 top-0 bottom-0 w-0.5 bg-outline-variant/40"></div>
+
+              <div
+                v-for="(entry, idx) in historialItems"
+                :key="entry.id"
+                class="relative pb-6"
+              >
+                <!-- Punto en la línea -->
+                <div
+                  :class="[
+                    'absolute -left-8 top-1 w-6 h-6 rounded-full flex items-center justify-center border-2 z-10',
+                    entry.accion === 'crear'
+                      ? 'bg-emerald-100 border-emerald-400 text-emerald-600'
+                      : entry.accion === 'eliminar'
+                      ? 'bg-red-100 border-red-400 text-red-600'
+                      : 'bg-amber-100 border-amber-400 text-amber-600'
+                  ]"
+                >
+                  <span class="material-symbols-outlined text-sm">
+                    {{ entry.accion === 'crear' ? 'add' : entry.accion === 'eliminar' ? 'delete' : 'edit' }}
+                  </span>
+                </div>
+
+                <div class="bg-surface-container-low border border-outline-variant/20 rounded-xl p-md hover:shadow-sm transition-shadow">
+                  <div class="flex items-start justify-between gap-4 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      <span
+                        :class="[
+                          'px-2.5 py-0.5 rounded-full text-label-xs font-bold uppercase tracking-wider',
+                          entry.accion === 'crear'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : entry.accion === 'eliminar'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-amber-100 text-amber-700'
+                        ]"
+                      >
+                        {{ entry.accion === 'crear' ? 'Creación' : entry.accion === 'eliminar' ? 'Eliminación' : 'Modificación' }}
+                      </span>
+                      <span class="text-label-sm text-on-surface font-bold">
+                        {{ etiquetaEntidad(entry.entidad_tipo) }}
+                      </span>
+                    </div>
+                    <span class="text-label-sm text-on-surface-variant">
+                      {{ new Date(entry.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                    </span>
+                  </div>
+
+                  <div class="mt-2 text-label-sm text-on-surface-variant flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">person</span>
+                    <span>{{ entry.usuario_nombre || 'Sistema' }}</span>
+                  </div>
+
+                  <!-- Datos del cambio -->
+                  <div v-if="entry.datos_nuevos && Object.keys(entry.datos_nuevos).length > 0" class="mt-3 pt-3 border-t border-outline-variant/20">
+                    <details class="group">
+                      <summary class="text-label-sm text-primary font-bold cursor-pointer flex items-center gap-1 hover:underline">
+                        <span class="material-symbols-outlined text-sm group-open:rotate-90 transition-transform">chevron_right</span>
+                        Ver detalles del cambio
+                      </summary>
+                      <div class="mt-2 space-y-1.5 pl-6">
+                        <div v-for="(value, key) in entry.datos_nuevos" :key="key" class="text-label-sm">
+                          <span class="font-bold text-on-surface">{{ formatKey(key) }}:</span>
+                          <span class="text-on-surface-variant ml-1">{{ formatAuditValue(value) }}</span>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+
+                  <!-- Diff: mostrar cambios entre anterior y nuevo -->
+                  <div v-if="entry.datos_anteriores && entry.datos_nuevos" class="mt-3 pt-3 border-t border-outline-variant/20">
+                    <details class="group">
+                      <summary class="text-label-sm text-secondary font-bold cursor-pointer flex items-center gap-1 hover:underline">
+                        <span class="material-symbols-outlined text-sm group-open:rotate-90 transition-transform">compare_arrows</span>
+                        Comparar con versión anterior
+                      </summary>
+                      <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-3">
+                          <h4 class="text-xs font-bold text-red-700 dark:text-red-400 mb-1.5">Versión anterior</h4>
+                          <div class="space-y-0.5">
+                            <div v-for="(value, key) in entry.datos_anteriores" :key="key" class="text-xs">
+                              <span class="text-red-600 dark:text-red-400 font-medium">{{ formatKey(key) }}:</span>
+                              <span class="text-on-surface-variant ml-1">{{ formatAuditValue(value) }}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3">
+                          <h4 class="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1.5">Versión nueva</h4>
+                          <div class="space-y-0.5">
+                            <div v-for="(propName, idx) in diffKeys(entry)" :key="idx" class="text-xs">
+                              <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ formatKey(propName) }}:</span>
+                              <span class="text-on-surface-variant ml-1" :class="{ 'font-bold text-emerald-700 dark:text-emerald-300': entry.datos_anteriores?.[propName] !== entry.datos_nuevos?.[propName] }">
+                                {{ formatAuditValue(entry.datos_nuevos?.[propName]) }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div v-else-if="!isLoadingHistorial" class="text-center py-12 bg-surface-container-lowest rounded-xl border border-outline-variant/20">
+              <span class="material-symbols-outlined text-5xl text-on-surface-variant/40 mb-4">history</span>
+              <p class="text-body-md text-on-surface-variant font-medium">Sin registros de auditoría</p>
+              <p class="text-body-sm text-on-surface-variant mt-1">Los cambios que realices en el PIAR aparecerán aquí.</p>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -1215,6 +1373,84 @@ const isDirectorOrAdmin = computed(() => {
   if (estudiante.value && estudiante.value.grupo_director_id === authStore.user.id) return true
   return false
 })
+
+// TAB 5: Historial de cambios
+const historialItems = ref<any[]>([])
+const isLoadingHistorial = ref(false)
+const isDownloadingHistorialPDF = ref(false)
+
+const etiquetaEntidad = (tipo: string) => {
+  const mapa: Record<string, string> = {
+    ajuste_razonable: 'Ajuste Razonable',
+    recomendacion_pmi: 'Recomendación PMI',
+    acta_acuerdo: 'Acta de Acuerdo',
+    caracteristicas_estudiante: 'Características',
+    compromiso_casa: 'Compromiso Casa',
+    piar_estado: 'Estado del PIAR',
+  }
+  return mapa[tipo] || tipo
+}
+
+const formatAuditValue = (value: any) => {
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No'
+  if (typeof value === 'object') return JSON.stringify(value).substring(0, 200)
+  return String(value).substring(0, 300)
+}
+
+const formatKey = (key: string | number) => String(key).replace(/_/g, ' ')
+
+const diffKeys = (entry: any) => {
+  const allKeys = new Set([
+    ...Object.keys(entry.datos_anteriores || {}),
+    ...Object.keys(entry.datos_nuevos || {}),
+  ])
+  return Array.from(allKeys)
+}
+
+async function cargarHistorial() {
+  if (!activePiar.value?.id) return
+  isLoadingHistorial.value = true
+  try {
+    const res = await fetch(`/api/v1/piars/${activePiar.value.id}/historial?limit=200`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    if (res.ok) {
+      const data = await res.json()
+      historialItems.value = data.items || []
+    }
+  } catch (e) {
+    console.error('Error cargando historial', e)
+  } finally {
+    isLoadingHistorial.value = false
+  }
+}
+
+async function descargarPDFHistorial() {
+  if (!activePiar.value?.id) return
+  isDownloadingHistorialPDF.value = true
+  try {
+    const res = await fetch(`/api/v1/piars/${activePiar.value.id}/historial/exportar-pdf`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+    if (res.ok) {
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Auditoria_PIAR_${activePiar.value.id?.substring(0, 8)}.pdf`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      showToast('PDF de auditoría descargado.')
+    } else {
+      showToast('Error al generar el PDF de auditoría.', true)
+    }
+  } catch (e) {
+    showToast('Error de conexión al descargar el PDF.', true)
+  } finally {
+    isDownloadingHistorialPDF.value = false
+  }
+}
 
 // TAB 1: Características
 const docentesElaboran = ref('')

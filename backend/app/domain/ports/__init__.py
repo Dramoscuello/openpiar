@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from uuid import UUID
 
-from app.domain.entities import Estudiante, Piar, Usuario
+from app.domain.entities import AuditoriaCambio, Estudiante, Piar, Usuario
 
 
 # ---------------------------------------------------------------------------
@@ -136,4 +136,29 @@ class IAgentePedagogico(ABC):
         Returns:
             dict con: modelo_pedagogico, enfoques_didacticos, valores, politicas_convivencia.
         """
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Puerto: Repositorio de Auditoría
+# ---------------------------------------------------------------------------
+
+class IAuditoriaRepository(ABC):
+    """Contrato para persistencia del registro de auditoría de cambios."""
+
+    @abstractmethod
+    async def save(self, entrada: AuditoriaCambio) -> AuditoriaCambio:
+        """Persiste una entrada de auditoría."""
+        ...
+
+    @abstractmethod
+    async def find_by_piar_id(
+        self, piar_id: UUID, skip: int = 0, limit: int = 100
+    ) -> list[AuditoriaCambio]:
+        """Lista entradas de auditoría para un PIAR específico."""
+        ...
+
+    @abstractmethod
+    async def find_by_id(self, auditoria_id: UUID) -> Optional[AuditoriaCambio]:
+        """Busca una entrada de auditoría por su ID."""
         ...

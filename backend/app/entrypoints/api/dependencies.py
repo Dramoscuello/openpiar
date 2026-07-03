@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.db.postgres.estudiante_repository import PostgresEstudianteRepository
 from app.adapters.db.postgres.usuario_repository import PostgresUsuarioRepository
+from app.adapters.db.postgres.auditoria_repository import PostgresAuditoriaRepository
 from app.adapters.db.session import get_db
 from app.core.config import Settings, get_settings
 from app.core.exceptions import SetupRequeridoError, TokenInvalidoError

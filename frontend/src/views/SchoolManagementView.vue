@@ -1349,7 +1349,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
             >
               <span class="material-symbols-outlined text-[20px]">person_add</span>
-              Registrar Docente
+              Registrar docente
             </button>
           </div>
 
@@ -1416,7 +1416,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
             >
               <span class="material-symbols-outlined text-[20px]">school</span>
-              Nuevo Grado
+              Nuevo grado
             </button>
           </div>
 
@@ -1522,7 +1522,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
             >
               <span class="material-symbols-outlined text-[20px]">category</span>
-              Nueva Área
+              Nueva área
             </button>
           </div>
 
@@ -1530,7 +1530,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             <table class="w-full text-left border-collapse">
               <thead>
                 <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
-                  <th class="py-4 px-md">Nombre de la Área</th>
+                  <th class="py-4 px-md">Nombre de la área</th>
                   <th class="py-4 px-md">Fecha registro</th>
                   <th class="py-4 px-md text-right">Acciones</th>
                 </tr>
@@ -1568,7 +1568,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               class="bg-primary hover:bg-primary-container text-white px-lg py-3 rounded-xl font-label-md text-label-md flex items-center gap-xs cursor-pointer shadow-md shadow-primary/10 transition-all active:scale-95"
             >
               <span class="material-symbols-outlined text-[20px]">book</span>
-              Nueva Asignatura
+              Nueva asignatura
             </button>
           </div>
 

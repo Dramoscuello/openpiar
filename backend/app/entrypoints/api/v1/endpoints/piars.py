@@ -22,6 +22,7 @@ from app.adapters.db.models import (
     ConfiguracionSistemaORM,
     ActaAcuerdoORM,
     CompromisoCasaORM,
+    AuditoriaCambioORM,
     GrupoORM,
     GradoORM,
     EntornoSaludORM,
@@ -29,7 +30,8 @@ from app.adapters.db.models import (
     TrayectoriaEducativaORM,
     MatriculaActualORM,
     AsignaturaORM,
-    CargaAcademicaORM
+    CargaAcademicaORM,
+    UsuarioORM,
 )
 from app.entrypoints.api.schemas import (
     PiarCreate,
@@ -45,9 +47,20 @@ from app.entrypoints.api.schemas import (
     RecomendacionPMICreate,
     RecomendacionPMIResponse,
     ActaAcuerdoCreate,
-    ActaAcuerdoResponse
+    ActaAcuerdoResponse,
+    AuditoriaCambioResponse,
+    AuditoriaListResponse,
 )
 from app.entrypoints.api.dependencies import CurrentUser
+
+from app.entrypoints.api.v1.endpoints.auditoria_helpers import (
+    registrar_cambio,
+    serializar_ajuste,
+    serializar_pmi,
+    serializar_acta,
+    serializar_caracteristicas,
+    serializar_estado_piar,
+)
 
 router = APIRouter(prefix="/piars", tags=["piars"])
 settings = get_settings()
@@ -148,7 +161,17 @@ async def create_piar(
     )
     db.add(nuevo_piar)
     await db.commit()
-    
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="piar_estado",
+        entidad_id=nuevo_piar.id,
+        piar_id=nuevo_piar.id,
+        accion="crear",
+        usuario_id=current_user.id,
+        datos_nuevos={"estado": nuevo_piar.estado},
+    )
+
     # Consultar el PIAR recién creado cargando todas sus relaciones para la respuesta
     query = (
         select(PiarORM)
@@ -198,6 +221,17 @@ async def add_ajuste_razonable(
     db.add(nuevo_ajuste)
     await db.commit()
     await db.refresh(nuevo_ajuste)
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="ajuste_razonable",
+        entidad_id=nuevo_ajuste.id,
+        piar_id=piar_id,
+        accion="crear",
+        usuario_id=current_user.id,
+        datos_nuevos=serializar_ajuste(nuevo_ajuste),
+    )
+
     return nuevo_ajuste
 
 @router.post("/{piar_id}/generar_ia")
@@ -415,6 +449,9 @@ async def update_piar(
             detail="No se puede cambiar el estado de un PIAR ya firmado."
         )
 
+    estado_anterior = piar.estado
+    carac_anteriores = serializar_caracteristicas(piar.caracteristicas) if piar.caracteristicas else None
+
     if data.estado == "firmado":
         if not piar.acta_acuerdo:
             raise HTTPException(
@@ -458,7 +495,31 @@ async def update_piar(
             piar.caracteristicas = nueva_carac
 
     await db.commit()
-    
+
+    if data.estado is not None and data.estado != estado_anterior:
+        await registrar_cambio(
+            db=db,
+            entidad_tipo="piar_estado",
+            entidad_id=piar.id,
+            piar_id=piar.id,
+            accion="modificar",
+            usuario_id=current_user.id,
+            datos_anteriores=serializar_estado_piar(estado_anterior),
+            datos_nuevos=serializar_estado_piar(data.estado),
+        )
+
+    if data.caracteristicas is not None and piar.caracteristicas:
+        await registrar_cambio(
+            db=db,
+            entidad_tipo="caracteristicas_estudiante",
+            entidad_id=piar.caracteristicas.id,
+            piar_id=piar.id,
+            accion="crear" if carac_anteriores is None else "modificar",
+            usuario_id=current_user.id,
+            datos_anteriores=carac_anteriores,
+            datos_nuevos=serializar_caracteristicas(piar.caracteristicas),
+        )
+
     # Recargar el PIAR con todas sus relaciones cargadas para la respuesta
     result = await db.execute(query)
     return result.scalars().first()
@@ -476,6 +537,8 @@ async def update_ajuste_razonable(
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
+    datos_antes = serializar_ajuste(ajuste)
+
     ajuste.area = data.area
     ajuste.titulo_tema = data.titulo_tema
     ajuste.objetivos_propositos = data.objetivos_propositos
@@ -485,6 +548,18 @@ async def update_ajuste_razonable(
 
     await db.commit()
     await db.refresh(ajuste)
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="ajuste_razonable",
+        entidad_id=ajuste.id,
+        piar_id=piar_id,
+        accion="modificar",
+        usuario_id=current_user.id,
+        datos_anteriores=datos_antes,
+        datos_nuevos=serializar_ajuste(ajuste),
+    )
+
     return ajuste
 
 
@@ -504,11 +579,24 @@ async def puntuar_ajuste(
     if ajuste.creado_por != current_user.id:
         raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede puntuarlo.")
 
+    datos_antes = serializar_ajuste(ajuste)
     ajuste.puntuacion = data.puntuacion
     ajuste.comentario_puntuacion = data.comentario
 
     await db.commit()
     await db.refresh(ajuste)
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="ajuste_razonable",
+        entidad_id=ajuste.id,
+        piar_id=piar_id,
+        accion="modificar",
+        usuario_id=current_user.id,
+        datos_anteriores=datos_antes,
+        datos_nuevos=serializar_ajuste(ajuste),
+    )
+
     return ajuste
 
 
@@ -524,8 +612,22 @@ async def delete_ajuste_razonable(
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
+    datos_antes = serializar_ajuste(ajuste)
+    ajuste_id = ajuste.id
+
     await db.delete(ajuste)
     await db.commit()
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="ajuste_razonable",
+        entidad_id=ajuste_id,
+        piar_id=piar_id,
+        accion="eliminar",
+        usuario_id=current_user.id,
+        datos_anteriores=datos_antes,
+    )
+
     return None
 
 @router.post("/{piar_id}/pmi", response_model=RecomendacionPMIResponse)
@@ -549,6 +651,17 @@ async def add_recomendacion_pmi(
     db.add(nueva_rec)
     await db.commit()
     await db.refresh(nueva_rec)
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="recomendacion_pmi",
+        entidad_id=nueva_rec.id,
+        piar_id=piar_id,
+        accion="crear",
+        usuario_id=current_user.id,
+        datos_nuevos=serializar_pmi(nueva_rec),
+    )
+
     return nueva_rec
 
 @router.put("/{piar_id}/pmi/{pmi_id}", response_model=RecomendacionPMIResponse)
@@ -564,12 +677,25 @@ async def update_recomendacion_pmi(
     if not rec or rec.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Recomendación PMI no encontrada en este PIAR.")
 
+    datos_antes = serializar_pmi(rec)
     rec.actor = data.actor
     rec.acciones = data.acciones
     rec.estrategias_implementar = data.estrategias_implementar
 
     await db.commit()
     await db.refresh(rec)
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="recomendacion_pmi",
+        entidad_id=rec.id,
+        piar_id=piar_id,
+        accion="modificar",
+        usuario_id=current_user.id,
+        datos_anteriores=datos_antes,
+        datos_nuevos=serializar_pmi(rec),
+    )
+
     return rec
 
 @router.delete("/{piar_id}/pmi/{pmi_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -584,8 +710,22 @@ async def delete_recomendacion_pmi(
     if not rec or rec.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Recomendación PMI no encontrada en este PIAR.")
 
+    datos_antes = serializar_pmi(rec)
+    pmi_id = rec.id
+
     await db.delete(rec)
     await db.commit()
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="recomendacion_pmi",
+        entidad_id=pmi_id,
+        piar_id=piar_id,
+        accion="eliminar",
+        usuario_id=current_user.id,
+        datos_anteriores=datos_antes,
+    )
+
     return None
 
 
@@ -642,9 +782,12 @@ async def upsert_acta_acuerdo(
             compromisos_casa=[]
         )
         db.add(acta)
-        await db.flush()  # Obtener el acta.id
+        await db.flush()
+        es_creacion = True
+        datos_acta_antes = None
     else:
-        # Actualizar acta existente
+        es_creacion = False
+        datos_acta_antes = serializar_acta(acta)
         acta.fecha_firma = data.fecha_firma
         acta.compromisos_aula = data.compromisos_aula
         acta.firmado_estudiante = data.firmado_estudiante
@@ -667,6 +810,17 @@ async def upsert_acta_acuerdo(
         db.add(nuevo_comp)
 
     await db.commit()
+
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="acta_acuerdo",
+        entidad_id=acta.id,
+        piar_id=piar_id,
+        accion="crear" if es_creacion else "modificar",
+        usuario_id=current_user.id,
+        datos_anteriores=datos_acta_antes,
+        datos_nuevos=serializar_acta(acta),
+    )
 
     # Recargar para devolver la respuesta con los compromisos de casa cargados
     query = (
@@ -742,6 +896,169 @@ async def download_acta_pdf(
 
     # Retornar como archivo descargable
     filename = f"Acta_Acuerdo_{piar.estudiante.numero_documento}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Auditoría — Historial de cambios del PIAR
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{piar_id}/historial",
+    response_model=AuditoriaListResponse,
+)
+async def get_historial_piar(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+):
+    """Obtiene el historial completo de cambios de un PIAR."""
+    piar = await db.get(PiarORM, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+    query = (
+        select(AuditoriaCambioORM)
+        .where(AuditoriaCambioORM.piar_id == piar_id)
+        .options(selectinload(AuditoriaCambioORM.usuario))
+        .order_by(AuditoriaCambioORM.fecha.desc())
+    )
+    count_query = (
+        select(AuditoriaCambioORM)
+        .where(AuditoriaCambioORM.piar_id == piar_id)
+    )
+    count_result = await db.execute(count_query)
+    total = len(count_result.scalars().all())
+
+    query = query.offset(skip).limit(limit)
+    result = await db.execute(query)
+    rows = result.scalars().all()
+
+    items = []
+    for r in rows:
+        items.append(AuditoriaCambioResponse(
+            id=r.id,
+            entidad_tipo=r.entidad_tipo,
+            entidad_id=r.entidad_id,
+            piar_id=r.piar_id,
+            accion=r.accion,
+            usuario_id=r.usuario_id,
+            usuario_nombre=f"{r.usuario.nombre} {r.usuario.apellido}" if r.usuario else None,
+            datos_anteriores=r.datos_anteriores,
+            datos_nuevos=r.datos_nuevos,
+            fecha=r.fecha,
+            ip_origen=r.ip_origen,
+        ))
+
+    return AuditoriaListResponse(total=total, items=items)
+
+
+@router.get(
+    "/{piar_id}/historial/diff",
+)
+async def diff_versiones(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+    v1: Optional[uuid.UUID] = None,
+    v2: Optional[uuid.UUID] = None,
+):
+    """Compara dos versiones de una entidad auditada (diff)."""
+    piar = await db.get(PiarORM, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+    if not v1 or not v2:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe especificar los IDs de ambas versiones: ?v1=uuid&v2=uuid"
+        )
+
+    query = (
+        select(AuditoriaCambioORM)
+        .where(
+            AuditoriaCambioORM.id.in_([v1, v2]),
+            AuditoriaCambioORM.piar_id == piar_id,
+        )
+        .order_by(AuditoriaCambioORM.fecha)
+    )
+    result = await db.execute(query)
+    rows = result.scalars().all()
+
+    if len(rows) != 2:
+        raise HTTPException(status_code=404, detail="Una o ambas versiones no encontradas.")
+
+    return {
+        "version_anterior": {
+            "id": rows[0].id,
+            "fecha": rows[0].fecha.isoformat(),
+            "accion": rows[0].accion,
+            "datos": rows[0].datos_nuevos or rows[0].datos_anteriores,
+        },
+        "version_posterior": {
+            "id": rows[1].id,
+            "fecha": rows[1].fecha.isoformat(),
+            "accion": rows[1].accion,
+            "datos": rows[1].datos_nuevos or rows[1].datos_anteriores,
+        },
+    }
+
+
+@router.get(
+    "/{piar_id}/historial/exportar-pdf",
+)
+async def export_historial_pdf(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Genera y descarga un PDF con la trazabilidad completa del PIAR."""
+    piar = await db.get(PiarORM, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+    query = (
+        select(AuditoriaCambioORM)
+        .where(AuditoriaCambioORM.piar_id == piar_id)
+        .options(selectinload(AuditoriaCambioORM.usuario))
+        .order_by(AuditoriaCambioORM.fecha.desc())
+    )
+    result = await db.execute(query)
+    rows = result.scalars().all()
+
+    config_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+    config = config_result.scalars().first()
+
+    estudiante_result = await db.execute(
+        select(EstudianteORM).join(PiarORM).where(PiarORM.id == piar_id)
+    )
+    estudiante_orm = estudiante_result.scalars().first()
+
+    if estudiante_orm and estudiante_orm.grupo_id:
+        grupo_result = await db.execute(
+            select(GrupoORM).where(GrupoORM.id == estudiante_orm.grupo_id)
+        )
+        estudiante_orm.grupo = grupo_result.scalars().first()
+
+    if estudiante_orm and estudiante_orm.grupo and estudiante_orm.grupo.grado_id:
+        grado_result = await db.execute(
+            select(GradoORM).where(GradoORM.id == estudiante_orm.grupo.grado_id)
+        )
+        estudiante_orm.grupo.grado = grado_result.scalars().first()
+
+    from app.core.pdf_generator import generate_auditoria_pdf
+    pdf_bytes = generate_auditoria_pdf(piar_id, rows, config, estudiante_orm)
+
+    doc = estudiante_orm.numero_documento if estudiante_orm else str(piar_id)[:8]
+    filename = f"Auditoria_PIAR_{doc}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
