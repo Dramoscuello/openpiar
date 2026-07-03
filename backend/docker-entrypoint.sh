@@ -10,7 +10,7 @@ from app.core.config import get_settings
 
 async def check():
     s = get_settings()
-    engine = create_async_engine(s.DATABASE_URL.replace('+asyncpg', '').split('?')[0] if '?' in s.DATABASE_URL else s.DATABASE_URL.replace('+asyncpg', ''))
+    engine = create_async_engine(s.DATABASE_URL.split('?')[0] if '?' in s.DATABASE_URL else s.DATABASE_URL)
     async with engine.connect() as conn:
         await conn.execute('SELECT 1')
     await engine.dispose()
