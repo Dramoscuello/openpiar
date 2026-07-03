@@ -57,6 +57,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/gestion-directiva',
+      name: 'gestion-directiva',
+      component: () => import('../views/DirectivoManagementView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/familia/:codigo',
       name: 'familia',
       component: () => import('../views/FamiliaView.vue'),

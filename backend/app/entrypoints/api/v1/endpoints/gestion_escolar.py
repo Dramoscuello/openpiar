@@ -10,7 +10,7 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -81,6 +81,37 @@ class DocenteResponse(BaseModel):
     rol: str
     cargo: Optional[str]
     sedes: List[SedeResponse]
+
+    class Config:
+        from_attributes = True
+
+
+CARGOS_DIRECTIVO = ["Rector/Director", "Coordinador", "Secretario/a", "Administrativo"]
+
+
+class DirectivoCreate(BaseModel):
+    email: EmailStr
+    password: str
+    nombre: str
+    apellido: str
+    cargo: str
+
+
+class DirectivoUpdate(BaseModel):
+    email: EmailStr
+    password: Optional[str] = None
+    nombre: str
+    apellido: str
+    cargo: str
+
+
+class DirectivoResponse(BaseModel):
+    id: uuid.UUID
+    email: str
+    nombre: str
+    apellido: str
+    rol: str
+    cargo: Optional[str]
 
     class Config:
         from_attributes = True
@@ -367,6 +398,132 @@ async def delete_docente(
             detail="El docente especificado no existe."
         )
     await db.delete(docente)
+    await db.commit()
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Directivos Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/directivos", response_model=List[DirectivoResponse])
+async def list_directivos(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(UsuarioORM)
+        .where(UsuarioORM.rol == "directivo")
+        .order_by(UsuarioORM.apellido, UsuarioORM.nombre)
+    )
+    return result.scalars().all()
+
+
+@router.post("/directivos", response_model=DirectivoResponse, status_code=status.HTTP_201_CREATED)
+async def create_directivo(
+    body: DirectivoCreate,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db)
+):
+    exists_result = await db.execute(select(UsuarioORM).where(UsuarioORM.email == body.email))
+    if exists_result.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe un usuario registrado con este correo electrónico."
+        )
+
+    if body.cargo not in CARGOS_DIRECTIVO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El cargo debe ser uno de: {', '.join(CARGOS_DIRECTIVO)}."
+        )
+
+    from app.domain.entities import validar_password_fortaleza
+    try:
+        validar_password_fortaleza(body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    directivo = UsuarioORM(
+        email=body.email,
+        password_hash=get_password_hash(body.password),
+        nombre=body.nombre,
+        apellido=body.apellido,
+        rol="directivo",
+        cargo=body.cargo,
+    )
+    db.add(directivo)
+    await db.commit()
+    await db.refresh(directivo)
+    return directivo
+
+
+@router.put("/directivos/{directivo_id}", response_model=DirectivoResponse)
+async def update_directivo(
+    directivo_id: uuid.UUID,
+    body: DirectivoUpdate,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db)
+):
+    directivo = await db.get(UsuarioORM, directivo_id)
+    if not directivo or directivo.rol != "directivo":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El directivo especificado no existe."
+        )
+
+    if body.email != directivo.email:
+        exists_result = await db.execute(select(UsuarioORM).where(UsuarioORM.email == body.email))
+        if exists_result.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un usuario registrado con este correo electrónico."
+            )
+
+    if body.cargo not in CARGOS_DIRECTIVO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El cargo debe ser uno de: {', '.join(CARGOS_DIRECTIVO)}."
+        )
+
+    directivo.email = body.email
+    if body.password:
+        from app.domain.entities import validar_password_fortaleza
+        try:
+            validar_password_fortaleza(body.password)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        directivo.password_hash = get_password_hash(body.password)
+    directivo.nombre = body.nombre
+    directivo.apellido = body.apellido
+    directivo.cargo = body.cargo
+    await db.commit()
+    await db.refresh(directivo)
+    return directivo
+
+
+@router.delete("/directivos/{directivo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_directivo(
+    directivo_id: uuid.UUID,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db)
+):
+    directivo = await db.get(UsuarioORM, directivo_id)
+    if not directivo or directivo.rol != "directivo":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El directivo especificado no existe."
+        )
+    cant = await db.execute(
+        select(func.count(UsuarioORM.id)).where(UsuarioORM.rol == "directivo")
+    )
+    total = cant.scalar() or 0
+    if total <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar el último directivo del sistema."
+        )
+    await db.delete(directivo)
     await db.commit()
     return None
 
