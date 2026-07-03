@@ -15,7 +15,8 @@ Si tu VPS no tiene Docker, instalalo con:
 ```bash
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
-# Cierra sesion y vuelve a entrar para que el grupo surta efecto
+newgrp docker
+docker compose version
 ```
 
 ---
@@ -23,7 +24,7 @@ sudo usermod -aG docker $USER
 ## 1. Clonar el proyecto
 
 ```bash
-git clone https://github.com/tu-usuario/OpenPiar.git /opt/openpiar
+git clone https://github.com/Dramoscuello/openpiar.git /opt/openpiar
 cd /opt/openpiar
 ```
 
@@ -52,7 +53,7 @@ nano .env
 | `DB_PASSWORD` | Contrasena de PostgreSQL |
 | `DB_NAME` | Nombre de la base de datos (ej: `openpiar_db`) |
 | `GEMINI_API_KEY` | Tu API key de Google Gemini |
-| `CORS_ORIGINS` | Dominio desde donde se accede (ej: `https://openpiar.mi-colegio.edu.co`) |
+| `CORS_ORIGINS` | Dominio o IP desde donde se accede (ej: `https://openpiar.mi-colegio.edu.co` o `http://190.12.34.56`). Para pruebas rapidas podes usar `*` (no recomendado en produccion) |
 
 El resto de variables (`APP_ENV`, `SHOW_DOCS`, `GEMINI_MODEL`, etc.) tienen valores por defecto razonables.
 
