@@ -16,7 +16,7 @@ async def check():
     await engine.dispose()
 
 asyncio.run(check())
-" 2>/dev/null; do
+"; do
     echo "   PostgreSQL no responde todavia. Reintentando en 2s..."
     sleep 2
 done
