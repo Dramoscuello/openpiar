@@ -5,6 +5,7 @@ echo "==> OpenPiar backend: esperando a que PostgreSQL este listo..."
 
 until python -c "
 import asyncio, os
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import get_settings
 
@@ -12,7 +13,7 @@ async def check():
     s = get_settings()
     engine = create_async_engine(s.DATABASE_URL.split('?')[0] if '?' in s.DATABASE_URL else s.DATABASE_URL)
     async with engine.connect() as conn:
-        await conn.execute('SELECT 1')
+        await conn.execute(text('SELECT 1'))
     await engine.dispose()
 
 asyncio.run(check())
