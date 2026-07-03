@@ -3,9 +3,21 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import NotificacionBell from './NotificacionBell.vue'
+import NotificacionPanel from './NotificacionPanel.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+const showNotifPanel = ref(false)
+
+function toggleNotifPanel() {
+  showNotifPanel.value = !showNotifPanel.value
+}
+
+function onCountUpdate(_count: number) {
+  /* count is handled by the bell component internally */
+}
 
 const isDarkMode = ref(false)
 const showPasswordModal = ref(false)
@@ -122,12 +134,9 @@ const handleChangePassword = async () => {
         </button>
       </div>
 
-      <!-- Notifications & Status -->
-      <div class="flex items-center gap-3">
-        <button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all relative cursor-pointer">
-          <span class="material-symbols-outlined">notifications</span>
-          <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
-        </button>
+      <!-- Notifications -->
+      <div class="flex items-center gap-3 relative">
+        <NotificacionBell @toggle="toggleNotifPanel" />
       </div>
 
       <div class="h-8 w-px bg-outline-variant/50 mx-1"></div>
@@ -170,6 +179,23 @@ const handleChangePassword = async () => {
       </div>
     </div>
   </header>
+
+  <!-- Notification Panel -->
+  <Transition name="slide">
+    <div
+      v-if="showNotifPanel"
+      class="fixed top-0 right-0 z-40 h-full w-[380px] max-w-[90vw] bg-surface border-l border-outline-variant/30 shadow-2xl flex flex-col"
+    >
+      <NotificacionPanel @close="showNotifPanel = false" @count-update="onCountUpdate" />
+    </div>
+  </Transition>
+
+  <!-- Backdrop -->
+  <div
+    v-if="showNotifPanel"
+    class="fixed inset-0 z-30 bg-black/20"
+    @click="showNotifPanel = false"
+  ></div>
 
   <!-- Change Password Modal -->
   <Teleport to="body">
@@ -245,3 +271,14 @@ const handleChangePassword = async () => {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.25s ease;
+}
+.slide-enter-from,
+.slide-leave-to {
+  transform: translateX(100%);
+}
+</style>

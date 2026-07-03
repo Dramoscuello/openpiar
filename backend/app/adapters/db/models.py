@@ -922,3 +922,45 @@ class EvidenciaAjusteORM(Base):
         Index("evidencias_ajuste_ajuste_id_idx", ajuste_razonable_id),
         Index("evidencias_ajuste_piar_id_idx", piar_id),
     )
+
+
+# ---------------------------------------------------------------------------
+# Tabla: notificaciones
+# Notificaciones in-app para docentes y directivos
+# ---------------------------------------------------------------------------
+
+class NotificacionORM(Base):
+    __tablename__ = "notificaciones"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("usuarios.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    tipo: Mapped[str] = mapped_column(Text, nullable=False)
+    titulo: Mapped[str] = mapped_column(Text, nullable=False)
+    mensaje: Mapped[str] = mapped_column(Text, nullable=False)
+    recurso_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    leida: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    fecha_creacion: Mapped[datetime] = mapped_column(
+        default=_now, server_default=func.now()
+    )
+    fecha_lectura: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+
+    usuario: Mapped["UsuarioORM"] = relationship()
+
+    __table_args__ = (
+        CheckConstraint(
+            "tipo IN ("
+            "'inicio_periodo', 'piar_sin_actualizar', 'ajuste_sin_puntuacion', "
+            "'piar_estancado', 'firma_pendiente', 'estudiante_sin_piar', 'resumen_semanal'"
+            ")",
+            name="ck_notificaciones_tipo",
+        ),
+        Index("notificaciones_usuario_id_idx", usuario_id),
+        Index("notificaciones_leida_idx", leida),
+        Index("notificaciones_fecha_creacion_idx", fecha_creacion.desc()),
+    )

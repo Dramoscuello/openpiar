@@ -11,6 +11,7 @@ Configura:
 """
 
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -62,7 +63,24 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error("Error intentando crear/sembrar tablas en el inicio: %s", exc)
 
+    # Iniciar tarea periódica de notificaciones (cada 6 horas)
+    from app.core.notification_service import ejecutar_notificaciones_periodicas
+
+    async def _notif_loop():
+        await ejecutar_notificaciones_periodicas()
+        while True:
+            await asyncio.sleep(6 * 3600)
+            await ejecutar_notificaciones_periodicas()
+
+    notif_task = asyncio.create_task(_notif_loop())
+
     yield
+
+    notif_task.cancel()
+    try:
+        await notif_task
+    except asyncio.CancelledError:
+        pass
     logger.info("🛑 OpenPiar cerrando.")
 
 

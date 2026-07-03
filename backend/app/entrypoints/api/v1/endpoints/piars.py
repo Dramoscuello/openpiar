@@ -878,6 +878,9 @@ async def upsert_acta_acuerdo(
         datos_nuevos=serializar_acta(acta),
     )
 
+    from app.core.notification_service import notificar_firma_pendiente_evento
+    await notificar_firma_pendiente_evento(db, piar.id, piar.estudiante_id)
+
     # Recargar para devolver la respuesta con los compromisos de casa cargados
     query = (
         select(ActaAcuerdoORM)

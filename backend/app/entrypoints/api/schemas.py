@@ -724,3 +724,25 @@ class FamiliaPIARResponse(BaseModel):
 
 class FirmaFamiliaRequest(BaseModel):
     rol: str = Field(..., pattern="^(estudiante|acudiente)$")
+
+
+# ---------------------------------------------------------------------------
+# Notificaciones
+# ---------------------------------------------------------------------------
+
+class NotificacionResponse(BaseResponse):
+    id: uuid.UUID
+    usuario_id: uuid.UUID
+    tipo: str
+    titulo: str
+    mensaje: str
+    recurso_url: Optional[str] = None
+    leida: bool
+    fecha_creacion: datetime
+    fecha_lectura: Optional[datetime] = None
+
+
+class NotificacionListResponse(BaseResponse):
+    total: int
+    no_leidas: int
+    items: list[NotificacionResponse]
