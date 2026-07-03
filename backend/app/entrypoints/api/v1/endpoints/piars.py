@@ -204,6 +204,11 @@ async def create_piar(
     db.add(nuevo_piar)
     await db.commit()
 
+    if not estudiante.codigo_acceso_familia:
+        import secrets
+        estudiante.codigo_acceso_familia = secrets.token_hex(4)[:8]
+        await db.commit()
+
     await registrar_cambio(
         db=db,
         entidad_tipo="piar_estado",

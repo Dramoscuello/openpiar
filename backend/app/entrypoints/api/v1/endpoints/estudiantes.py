@@ -885,6 +885,28 @@ async def exportar_estudiante(
 
 
 @router.post(
+    "/{estudiante_id}/regenerar-codigo-familia",
+    response_model=BaseResponse,
+    summary="Regenerar código de acceso familiar del estudiante",
+)
+async def regenerar_codigo_familia(
+    estudiante_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> BaseResponse:
+    import secrets
+    estudiante = await db.get(EstudianteORM, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+    estudiante.codigo_acceso_familia = secrets.token_hex(4)[:8]
+    await db.commit()
+    return BaseResponse(
+        success=True,
+        message=f"Código de acceso regenerado: {estudiante.codigo_acceso_familia}",
+    )
+
+
+@router.post(
     "/importar",
     response_model=BaseResponse,
     summary="Importar expediente completo cifrado de un estudiante (.openpiar)",

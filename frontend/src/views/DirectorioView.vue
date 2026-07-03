@@ -10,6 +10,7 @@ interface EstudianteInfo {
   nombre: string
   grado: string | null
   piar_id: string | null
+  codigo_acceso_familia: string | null
 }
 
 interface ContactoInfo {
@@ -124,14 +125,61 @@ async function compartirPDF(estudiante: EstudianteInfo) {
   }
 }
 
-function compartirWhatsApp(estudiante: EstudianteInfo) {
-  const texto = `Plan Individual de Ajustes Razonables (PIAR) de ${estudiante.nombre}${estudiante.grado ? ` - Grado: ${estudiante.grado}` : ''}. Descarga el PDF desde la plataforma OpenPiar.`
-  window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank')
+function limpiarTelefono(telefono: string | null): string {
+  if (!telefono) return ''
+  return telefono.replace(/[\s\-\+\(\)]/g, '')
 }
 
-function compartirEmail(estudiante: EstudianteInfo) {
-  const asunto = `PIAR - ${estudiante.nombre}`
-  const cuerpo = `Adjunto el Plan Individual de Ajustes Razonables (PIAR) de ${estudiante.nombre}${estudiante.grado ? ` (Grado: ${estudiante.grado})` : ''}.\n\nGenerado por OpenPiar.`
+async function asegurarCodigo(estudiante: EstudianteInfo): Promise<string> {
+  if (estudiante.codigo_acceso_familia) return estudiante.codigo_acceso_familia
+  try {
+    const res = await fetch(`/api/v1/estudiantes/${estudiante.id}/regenerar-codigo-familia`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${authStore.token}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      const match = data.message?.match(/:\s*(\S+)$/)
+      const codigo = match ? match[1] : ''
+      estudiante.codigo_acceso_familia = codigo
+      return codigo
+    }
+  } catch (e) { /* fallback */ }
+  return ''
+}
+
+function urlFamilia(estudiante: EstudianteInfo): string {
+  return estudiante.codigo_acceso_familia
+    ? `${window.location.origin}/familia/${estudiante.codigo_acceso_familia}`
+    : ''
+}
+
+async function compartirWhatsApp(estudiante: EstudianteInfo, telefono: string | null) {
+  if (!estudiante.piar_id) return
+  sharingLoading.value = true
+  await asegurarCodigo(estudiante)
+  sharingLoading.value = false
+  const url = urlFamilia(estudiante)
+  const texto = url
+    ? `Plan Individual de Ajustes Razonables (PIAR) de ${estudiante.nombre}${estudiante.grado ? ` — Grado: ${estudiante.grado}` : ''}.\n\nAccede al documento aquí:\n${url}`
+    : `Plan Individual de Ajustes Razonables (PIAR) de ${estudiante.nombre}.`
+  const phone = limpiarTelefono(telefono)
+  const waUrl = phone
+    ? `https://wa.me/57${phone}?text=${encodeURIComponent(texto)}`
+    : `https://wa.me/?text=${encodeURIComponent(texto)}`
+  window.open(waUrl, '_blank')
+}
+
+async function compartirEmail(estudiante: EstudianteInfo) {
+  if (!estudiante.piar_id) return
+  sharingLoading.value = true
+  await asegurarCodigo(estudiante)
+  sharingLoading.value = false
+  const url = urlFamilia(estudiante)
+  const asunto = `PIAR — ${estudiante.nombre}`
+  const cuerpo = url
+    ? `Plan Individual de Ajustes Razonables (PIAR) de ${estudiante.nombre}${estudiante.grado ? ` (Grado: ${estudiante.grado})` : ''}.\n\nAccede al documento aquí:\n${url}\n\nGenerado por OpenPiar.`
+    : `Plan Individual de Ajustes Razonables (PIAR) de ${estudiante.nombre}.\n\nGenerado por OpenPiar.`
   window.open(`mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`, '_blank')
 }
 
@@ -250,13 +298,13 @@ onMounted(() => {
                       :disabled="!est.piar_id || sharingLoading"
                       @click="compartirPDF(est)"
                       class="p-2 text-primary hover:bg-primary/5 rounded-full transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                      :title="est.piar_id ? 'Compartir PDF del PIAR' : 'No tiene PIAR activo'"
+                      :title="est.piar_id ? 'Compartir PIAR' : 'No tiene PIAR activo'"
                     >
                       <span class="material-symbols-outlined text-[20px]">share</span>
                     </button>
                     <button
                       :disabled="!est.piar_id"
-                      @click="compartirWhatsApp(est)"
+                      @click="compartirWhatsApp(est, c.telefono)"
                       class="p-2 text-green-600 hover:bg-green-50 rounded-full transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       :title="'Enviar por WhatsApp'"
                     >

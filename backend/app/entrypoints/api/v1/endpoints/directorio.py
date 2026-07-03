@@ -163,6 +163,7 @@ async def listar_directorio(
             nombre=f"{estudiante.nombres} {estudiante.apellidos}",
             grado=estudiante.grupo.grado.nombre if estudiante.grupo and estudiante.grupo.grado else None,
             piar_id=_piar_activo_id(estudiante.piars),
+            codigo_acceso_familia=estudiante.codigo_acceso_familia,
         )
 
         existing = _find_existing(

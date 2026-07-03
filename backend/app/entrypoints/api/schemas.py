@@ -285,6 +285,7 @@ class EstudianteResponse(BaseResponse):
     grupo_id: Optional[uuid.UUID] = None
     grado: Optional[str] = None
     grupo_director_id: Optional[uuid.UUID] = None
+    codigo_acceso_familia: Optional[str] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None
@@ -581,6 +582,7 @@ class EstudianteDirectorioOut(BaseModel):
     nombre: str
     grado: Optional[str] = None
     piar_id: Optional[uuid.UUID] = None
+    codigo_acceso_familia: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
@@ -684,3 +686,41 @@ class EvidenciaAjusteResponse(BaseResponse):
     creado_por: Optional[uuid.UUID] = None
     creador_nombre: Optional[str] = None
     fecha_subida: datetime
+
+
+# ---------------------------------------------------------------------------
+# Panel de Familia
+# ---------------------------------------------------------------------------
+
+class FamiliaAjusteResponse(BaseModel):
+    area: str
+    titulo_tema: Optional[str] = None
+    objetivos_propositos: str
+    ajustes_estrategias: str
+    puntuacion: Optional[int] = None
+
+
+class FamiliaCompromisoResponse(BaseModel):
+    nombre_actividad: str
+    descripcion_estrategia: str
+    frecuencia: str
+
+
+class FamiliaPIARResponse(BaseModel):
+    estudiante_nombre: str
+    grado: Optional[str] = None
+    anio_lectivo: int
+    estado: str
+    periodo_activo: Optional[str] = None
+    caracteristicas_descripcion: Optional[str] = None
+    ajustes: list[FamiliaAjusteResponse] = []
+    compromisos_casa: list[FamiliaCompromisoResponse] = []
+    firmado_estudiante: bool = False
+    firmado_acudiente: bool = False
+    firmado_docente_apoyo: bool = False
+    firmado_docentes_aula: bool = False
+    firmado_directivo: bool = False
+
+
+class FirmaFamiliaRequest(BaseModel):
+    rol: str = Field(..., pattern="^(estudiante|acudiente)$")

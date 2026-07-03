@@ -139,6 +139,7 @@ class Estudiante:
     registro_victima: bool = False
     creado_por: Optional[uuid.UUID] = None
     grupo_id: Optional[uuid.UUID] = None
+    codigo_acceso_familia: Optional[str] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 

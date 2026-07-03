@@ -191,6 +191,10 @@ class EstudianteORM(Base):
     grupo_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("grupos.id", ondelete="SET NULL"), nullable=True
     )
+    codigo_acceso_familia: Mapped[Optional[str]] = mapped_column(
+        Text, unique=True, nullable=True
+    )
+    email_acudiente: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=_now, onupdate=_now, server_default=func.now()

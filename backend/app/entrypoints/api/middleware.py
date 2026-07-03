@@ -21,6 +21,7 @@ RUTAS_PUBLICAS = {
     "/api/v1/setup/test-db",
     "/api/v1/setup/configure",
     "/api/v1/setup/upload-pei",
+    "/api/v1/familia",
     "/api/v1/health",
     "/docs",
     "/redoc",

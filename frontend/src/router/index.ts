@@ -56,6 +56,11 @@ const router = createRouter({
       component: () => import('../views/DirectorioView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/familia/:codigo',
+      name: 'familia',
+      component: () => import('../views/FamiliaView.vue'),
+    },
     // Fallback redirect
     {
       path: '/:pathMatch(.*)*',
@@ -76,7 +81,7 @@ router.beforeEach(async (to, from, next) => {
   const setupCompleted = authStore.isSetupCompleted
 
   // Regla de Setup Wizard: Si no está completado, obligar a ir a /setup
-  if (!setupCompleted && to.name !== 'setup') {
+  if (!setupCompleted && to.name !== 'setup' && to.name !== 'familia') {
     return next({ name: 'setup' })
   }
 

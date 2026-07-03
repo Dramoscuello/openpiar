@@ -13,10 +13,12 @@ from app.entrypoints.api.v1.endpoints.directorio import router as directorio_rou
 from app.entrypoints.api.v1.endpoints.estudiantes import router as estudiantes_router
 from app.entrypoints.api.v1.endpoints.gestion_escolar import router as gestion_router
 from app.entrypoints.api.v1.endpoints.piars import router as piars_router
+from app.entrypoints.api.v1.endpoints.familia import router as familia_router
 from app.entrypoints.api.v1.endpoints.setup import router as setup_router
 
 api_router = APIRouter()
 
+api_router.include_router(familia_router)
 api_router.include_router(setup_router)
 api_router.include_router(auth_router)
 api_router.include_router(estudiantes_router)

@@ -11,7 +11,7 @@ const authStore = useAuthStore()
 const route = useRoute()
 
 /* Rutas que NO usan el layout compartido (sin sidebar ni topbar) */
-const ROUTES_SIN_LAYOUT = ['login', 'setup']
+const ROUTES_SIN_LAYOUT = ['login', 'setup', 'familia']
 
 const showLayout = computed(() => {
   return !ROUTES_SIN_LAYOUT.includes(route.name as string)
