@@ -34,13 +34,12 @@ reportlab==4.1.0
 
 # --- Utilidades ---
 python-dotenv==1.0.1      # Carga de .env en scripts locales
-httpx==0.28.0             # HTTP client (para tests y llamadas externas)
+httpx>=0.28.1             # HTTP client (para tests y llamadas externas)
 aiofiles==24.1.0          # Manejo de archivos async
 
 # --- Testing ---
 pytest==8.3.4
 pytest-asyncio==0.24.0
-httpx==0.28.0             # AsyncClient para tests de FastAPI
 
 
 greenlet==3.2.4
