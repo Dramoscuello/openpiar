@@ -79,10 +79,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  // Inicializar estado del setup wizard si no existe
-  if (authStore.setupStatus === null) {
-    await authStore.checkSetupStatus()
-  }
+  await authStore.initAuth()
 
   const setupCompleted = authStore.isSetupCompleted
 

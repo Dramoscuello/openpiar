@@ -10,13 +10,19 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const showNotifPanel = ref(false)
+const bellRef = ref<InstanceType<typeof NotificacionBell> | null>(null)
 
 function toggleNotifPanel() {
   showNotifPanel.value = !showNotifPanel.value
 }
 
-function onCountUpdate(_count: number) {
-  /* count is handled by the bell component internally */
+function onCountUpdate() {
+  bellRef.value?.refresh()
+}
+
+function closePanel() {
+  showNotifPanel.value = false
+  bellRef.value?.refresh()
 }
 
 const isDarkMode = ref(false)
@@ -136,7 +142,7 @@ const handleChangePassword = async () => {
 
       <!-- Notifications -->
       <div class="flex items-center gap-3 relative">
-        <NotificacionBell @toggle="toggleNotifPanel" />
+        <NotificacionBell ref="bellRef" @toggle="toggleNotifPanel" />
       </div>
 
       <div class="h-8 w-px bg-outline-variant/50 mx-1"></div>
@@ -186,7 +192,7 @@ const handleChangePassword = async () => {
       v-if="showNotifPanel"
       class="fixed top-0 right-0 z-40 h-full w-[380px] max-w-[90vw] bg-surface border-l border-outline-variant/30 shadow-2xl flex flex-col"
     >
-      <NotificacionPanel @close="showNotifPanel = false" @count-update="onCountUpdate" />
+      <NotificacionPanel @close="closePanel" @count-update="onCountUpdate" />
     </div>
   </Transition>
 
@@ -194,7 +200,7 @@ const handleChangePassword = async () => {
   <div
     v-if="showNotifPanel"
     class="fixed inset-0 z-30 bg-black/20"
-    @click="showNotifPanel = false"
+    @click="closePanel"
   ></div>
 
   <!-- Change Password Modal -->

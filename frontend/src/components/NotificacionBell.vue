@@ -31,6 +31,8 @@ onUnmounted(() => {
 })
 
 const emit = defineEmits<{ (e: 'toggle'): void }>()
+
+defineExpose({ refresh: fetchCount })
 </script>
 
 <template>

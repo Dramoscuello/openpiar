@@ -229,20 +229,12 @@ const togglePasswordVisibility = () => {
 
     <!-- Footer -->
     <footer
-      class="fixed bottom-0 left-0 w-full p-sm flex justify-center md:justify-between items-center px-container-margin pointer-events-none"
+      class="fixed bottom-0 left-0 w-full p-sm flex justify-center items-center px-container-margin pointer-events-none"
     >
       <div class="hidden md:block">
         <p class="font-label-sm text-label-sm text-outline-variant">
-          © 2024 OpenPiar. Inteligencia Pedagógica para la Inclusión.
+          © {{ new Date().getFullYear() }} OpenPiar. Inteligencia Pedagógica para la Inclusión.
         </p>
-      </div>
-      <div class="flex gap-md pointer-events-auto">
-        <a class="font-label-sm text-label-sm text-outline-variant hover:text-primary transition-colors" href="#">
-          Privacidad
-        </a>
-        <a class="font-label-sm text-label-sm text-outline-variant hover:text-primary transition-colors" href="#">
-          Soporte técnico
-        </a>
       </div>
     </footer>
   </div>

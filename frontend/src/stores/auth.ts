@@ -2,6 +2,8 @@
 import { defineStore } from 'pinia'
 import { authApi, type UserResponse, type SetupStatus } from '../api/auth'
 
+let initPromise: Promise<void> | null = null
+
 export interface AuthState {
   token: string | null
   user: UserResponse | null
@@ -99,10 +101,16 @@ export const useAuthStore = defineStore('auth', {
      * Inicializa la autenticación y el setup del sistema al arrancar la app.
      */
     async initAuth(): Promise<void> {
-      await this.checkSetupStatus()
-      if (this.token) {
-        await this.fetchCurrentUser()
-      }
+      if (initPromise) return initPromise
+
+      initPromise = (async () => {
+        await this.checkSetupStatus()
+        if (this.token) {
+          await this.fetchCurrentUser()
+        }
+      })()
+
+      return initPromise
     },
   },
 })
