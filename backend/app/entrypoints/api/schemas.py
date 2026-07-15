@@ -93,6 +93,18 @@ class ConfigurarSistemaRequest(BaseModel):
         v = v.strip()
         if not re.match(r"^\d{8,10}-?\d$", v):
             raise ValueError("NIT inválido. Formato esperado: 123456789-0 o 1234567890.")
+        # Verificar dígito de verificación del NIT colombiano
+        nit_sin_formato = v.replace("-", "")
+        base = nit_sin_formato[:-1]
+        dv_ingresado = int(nit_sin_formato[-1])
+        primos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71]
+        suma = 0
+        for i, digito in enumerate(reversed(base)):
+            suma += int(digito) * primos[i]
+        resto = suma % 11
+        dv_esperado = resto if resto <= 1 else 11 - resto
+        if dv_esperado != dv_ingresado:
+            raise ValueError(f"NIT inválido: el dígito de verificación no coincide. Se esperaba {dv_esperado}.")
         return v
 
     @field_validator("telefono_contacto")

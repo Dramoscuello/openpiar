@@ -53,7 +53,24 @@ const passwordsMatch = computed(() => adminPassword.value === adminConfirmPasswo
 const daneIsValid = computed(() => codigoDane.value.length === 12 && /^\d+$/.test(codigoDane.value))
 
 // NIT validation (Colombian format: 123456789-0 or 1234567890)
-const nitIsValid = computed(() => /^\d{8,10}-?\d$/.test(nit.value.trim()))
+const nitFormatoValido = computed(() => /^\d{8,10}-?\d$/.test(nit.value.trim()))
+
+const nitDVValido = computed(() => {
+  if (!nitFormatoValido.value) return false
+  const nitSinFormato = nit.value.trim().replace('-', '')
+  const base = nitSinFormato.slice(0, -1)
+  const dvIngresado = parseInt(nitSinFormato.slice(-1))
+  const primos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71]
+  let suma = 0
+  for (let i = 0; i < base.length; i++) {
+    suma += parseInt(base.charAt(base.length - 1 - i)) * (primos[i] ?? 0)
+  }
+  const resto = suma % 11
+  const dvEsperado = resto <= 1 ? resto : 11 - resto
+  return dvEsperado === dvIngresado
+})
+
+const nitIsValid = computed(() => nitFormatoValido.value && nitDVValido.value)
 
 // Telefono validation (optional, Colombian format)
 const telefonoIsValid = computed(() => {
@@ -91,8 +108,12 @@ const nextStep = () => {
       errorMessage.value = 'El código DANE debe tener exactamente 12 dígitos numéricos.'
       return
     }
-    if (!nitIsValid.value) {
+    if (!nitFormatoValido.value) {
       errorMessage.value = 'El NIT debe tener formato válido (ej: 123456789-0 o 1234567890).'
+      return
+    }
+    if (!nitDVValido.value) {
+      errorMessage.value = 'El NIT es inválido: el dígito de verificación no coincide.'
       return
     }
     if (!telefonoIsValid.value) {
