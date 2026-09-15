@@ -143,6 +143,7 @@ Todos bajo el prefijo `/api/v1` (registrado en `main.py:242`).
 - Los datos curriculares (DBA/EBC) se precargan como fixtures JSON; **nunca** se descargan de internet en runtime.
 - El panel de **familia** es de acceso público por código (`codigo_acceso_familia`), sin autenticación JWT.
 - El export/import portable `.openpiar` usa cifrado **AES-256-GCM** con PBKDF2-HMAC-SHA256 (`core/portable_exporter.py`).
+- Los PDF generados (PIAR borrador/final, acta interna y portal familia) se cifran con **AES-256** en `core/pdf_security.py::proteger_pdf`; la contraseña de apertura es el `numero_documento` del estudiante y el owner password se deriva de `SECRET_KEY`. Permisos: solo imprimir + accesibilidad. El PDF de historial de auditoría queda **sin cifrar** (decisión de producto). El nombre de descarga (`nombre_archivo_piar`) usa nombre + código aleatorio de 6 caracteres, nunca el documento.
 - La IA usa Gemini (dos SDKs); no hay adaptador Ollama implementado. La clave se resuelve con prioridad **BD → `.env`** (`core/gemini_key.py`).
 
 ## Deployment
@@ -158,6 +159,7 @@ Dos rutas documentadas:
   - `tests/test_piar_workflow.py` — reglas de completitud, campos obligatorios y versionado.
   - `tests/test_piar_api_contracts.py` — contratos OpenAPI y lógica de permisos/visibilidad.
   - `tests/test_pdf_oficial.py` — regresión de PDFs oficiales (con `pypdf`/`pdfplumber`).
+  - `tests/test_pdf_security.py` — cifrado AES-256 de PDFs y nombre aleatorio de descarga.
 - **Frontend:** Vitest (`vite.config.ts`, entorno `jsdom`, specs `src/**/*.spec.ts`); ejecutar con `npm test`.
   - `src/components/piar/PiarWizard.spec.ts` y `src/composables/usePiarVisibility.spec.ts`.
 

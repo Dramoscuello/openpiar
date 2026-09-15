@@ -1,6 +1,7 @@
 <!-- Copyright (c) 2026 OpenPiar Contributors — GPL-3.0 -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { descargarBlob, nombreDesdeRespuesta } from '../api/download'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
@@ -72,14 +73,8 @@ async function downloadPiarPDF(piarId: string, estudianteNombre: string) {
     })
     if (!res.ok) throw new Error('Error al descargar el PDF')
     const blob = await res.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `PIAR_${estudianteNombre.replace(/\s+/g, '_')}.pdf`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    window.URL.revokeObjectURL(url)
+    const nombre = nombreDesdeRespuesta(res, `PIAR_${estudianteNombre.replace(/\s+/g, '_')}.pdf`)
+    descargarBlob(blob, nombre)
   } catch (e: any) {
     alert(e.message || 'No se pudo descargar el PDF')
   }
@@ -97,7 +92,8 @@ async function compartirPDF(estudiante: EstudianteInfo) {
     })
     if (!res.ok) throw new Error('Error al obtener el PDF')
     const blob = await res.blob()
-    const file = new File([blob], `PIAR_${estudiante.nombre.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' })
+    const nombre = nombreDesdeRespuesta(res, `PIAR_${estudiante.nombre.replace(/\s+/g, '_')}.pdf`)
+    const file = new File([blob], nombre, { type: 'application/pdf' })
 
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
@@ -106,14 +102,7 @@ async function compartirPDF(estudiante: EstudianteInfo) {
         files: [file],
       })
     } else {
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `PIAR_${estudiante.nombre.replace(/\s+/g, '_')}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      descargarBlob(blob, nombre)
     }
   } catch (e: any) {
     if (e.name !== 'AbortError') {
@@ -199,6 +188,11 @@ onMounted(() => {
         Total: <span class="font-bold text-on-surface">{{ contactos.length }}</span> contactos
       </div>
     </div>
+
+    <p class="text-label-sm text-outline flex items-center gap-xs">
+      <span class="material-symbols-outlined text-[16px]">lock</span>
+      Los PDF del PIAR se abren solicitando el número de documento del estudiante.
+    </p>
 
     <div v-if="loading" class="p-xl flex flex-col items-center justify-center gap-sm text-outline">
       <span class="material-symbols-outlined animate-spin text-[48px] text-primary">progress_activity</span>

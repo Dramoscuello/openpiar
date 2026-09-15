@@ -10,7 +10,6 @@ const authStore = useAuthStore()
 // Form refs
 const email = ref('')
 const password = ref('')
-const rememberMe = ref(false)
 
 // UI state
 const showPassword = ref(false)
@@ -192,21 +191,6 @@ const togglePasswordVisibility = () => {
               </div>
             </div>
 
-            <!-- Remember Me / Forgot Password -->
-            <div class="flex items-center justify-between">
-              <label class="flex items-center gap-xs cursor-pointer select-none">
-                <input
-                  v-model="rememberMe"
-                  class="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary"
-                  type="checkbox"
-                />
-                <span class="font-label-md text-label-md text-on-surface-variant">Recordarme</span>
-              </label>
-              <a class="font-label-md text-label-md text-primary hover:underline transition-all" href="#">
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
-
             <!-- Submit Button -->
             <button
               class="w-full py-4 bg-primary text-on-primary font-label-md text-label-md rounded-input shadow-md btn-hover-effect flex items-center justify-center gap-xs cursor-pointer disabled:opacity-75 disabled:pointer-events-none"
@@ -233,7 +217,7 @@ const togglePasswordVisibility = () => {
     >
       <div class="hidden md:block">
         <p class="font-label-sm text-label-sm text-outline-variant">
-          © {{ new Date().getFullYear() }} OpenPiar. Inteligencia Pedagógica para la Inclusión.
+          © OpenPiar 2026
         </p>
       </div>
     </footer>

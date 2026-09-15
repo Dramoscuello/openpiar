@@ -23,6 +23,7 @@ from app.adapters.db.models import (
     EvidenciaAjusteORM,
 )
 from app.adapters.db.session import get_db
+from app.core.pdf_security import nombre_archivo_piar, proteger_pdf
 from app.entrypoints.api.schemas import (
     FamiliaPIARResponse,
     FamiliaAjusteResponse,
@@ -235,9 +236,12 @@ async def get_acta_pdf_familia(
     config = config_result.scalars().first()
 
     from app.core.pdf_generator import generate_piar_oficial_pdf
-    pdf_bytes = generate_piar_oficial_pdf(piar, config, selected_periods, periodo=periodo_activo)
+    pdf_bytes = proteger_pdf(
+        generate_piar_oficial_pdf(piar, config, selected_periods, periodo=periodo_activo),
+        estudiante_orm.numero_documento,
+    )
 
-    filename = f"PIAR_{estudiante_orm.numero_documento}.pdf"
+    filename = nombre_archivo_piar(estudiante_orm.nombres, estudiante_orm.apellidos)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

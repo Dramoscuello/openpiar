@@ -40,5 +40,9 @@ const emit = defineEmits<{
         Reabrir para nueva versión
       </button>
     </template>
+    <p class="w-full text-label-sm text-on-surface-variant flex items-center gap-1">
+      <span class="material-symbols-outlined text-[16px]">lock</span>
+      Los PDF se abren solicitando el número de documento del estudiante.
+    </p>
   </section>
 </template>

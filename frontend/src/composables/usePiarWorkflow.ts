@@ -1,6 +1,7 @@
 // Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
 import { ref, type Ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { descargarBlob, nombreDesdeRespuesta } from '../api/download'
 import type { PiarCompletitud } from '../types/piar'
 
 export function usePiarWorkflow(piarId: Ref<string | null>, periodoId?: Ref<number | null>) {
@@ -58,14 +59,8 @@ export function usePiarWorkflow(piarId: Ref<string | null>, periodoId?: Ref<numb
       throw new Error(body.detail?.mensaje || body.detail || 'No fue posible generar el PDF.')
     }
     const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `PIAR_${piarId.value}_${modo}.pdf`
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(url)
+    const nombre = nombreDesdeRespuesta(response, `PIAR_${piarId.value}_${modo}.pdf`)
+    descargarBlob(blob, nombre)
   }
 
   return { completitud, loading, error, refresh, reabrir, descargar }

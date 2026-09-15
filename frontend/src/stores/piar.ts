@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
+import { descargarBlob, nombreDesdeRespuesta } from '../api/download'
 import type { PiarCompletitud } from '../types/piar'
 
 export const usePiarStore = defineStore('piar', () => {
@@ -322,19 +323,14 @@ export const usePiarStore = defineStore('piar', () => {
         'Authorization': `Bearer ${authStore.token}`
       }
     })
-    .then(response => {
+    .then(async response => {
       if (!response.ok) return response.json().then(body => { throw new Error(body.detail?.mensaje || body.detail || 'Error al descargar el PDF') })
-      return response.blob()
+      const blob = await response.blob()
+      const nombre = nombreDesdeRespuesta(response, `PIAR_${activePiar.value?.id}_${modo}.pdf`)
+      return { blob, nombre }
     })
-    .then(blob => {
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `PIAR_${activePiar.value?.id}_${modo}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+    .then(({ blob, nombre }) => {
+      descargarBlob(blob, nombre)
     })
     .catch(e => {
       error.value = e.message

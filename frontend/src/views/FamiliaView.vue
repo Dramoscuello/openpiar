@@ -170,6 +170,11 @@
         Descargar PDF oficial del PIAR
       </a>
 
+      <p class="text-center text-label-sm text-on-surface-variant flex items-center justify-center gap-1">
+        <span class="material-symbols-outlined text-[16px]">lock</span>
+        El archivo se abrirá solicitando el número de documento del estudiante.
+      </p>
+
       <p class="text-center text-label-xs text-outline-variant pt-2">
         OpenPiar — Decreto 1421 de 2017
       </p>

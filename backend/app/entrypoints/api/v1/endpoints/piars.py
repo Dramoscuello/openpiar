@@ -12,6 +12,7 @@ from google import genai as genai_new        # SDK nuevo — usado en /generar_p
 from google.genai import types as genai_types
 
 from app.core.config import get_settings
+from app.core.pdf_security import nombre_archivo_piar, proteger_pdf
 from app.adapters.db.session import get_db
 from app.adapters.db.models import (
     PiarORM,
@@ -432,7 +433,7 @@ async def _generar_pdf_actual(
     from app.core.pdf_generator import generate_piar_oficial_pdf
 
     config, periodos = await _contexto_pdf(db, piar)
-    return generate_piar_oficial_pdf(
+    pdf = generate_piar_oficial_pdf(
         piar,
         config,
         periodos,
@@ -440,6 +441,7 @@ async def _generar_pdf_actual(
         faltantes=faltantes or [],
         periodo=periodo,
     )
+    return proteger_pdf(pdf, piar.estudiante.numero_documento)
 
 
 def _build_ajustes_response(ajustes_orm: list) -> list:
@@ -1415,8 +1417,7 @@ async def download_piar_pdf(
                 },
             )
         version = versiones[-1]
-        contenido = version.pdf_archivo
-        sufijo = f"v{version.numero}"
+        contenido = proteger_pdf(version.pdf_archivo, piar.estudiante.numero_documento)
     else:
         resultado = _evaluar_completitud(piar, periodo_ref)
         faltantes = [
@@ -1424,9 +1425,8 @@ async def download_piar_pdf(
             for seccion in resultado.secciones if not seccion.completa
         ]
         contenido = await _generar_pdf_actual(db, piar, "borrador", faltantes, periodo)
-        sufijo = "BORRADOR"
 
-    filename = f"PIAR_{piar.estudiante.numero_documento}_{piar.anio_lectivo}_{sufijo}.pdf"
+    filename = nombre_archivo_piar(piar.estudiante.nombres, piar.estudiante.apellidos)
     return Response(
         content=contenido,
         media_type="application/pdf",
@@ -1681,8 +1681,7 @@ async def download_acta_pdf(
     ]
     versiones.sort(key=lambda item: item.numero)
     if _estado_periodo(piar, periodo_ref) == "firmado" and versiones:
-        pdf_bytes = versiones[-1].pdf_archivo
-        sufijo = f"v{versiones[-1].numero}"
+        pdf_bytes = proteger_pdf(versiones[-1].pdf_archivo, piar.estudiante.numero_documento)
     else:
         resultado = _evaluar_completitud(piar, periodo_ref)
         faltantes = [
@@ -1690,8 +1689,7 @@ async def download_acta_pdf(
             for seccion in resultado.secciones if not seccion.completa
         ]
         pdf_bytes = await _generar_pdf_actual(db, piar, "borrador", faltantes, periodo)
-        sufijo = "BORRADOR"
-    filename = f"PIAR_{piar.estudiante.numero_documento}_{piar.anio_lectivo}_{sufijo}.pdf"
+    filename = nombre_archivo_piar(piar.estudiante.nombres, piar.estudiante.apellidos)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

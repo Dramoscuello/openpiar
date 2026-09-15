@@ -1027,6 +1027,11 @@
                   Descargar PDF del PIAR
                 </button>
 
+                <p class="text-label-sm text-on-surface-variant flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[16px]">lock</span>
+                  El PDF se abrirá solicitando el número de documento del estudiante.
+                </p>
+
                 <button 
                   v-if="authStore.user?.rol === 'directivo'"
                   @click="abrirModalExportar"
