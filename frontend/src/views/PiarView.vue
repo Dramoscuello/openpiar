@@ -604,8 +604,8 @@
                       <p class="text-on-surface-variant leading-snug">{{ ajuste.evaluacion_ajustes }}</p>
                     </div>
 
-                    <!-- Puntuación del ajuste (solo visible para el creador) -->
-                    <div v-if="ajuste.creado_por === authStore.user?.id" class="border-t border-outline-variant/20 pt-sm mt-xs">
+                    <!-- Puntuación conservada, temporalmente oculta (feature 001). -->
+                    <div v-if="ajusteRatingEnabled && ajuste.creado_por === authStore.user?.id" class="border-t border-outline-variant/20 pt-sm mt-xs">
                       <div class="flex items-center justify-between mb-1.5">
                         <h4 class="font-bold text-amber-700 text-xs uppercase tracking-wider flex items-center gap-1">
                           <span class="material-symbols-outlined text-[14px]">star</span>
@@ -2200,6 +2200,9 @@ const confirmDeleteAjuste = ref<{ id: string, label: string } | null>(null)
 const deletingAjuste = ref(false)
 const deleteErrorAjuste = ref<string | null>(null)
 
+// Cambiar a true para reactivar la calificación y sus comentarios (feature 001).
+const ajusteRatingEnabled = false
+
 // Helper buscador de currículo
 // Cambiar a true para reactivar el buscador y su contexto curricular automático.
 const curriculumSearchEnabled = false
@@ -2562,7 +2565,7 @@ async function eliminarAjuste(ajusteId: string) {
 }
 
 async function puntuarAjuste(ajuste: any, star: number) {
-  if (!authStore.user) return
+  if (!ajusteRatingEnabled || !authStore.user) return
   ajuste.puntuacion = star
   const comentario = ajuste._comentarioPuntuacion || ''
   try {
@@ -2582,7 +2585,7 @@ async function puntuarAjuste(ajuste: any, star: number) {
 }
 
 async function guardarComentarioPuntuacion(ajuste: any) {
-  if (!ajuste.puntuacion) return
+  if (!ajusteRatingEnabled || !ajuste.puntuacion) return
   const comentario = ajuste._comentarioPuntuacion || ''
   try {
     const updated = await piarStore.puntuarAjuste(ajuste.id, ajuste.puntuacion, comentario)

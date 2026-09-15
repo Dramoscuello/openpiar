@@ -1544,6 +1544,17 @@ def generate_piar_oficial_pdf(
             for item in participantes
         )
     primer_docente = docentes_texto.split(",")[0].strip() if docentes_texto else ""
+    director = getattr(grupo, "director", None) if grupo else None
+    director_nombre = " ".join(
+        parte for parte in (
+            getattr(director, "nombre", ""), getattr(director, "apellido", "")
+        ) if parte
+    ).strip()
+    responsable_diligenciamiento = (
+        f"{director_nombre} (Docente director de grupo)"
+        if director_nombre else "Director de grupo no asignado"
+    )
+    direccion_institucion = getattr(config, "direccion", "") or ""
 
     # ═══════ BLOQUE 1: ENCABEZADO ═══════
     story.append(_banner("PLAN INDIVIDUAL DE AJUSTES RAZONABLES"))
@@ -1560,8 +1571,8 @@ def generate_piar_oficial_pdf(
         story.append(pendiente)
         story.append(Spacer(1, 6))
     data_top = [
-        [_label_cell("Fecha y Lugar de Diligenciamiento"), P(f"{fecha_creacion}  {piar.lugar_diligenciamiento or sede_nombre}", sty_c)],
-        [_label_cell("Nombre y rol de la Persona que diligencia"), P(primer_docente, sty_c)],
+        [_label_cell("Fecha y Lugar de Diligenciamiento"), P(f"{fecha_creacion}  {direccion_institucion}".strip(), sty_c)],
+        [_label_cell("Nombre y rol de la Persona que diligencia"), P(responsable_diligenciamiento, sty_c)],
         [_label_cell("Instituci\u00f3n Educativa"), P(inst_nombre, sty_c)],
     ]
     # Construir tabla con celdas label con bg
@@ -1632,8 +1643,9 @@ def generate_piar_oficial_pdf(
          P(u"\u00bfEst\u00e1 en alg\u00fan Centro de Protecci\u00f3n?", sty_cb),
          P(f"{_si_no(proteccion)} \u00bfCu\u00e1l? {estudiante.centro_proteccion_donde or ''}", sty_c),
          P(u"\u00bfSe reconoce o pertenece a un grupo \u00e9tnico?", sty_cb),
+         P("", sty_c),
          P(f"{_si_no(getattr(estudiante, 'pertenece_grupo_etnico', None))} \u00bfCu\u00e1l? {etnia}", sty_c),
-         P("", sty_c), P("", sty_c)],
+         P("", sty_c)],
         # Row 7 (contenida en las celdas de row 6, esta fila extra vacía para espaciado)
         [P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c)],
     ]
@@ -1663,11 +1675,11 @@ def generate_piar_oficial_pdf(
         # Row 3: same as row 2
         ('SPAN', (0,3), (1,3)), ('SPAN', (4,3), (5,3)), ('SPAN', (6,3), (7,3)),
         # Row 4: Depto(0) | Municipio(2) | Barrio(4) + data spans
-        ('SPAN', (1,4), (1,4)), ('SPAN', (3,4), (3,4)), ('SPAN', (5,4), (5,4)), ('SPAN', (6,4), (7,4)),
+        ('SPAN', (4,4), (5,4)), ('SPAN', (6,4), (7,4)),
         # Row 5: Dirección(0) | Celular(2) | Correo(4) + data spans
-        ('SPAN', (1,5), (1,5)), ('SPAN', (3,5), (3,5)), ('SPAN', (5,5), (5,5)), ('SPAN', (6,5), (7,5)),
-        # Row 6: Víctima(0-1) | Centro(2-3) | Etnia(4-5)
-        ('SPAN', (0,6), (1,6)), ('SPAN', (2,6), (3,6)), ('SPAN', (4,6), (5,6)),
+        ('SPAN', (4,5), (5,5)), ('SPAN', (6,5), (7,5)),
+        # Row 6: etiquetas y respuestas separadas; etnia ocupa dos columnas por celda.
+        ('SPAN', (4,6), (5,6)), ('SPAN', (6,6), (7,6)),
         # Row 7
         ('SPAN', (0,7), (7,7)),
         # Lateral rowspan: col 0-1, rows 8-19
@@ -1728,10 +1740,10 @@ def generate_piar_oficial_pdf(
 
     salud_data = [
         # Afiliación
-        [P(u"Afiliaci\u00f3n al sistema de salud", sty_cb), P("SI %s No____" % ('_X__' if afil_ok else '__'), sty_c),
-         P("Contributivo", sty_cb), P('X' if contrib else '', sty_c),
-         P("Subsidiado", sty_cb), P('X' if subs else '', sty_c),
-         P("Cu\u00e1l %s" % (salud.eps or '' if salud else ''), sty_cb)],
+        [P(u"Afiliaci\u00f3n al sistema de salud", sty_cb), P(_si_no(afil_ok), sty_c),
+         P("Régimen", sty_cb),
+         P(f"Contributivo {px(contrib)}\nSubsidiado {px(subs)}", sty_c),
+         P("¿Cuál?", sty_cb), P(salud.eps or '' if salud else '', sty_c), P("", sty_c)],
         # Lugar emergencias
         [P("Lugar donde le atienden en caso de emergencia", sty_cb),
          P(salud.lugar_emergencias or "" if salud else "", sty_c),
@@ -1802,6 +1814,9 @@ def generate_piar_oficial_pdf(
          P("", sty_c), P("", sty_c), P("", sty_c)],
     ]
     ss = [
+        ('SPAN', (5,0), (6,0)),  # EPS: valor separado de la etiqueta ¿Cuál?
+        ('BACKGROUND', (2,0), (2,0), gris_label),
+        ('BACKGROUND', (4,0), (4,0), gris_label),
         ('SPAN', (1,1), (6,1)),  # Lugar emergencias
         ('SPAN', (3,2), (6,2)),  # Diagnóstico ¿Cuál?
         # Atención médica rowspans
@@ -1872,12 +1887,15 @@ def generate_piar_oficial_pdf(
     story.append(Spacer(1, 8))
 
     # ═══════ BLOQUE 5: EDUCATIVO ═══════
-    story.append(P(u"\u00a0\u00a0\u00a0\u00a04.\u00a0\u00a0\u00a0\u00a0Entorno Educativo", sty_sec))
+    titulo_educativo = P(u"\u00a0\u00a0\u00a0\u00a04.\u00a0\u00a0\u00a0\u00a0Entorno Educativo", sty_sec)
     WE = [4*cm, 3*cm, 3*cm, 3*cm, 3.1*cm]
     trayect_vin = trayectoria.vinculado_educacion_inicial if trayectoria else None
     estado_ultimo = getattr(trayectoria, 'estado_ultimo_grado', None) if trayectoria else None
     recibe_inf = trayectoria.recibe_informe_pedagogico if trayectoria else False
-    asiste_prog = trayectoria.asiste_programas_complementarios if trayectoria else False
+    asiste_prog = bool(getattr(trayectoria, 'asiste_programas_complementarios', False))
+    programas_texto = format_check_bool(asiste_prog)
+    if asiste_prog:
+        programas_texto += "\n¿Cuáles? " + (trayectoria.programas_complementarios_cuales or "")
 
     edu_data = [
         [P(u"\u00bfHa estado vinculado en otra instituci\u00f3n educativa, fundaci\u00f3n o bajo otra modalidad de educaci\u00f3n?", sty_cb),
@@ -1897,15 +1915,18 @@ def generate_piar_oficial_pdf(
          P("", sty_c), P("", sty_c),
          P("Si %s  No %s" % (_chk(recibe_inf), _chk(not recibe_inf)), sty_c), P("", sty_c)],
         [P(u"\u00bfDe qu\u00e9 instituci\u00f3n o modalidad proviene el informe?", sty_cb),
-         P(trayectoria.institucion_procedencia_informe or "" if trayectoria else "", sty_c), P("", sty_c),
-         P(u"\u00bfEst\u00e1 asistiendo en la actualidad a programas complementarios?", sty_cb),
-         P("No %s  Si %s  \u00bfCu\u00e1les?" % (_chk(not asiste_prog), _chk(asiste_prog)), sty_c)],
+         P("", sty_c),
+         P(trayectoria.institucion_procedencia_informe or "" if trayectoria else "", sty_c),
+         P("", sty_c), P("", sty_c)],
+        [P(u"\u00bfEst\u00e1 asistiendo en la actualidad a programas complementarios?", sty_cb),
+         P("", sty_c), P(programas_texto, sty_c), P("", sty_c), P("", sty_c)],
     ]
     es = [
         ('SPAN', (0,0), (1,0)), ('SPAN', (4,0), (4,0)),
         ('SPAN', (0,1), (0,1)), ('SPAN', (4,1), (4,1)),
         ('SPAN', (0,2), (2,2)), ('SPAN', (3,2), (4,2)),
-        ('SPAN', (0,3), (1,3)), ('SPAN', (3,3), (4,3)),
+        ('SPAN', (0,3), (1,3)), ('SPAN', (2,3), (4,3)),
+        ('SPAN', (0,4), (1,4)), ('SPAN', (2,4), (4,4)),
     ]
     for r in range(len(edu_data)):
         es.append(('BACKGROUND', (0, r), (0, r), gris_label))
@@ -1919,24 +1940,20 @@ def generate_piar_oficial_pdf(
         ('TOPPADDING', (0,0), (-1,-1), 2), ('BOTTOMPADDING', (0,0), (-1,-1), 2),
         ('LEFTPADDING', (0,0), (-1,-1), 3), ('RIGHTPADDING', (0,0), (-1,-1), 3),
     ] + es))
-    story.append(t_edu)
-    story.append(Spacer(1, 8))
-
     # ═══════ FIRMAS INICIALES ═══════
-    story.append(PageBreak())
     firmas_ini = [
         [P("Nombre y firma de quien diligencia", sty_cb), P("Nombre y firma acudiente", sty_cb)],
-        [P("", sty_c), P("", sty_c)], [P("", sty_c), P("", sty_c)], [P("", sty_c), P("", sty_c)],
+        [P("", sty_c), P("", sty_c)],
     ]
-    t_fi = Table(firmas_ini, colWidths=[8*cm, 8*cm])
+    t_fi = Table(firmas_ini, colWidths=[sum(WE)/2, sum(WE)/2], rowHeights=[None, 2*cm])
     t_fi.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (0,0), gris_label), ('BACKGROUND', (1,0), (1,0), gris_label),
         ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 9),
         ('VALIGN', (0,0), (-1,-1), 'TOP'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ('TOPPADDING', (0,0), (-1,-1), 12), ('BOTTOMPADDING', (0,0), (-1,-1), 12),
-        ('MINROWHEIGHT', (1,0), (-1,-1), 20),
+        ('TOPPADDING', (0,0), (-1,-1), 4), ('BOTTOMPADDING', (0,0), (-1,-1), 4),
     ]))
-    story.append(t_fi)
+    # Mantener el entorno educativo junto a sus firmas físicas cuando cabe en una página.
+    story.append(KeepTogether([titulo_educativo, t_edu, Spacer(1, 8), t_fi]))
     story.append(Spacer(1, 6))
 
     # ═══════ CARACTERIZACION PEDAGOGICA ═══════
@@ -1945,10 +1962,23 @@ def generate_piar_oficial_pdf(
     story.append(Spacer(1, 4))
     story.append(_banner("ANEXO 2"))
     story.append(Spacer(1, 6))
+    docentes_agrupados = {}
+    for item in participantes:
+        nombre = " ".join(item.nombre.split())
+        docente = docentes_agrupados.setdefault(
+            nombre.casefold(), {"nombre": nombre, "cargos": {}, "areas": {}}
+        )
+        cargo = " ".join((getattr(item, 'cargo', None) or item.rol_piar.replace('_', ' ')).split())
+        docente["cargos"].setdefault(cargo.casefold(), cargo)
+        area = " ".join((getattr(item, 'area', None) or "").split())
+        if area:
+            docente["areas"].setdefault(area.casefold(), area)
     participantes_texto = "\n".join(
-        f"{item.nombre} - {getattr(item, 'cargo', None) or item.rol_piar.replace('_', ' ')}"
-        f"{f' - {item.area}' if getattr(item, 'area', None) else ''}"
-        for item in participantes
+        " - ".join(parte for parte in (
+            docente["nombre"], ", ".join(docente["cargos"].values()),
+            ", ".join(docente["areas"].values()),
+        ) if parte)
+        for docente in docentes_agrupados.values()
     ) or docentes_texto
     anexo2_meta = [
         [P("Fecha de elaboración", sty_cb), P(fecha_creacion, sty_c),
@@ -1968,7 +1998,26 @@ def generate_piar_oficial_pdf(
     ]))
     story.append(t_meta)
     story.append(Spacer(1, 6))
-    story.append(P("DATOS DEL ESTUDIANTE", sty_sec))
+
+    def _titulo_anexo2(texto):
+        titulo = _banner(texto)
+        titulo.keepWithNext = True
+        return titulo
+
+    def _contenido_anexo2(parrafos):
+        # Una sola celda con margen interior, divisible si el texto ocupa varias páginas.
+        tabla = Table([[parrafos]], colWidths=[16.2*cm], splitInRow=1)
+        tabla.setStyle(TableStyle([
+            ('BOX', (0,0), (-1,-1), 0.5, colors.black),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('LEFTPADDING', (0,0), (-1,-1), 8),
+            ('RIGHTPADDING', (0,0), (-1,-1), 8),
+            ('TOPPADDING', (0,0), (-1,-1), 8),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ]))
+        return tabla
+
+    story.append(_titulo_anexo2("DATOS DEL ESTUDIANTE"))
     story.append(_table([
         [P("Nombre del estudiante", sty_cb), P(f"{estudiante.nombres} {estudiante.apellidos}", sty_c),
          P("Documento de identificación", sty_cb), P(estudiante.numero_documento, sty_c)],
@@ -1978,23 +2027,22 @@ def generate_piar_oficial_pdf(
         ('BACKGROUND', (2,0), (2,-1), gris_label),
     ]))
     story.append(Spacer(1, 6))
-    story.append(P("1. CARACTERÍSTICAS DEL ESTUDIANTE", sty_sec))
-    story.append(P("Entorno familiar, social y económico", sty_cb))
-    story.append(P(
+    story.append(_titulo_anexo2("1. CARACTERÍSTICAS DEL ESTUDIANTE"))
+    story.append(_contenido_anexo2([P("Entorno familiar, social y económico", sty_cb), P(
         caracteristicas.entorno_familiar_social_economico
         if caracteristicas and caracteristicas.entorno_familiar_social_economico
         else "No registrado",
         sty_norm,
-    ))
+    )]))
     story.append(Spacer(1, 6))
-    story.append(_banner("Caracterizaci\u00f3n pedag\u00f3gica o diagn\u00f3stico"))
-    story.append(Spacer(1, 8))
+    story.append(_titulo_anexo2("Caracterizaci\u00f3n pedag\u00f3gica o diagn\u00f3stico"))
     if caracteristicas and hasattr(caracteristicas, 'caracterizacion_pedagogica') and caracteristicas.caracterizacion_pedagogica:
-        story.append(P(caracteristicas.caracterizacion_pedagogica, sty_norm))
+        texto_caracterizacion = caracteristicas.caracterizacion_pedagogica
     elif caracteristicas and caracteristicas.descripcion_habilidades:
-        story.append(P(caracteristicas.descripcion_habilidades, sty_norm))
+        texto_caracterizacion = caracteristicas.descripcion_habilidades
     else:
-        story.append(P("No registrada", sty_norm))
+        texto_caracterizacion = "No registrada"
+    story.append(_contenido_anexo2([P(texto_caracterizacion, sty_norm)]))
 
     # ═══════ MATRIZ AJUSTES — LANDSCAPE ═══════
     story.append(NextPageTemplate(['Landscape']))
@@ -2117,7 +2165,7 @@ def generate_piar_oficial_pdf(
     story.append(NextPageTemplate(['Portrait']))
     story.append(PageBreak())
 
-    # ═══════ FIRMAS DOCENTES (3 bloques de 3 + apoyo) ═══════
+    # ═══════ FIRMAS DOCENTES (bloques de 3 + apoyo) ═══════
     docentes_list = [
         (item.nombre, item.area or "")
         for item in participantes
@@ -2131,7 +2179,21 @@ def generate_piar_oficial_pdf(
             else:
                 docentes_list.append((docente, ""))
 
-    for block_num in range(3):
+    firmas_por_docente = {}
+    for nombre, area in docentes_list:
+        nombre = " ".join(nombre.split())
+        firma = firmas_por_docente.setdefault(
+            nombre.casefold(), {"nombre": nombre, "areas": {}}
+        )
+        area = " ".join(area.split())
+        if area:
+            firma["areas"].setdefault(area.casefold(), area)
+    docentes_list = [
+        (firma["nombre"], ", ".join(firma["areas"].values()))
+        for firma in firmas_por_docente.values()
+    ]
+
+    for block_num in range(max(3, (len(docentes_list) + 2) // 3)):
         rows = []
         rows.append([P("Nombre docente", sty_cc), P("Nombre docente", sty_cc), P("Nombre docente", sty_cc)])
         rows.append([P("", sty_cc), P("", sty_cc), P("", sty_cc)])
@@ -2146,7 +2208,7 @@ def generate_piar_oficial_pdf(
                 rows[1][i] = P(nom, sty_cc)
                 rows[3][i] = P(area, sty_cc)
         if block_num > 0: story.append(Spacer(1, 6))
-        t = Table(rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm])
+        t = Table(rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm], splitByRow=0)
         t.setStyle(TableStyle([
             ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 9),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
@@ -2182,7 +2244,7 @@ def generate_piar_oficial_pdf(
 
     acta_hdr_data = [
         [_label_cell("Fecha y Lugar de Diligenciamiento"), P(
-            f"{acta.fecha_firma.strftime('%d/%m/%Y') if (acta and acta.fecha_firma) else 'DD/MM/AAAA'}  {piar.lugar_diligenciamiento or sede_nombre}", sty_c)],
+            f"{acta.fecha_firma.strftime('%d/%m/%Y') if (acta and acta.fecha_firma) else 'DD/MM/AAAA'}  {direccion_institucion}", sty_c)],
         [_label_cell("Nombre y rol de la Persona que diligencia"), P(primer_docente, sty_c)],
         [_label_cell(u"Instituci\u00f3n Educativa"), P(inst_nombre, sty_c)],
         [_label_cell("Sede"), P(sede_nombre, sty_c)],

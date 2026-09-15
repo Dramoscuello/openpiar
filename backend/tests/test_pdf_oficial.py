@@ -5,6 +5,8 @@ from datetime import date
 from io import BytesIO
 from types import SimpleNamespace as NS
 
+import pdfplumber
+import pytest
 from pypdf import PdfReader
 
 from app.core.pdf_generator import generate_piar_oficial_pdf
@@ -133,3 +135,195 @@ def test_justificacion_sin_ajuste_aparece_en_matriz_horizontal():
     assert "No requiere ajuste razonable" in texto
     assert "Descripción de tipo de ajustes y apoyos" in texto
     assert "Participa en arte & música <sin apoyo adicional>." in texto
+
+
+@pytest.mark.parametrize("modo", ["borrador", "final"])
+def test_primera_pagina_identifica_solo_al_director_actual_y_direccion_institucional(modo):
+    piar = crear_piar_pdf_texto_extenso()
+    piar.estudiante.grupo.director = ns(nombre="Clara & Luz", apellido="Gómez")
+    # Ni el primer participante ni un director anterior deben reemplazar al actual.
+    piar.participantes.append(ns(nombre="Director Anterior", area=None, rol_piar="director_grupo"))
+    pdf = generate_piar_oficial_pdf(
+        piar, ns(nombre_institucion="IE", direccion="Carrera 12 # 34-56 <Principal>"), [], modo=modo,
+    )
+    reader = PdfReader(BytesIO(pdf))
+    texto = reader.pages[0].extract_text()
+    assert "Clara & Luz Gómez (Docente director de grupo)" in texto
+    assert "Docente Uno" not in texto
+    assert "Director Anterior" not in texto
+    assert "08/09/2026 Carrera 12 # 34-56 <Principal>" in texto
+    assert "Bogotá D.C." not in texto
+    # El encabezado repetido del acta también usa la dirección institucional.
+    assert "Carrera 12 # 34-56 <Principal>" in reader.pages[-1].extract_text()
+
+
+@pytest.mark.parametrize("sin_grupo", [False, True])
+def test_sin_director_no_atribuye_diligenciamiento_a_otro_participante(sin_grupo):
+    piar = crear_piar_pdf_texto_extenso()
+    if sin_grupo:
+        piar.estudiante.grupo = None
+    else:
+        piar.estudiante.grupo.director = None
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    texto = PdfReader(BytesIO(pdf)).pages[0].extract_text()
+    assert "Director de grupo no asignado" in texto
+    assert "Docente Uno" not in texto
+    assert "Bogotá D.C." not in texto
+
+
+def _tablas_pdf(pagina):
+    # Ignorar bordes de rectángulos de fondo: solo las líneas de la cuadrícula
+    # delimitan las celdas visibles, incluidas las combinadas.
+    return pagina.find_tables({
+        "vertical_strategy": "lines_strict", "horizontal_strategy": "lines_strict",
+    })
+
+
+def _texto_celda(valor):
+    return " ".join((valor or "").split())
+
+
+def test_etiquetas_generales_ocupan_el_ancho_hasta_su_valor_sin_celdas_vacias():
+    piar = crear_piar_pdf_texto_extenso()
+    piar.estudiante.correo = "correo@example.com"
+    piar.estudiante.pertenece_grupo_etnico = True
+    piar.estudiante.grupo_etnico = "Pueblo de prueba"
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    esperados = {
+        "Barrio/vereda": "Centro",
+        "Correo electrónico": "correo@example.com",
+        "¿Se reconoce o pertenece a un grupo étnico?": "Si _x_ No ___ ¿Cuál? Pueblo de prueba",
+    }
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        filas = [fila for tabla in _tablas_pdf(documento.pages[0]) for fila in tabla.extract()]
+    for etiqueta, valor in esperados.items():
+        fila = next(f for f in filas if etiqueta in [_texto_celda(c) for c in f])
+        celdas = [_texto_celda(c) for c in fila]
+        assert celdas[celdas.index(etiqueta) + 1] == valor
+
+
+def test_eps_y_detalles_de_salud_tienen_etiquetas_y_valores_en_celdas_distintas():
+    pdf = generate_piar_oficial_pdf(crear_piar_pdf_texto_extenso(), None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        filas = [
+            [_texto_celda(c) for c in fila if c is not None]
+            for pagina in documento.pages for tabla in _tablas_pdf(pagina) for fila in tabla.extract()
+        ]
+    for valor in ["EPS Salud & Vida", "Diagnóstico & seguimiento", "Neurología", "Lenguaje", "Medicamento A", "Audífonos"]:
+        fila = next(f for f in filas if valor in f)
+        assert fila[fila.index(valor) - 1] in ("¿Cuál?", "¿Cuáles?")
+
+
+@pytest.mark.parametrize("asiste", [True, False, None, "sin_trayectoria"])
+def test_entorno_educativo_muestra_procedencia_y_respuesta_de_programas(asiste):
+    piar = crear_piar_pdf_texto_extenso()
+    if asiste == "sin_trayectoria":
+        piar.estudiante.trayectoria_educativa = None
+    else:
+        trayectoria = piar.estudiante.trayectoria_educativa
+        trayectoria.institucion_procedencia_informe = "Escuela Origen & Comunidad"
+        trayectoria.asiste_programas_complementarios = asiste
+        trayectoria.programas_complementarios_cuales = "Música & natación"
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        filas = [
+            [_texto_celda(c) for c in fila if c is not None]
+            for pagina in documento.pages for tabla in _tablas_pdf(pagina) for fila in tabla.extract()
+        ]
+    informe = next(f for f in filas if f[0] == "¿De qué institución o modalidad proviene el informe?")
+    assert informe[1] == ("" if asiste == "sin_trayectoria" else "Escuela Origen & Comunidad")
+    programas = next(f for f in filas if f[0] == "¿Está asistiendo en la actualidad a programas complementarios?")
+    assert programas[1] == (
+        "SI [X] NO [ ] ¿Cuáles? Música & natación" if asiste is True else "SI [ ] NO [X]"
+    )
+
+
+@pytest.mark.parametrize("extenso", [False, True])
+def test_firmas_fisicas_forman_tabla_2x2_inmediatamente_despues_del_entorno_educativo(extenso):
+    piar = crear_piar_pdf_texto_extenso()
+    if extenso:
+        piar.estudiante.trayectoria_educativa.institucion_procedencia_informe = "Institución de procedencia. " * 30
+        piar.estudiante.trayectoria_educativa.programas_complementarios_cuales = "Programa artístico y deportivo. " * 30
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        pagina = next(p for p in documento.pages if "Nombre y firma de quien diligencia" in p.extract_text())
+        tablas = _tablas_pdf(pagina)
+        firmas = next(t for t in tablas if t.extract()[0][0] == "Nombre y firma de quien diligencia")
+        assert firmas.extract() == [
+            ["Nombre y firma de quien diligencia", "Nombre y firma acudiente"], ["", ""],
+        ]
+        educativo = next(t for t in tablas if "programas complementarios" in _texto_celda(t.extract()[-1][0]))
+        assert firmas.bbox[1] - educativo.bbox[3] == pytest.approx(8, abs=0.1)
+        assert firmas.rows[1].bbox[3] - firmas.rows[1].bbox[1] >= 56  # 2 cm para firmar.
+
+
+def test_anexo2_agrupa_docentes_por_nombre_con_cargos_y_areas_sin_repetir():
+    piar = crear_piar_pdf_texto_extenso()
+    piar.participantes = [
+        ns(nombre="Clara & Luz", cargo="Docente", area="Matemáticas", rol_piar="docente_aula"),
+        ns(nombre="Clara & Luz", cargo="Docente", area="Ciencias naturales", rol_piar="docente_aula"),
+        ns(nombre="  clara  & luz ", cargo="docente", area=" matemáticas ", rol_piar="docente_aula"),
+        ns(nombre="Clara & Luz", cargo=None, area=None, rol_piar="director_grupo"),
+        ns(nombre="Pedro Gómez", cargo=None, area="Lenguaje", rol_piar="docente_aula"),
+    ]
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        pagina = next(p for p in documento.pages if "ANEXO 2" in p.extract_text())
+        fila = next(
+            fila for tabla in _tablas_pdf(pagina) for fila in tabla.extract()
+            if _texto_celda(fila[0]) == "Docentes que elaboran y cargo"
+        )
+        docentes = _texto_celda(fila[1])
+    assert docentes == (
+        "Clara & Luz - Docente, director grupo - Matemáticas, Ciencias naturales "
+        "Pedro Gómez - docente aula - Lenguaje"
+    )
+
+
+def test_anexo2_conserva_docentes_elaboran_si_no_hay_participantes():
+    piar = crear_piar_pdf_texto_extenso()
+    piar.participantes = []
+    piar.docentes_elaboran = "Docente histórico - Matemáticas y Ciencias"
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    pagina = next(p for p in PdfReader(BytesIO(pdf)).pages if "ANEXO 2" in p.extract_text())
+    assert piar.docentes_elaboran in pagina.extract_text()
+
+
+def test_caracterizacion_en_celda_conserva_todo_el_texto_al_dividirse_entre_paginas():
+    piar = crear_piar_pdf_texto_extenso()
+    frase = "Caracterización extensa con apoyos visuales."
+    piar.caracteristicas.caracterizacion_pedagogica = (frase + " ") * 400
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    paginas = PdfReader(BytesIO(pdf)).pages
+    texto = _texto_celda(" ".join(p.extract_text() for p in paginas))
+    assert texto.count(frase) == 400
+    assert sum("Caracterización extensa" in p.extract_text() for p in paginas) > 1
+    assert "Firma de los Actores comprometidos" in texto
+
+
+@pytest.mark.parametrize("cantidad_docentes", [2, 11])
+def test_tabla_firmas_incluye_cada_docente_una_vez_con_todas_sus_areas(cantidad_docentes):
+    piar = crear_piar_pdf_texto_extenso()
+    piar.participantes = [
+        ns(nombre=f"Docente {numero:02}", area=area, rol_piar="docente_aula")
+        for numero in range(cantidad_docentes)
+        for area in ("Matemáticas", "Ciencias naturales", " matemáticas ")
+    ]
+    piar.participantes.append(ns(nombre="  docente 00  ", area="Lenguaje", rol_piar="docente_aula"))
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    firmas = []
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        for pagina in documento.pages:
+            for tabla in _tablas_pdf(pagina):
+                filas = tabla.extract()
+                if filas[0] == ["Nombre docente"] * 3:
+                    assert len(filas) == 6
+                    assert filas[2] == ["Área"] * 3
+                    assert filas[4] == ["Firma"] * 3
+                    for nombre, area in zip(filas[1], filas[3]):
+                        if nombre:
+                            firmas.append((_texto_celda(nombre), _texto_celda(area)))
+    assert firmas == [
+        (f"Docente {numero:02}", "Matemáticas, Ciencias naturales" + (", Lenguaje" if numero == 0 else ""))
+        for numero in range(cantidad_docentes)
+    ]
