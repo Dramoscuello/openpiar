@@ -1366,6 +1366,50 @@
       </Transition>
     </Teleport>
 
+    <!-- Modal de confirmación para reabrir PIAR -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showConfirmReabrir"
+          class="fixed inset-0 z-[9999] flex items-center justify-center p-6"
+          style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
+          @click.self="cancelarReabrir"
+        >
+          <div class="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[440px] p-7">
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                <span class="material-symbols-outlined" style="color:#d97706; font-size:22px;">lock_open</span>
+              </div>
+              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;" class="dark:text-gray-100">Reabrir PIAR</h3>
+            </div>
+
+            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;" class="dark:text-gray-300">
+              Se conservará la versión final anterior y se reiniciarán las confirmaciones de firmas. ¿Deseas continuar?
+            </p>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+              <button
+                @click="cancelarReabrir"
+                :disabled="isReabriendo"
+                class="px-5 py-2.5 rounded-xl text-[14px] font-medium text-on-surface-variant dark:text-gray-300 bg-transparent border border-outline-variant dark:border-outline cursor-pointer transition-colors hover:bg-surface-container-low dark:hover:bg-zinc-800 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="confirmarReabrir"
+                :disabled="isReabriendo"
+                class="px-5 py-2.5 rounded-xl text-[14px] font-semibold text-white bg-amber-600 hover:bg-amber-700 border-none cursor-pointer flex items-center gap-2 transition-colors disabled:opacity-50"
+              >
+                <span v-if="isReabriendo" class="material-symbols-outlined" style="font-size:18px; animation:spin 1s linear infinite;">progress_activity</span>
+                <span v-else class="material-symbols-outlined" style="font-size:18px;">lock_open</span>
+                {{ isReabriendo ? 'Reabriendo...' : 'Sí, reabrir' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Modal de confirmación para eliminar ajuste -->
     <Teleport to="body">
       <Transition name="modal">
@@ -1917,8 +1961,21 @@ async function descargarFinal() {
   }
 }
 
-async function reabrirPiar() {
-  if (!confirm('Se conservará la versión final anterior y se reiniciarán las confirmaciones de firmas. ¿Deseas continuar?')) return
+const showConfirmReabrir = ref(false)
+const isReabriendo = ref(false)
+
+function reabrirPiar() {
+  showConfirmReabrir.value = true
+}
+
+function cancelarReabrir() {
+  if (isReabriendo.value) return
+  showConfirmReabrir.value = false
+}
+
+async function confirmarReabrir() {
+  showConfirmReabrir.value = false
+  isReabriendo.value = true
   try {
     await piarStore.reabrirPiar(periodoSeleccionadoId.value)
     cargarActaDesdePiar()
@@ -1926,6 +1983,8 @@ async function reabrirPiar() {
     showToast('PIAR reabierto. La próxima finalización creará una versión nueva.')
   } catch (e: any) {
     showToast(e.message || 'No fue posible reabrir el PIAR.', true)
+  } finally {
+    isReabriendo.value = false
   }
 }
 
