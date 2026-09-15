@@ -12,7 +12,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -189,8 +189,15 @@ class ActualizarConfiguracionRequest(BaseModel):
 
 class PeriodoAcademicoBase(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=100)
+    anio_lectivo: int = Field(..., ge=2020, le=2100)
     fecha_inicio: date
     fecha_fin: date
+
+    @model_validator(mode="after")
+    def validar_fechas(self) -> "PeriodoAcademicoBase":
+        if self.fecha_fin <= self.fecha_inicio:
+            raise ValueError("La fecha de fin debe ser posterior a la fecha de inicio.")
+        return self
 
 
 class PeriodoAcademicoCreate(PeriodoAcademicoBase):
@@ -199,6 +206,7 @@ class PeriodoAcademicoCreate(PeriodoAcademicoBase):
 
 class PeriodoAcademicoUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=2, max_length=100)
+    anio_lectivo: Optional[int] = Field(None, ge=2020, le=2100)
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
 
@@ -553,6 +561,7 @@ class CompromisoCasaResponse(CompromisoCasaCreate, BaseResponse):
     acta_id: uuid.UUID
 
 class ActaAcuerdoCreate(BaseModel):
+    periodo_id: Optional[int] = None
     fecha_firma: Optional[date] = None
     compromisos_aula: Optional[str] = None
     firmado_estudiante: bool = False
@@ -620,6 +629,7 @@ class PiarCompletitudResponse(BaseModel):
 class PiarVersionResponse(BaseResponse):
     id: uuid.UUID
     numero: int
+    periodo_id: Optional[int] = None
     sha256: str
     creado_por: Optional[uuid.UUID] = None
     created_at: datetime
@@ -629,6 +639,7 @@ class PiarResponse(PiarCreate, BaseResponse):
     fecha_creacion: date
     creado_por: Optional[uuid.UUID] = None
     director_nombre: Optional[str] = None
+    periodo_id: Optional[int] = None
     version_actual: int = 0
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
     ajustes_razonables: list[AjusteRazonableConEvidenciasResponse] = Field(default_factory=list)

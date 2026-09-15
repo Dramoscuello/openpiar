@@ -43,7 +43,7 @@ const customAreaName = ref('')
 const asignaturaForm = ref({ nombre: '', area_id: '' })
 const grupoForm = ref({ nombre: '', grado_id: '', sede_id: '', director_id: '' })
 const cargaForm = ref({ docente_id: '', asignatura_id: '', grupo_ids: [] as string[] })
-const periodoForm = ref({ nombre: '', fecha_inicio: '', fecha_fin: '' })
+const periodoForm = ref({ nombre: '', anio_lectivo: new Date().getFullYear(), fecha_inicio: '', fecha_fin: '' })
 
 const configForm = ref({ gemini_api_key: '', contexto_institucion: '' })
 const configSaving = ref(false)
@@ -490,7 +490,12 @@ const openEditCarga = (groupedCarga: any) => {
 
 const openNewPeriodo = () => {
   editingId.value = null
-  periodoForm.value = { nombre: '', fecha_inicio: '', fecha_fin: '' }
+  periodoForm.value = {
+    nombre: '',
+    anio_lectivo: new Date().getFullYear(),
+    fecha_inicio: '',
+    fecha_fin: '',
+  }
   showPeriodoModal.value = true
 }
 
@@ -498,6 +503,7 @@ const openEditPeriodo = (periodo: any) => {
   editingId.value = periodo.id
   periodoForm.value = {
     nombre: periodo.nombre,
+    anio_lectivo: periodo.anio_lectivo,
     fecha_inicio: periodo.fecha_inicio,
     fecha_fin: periodo.fecha_fin
   }
@@ -933,8 +939,13 @@ const deleteCarga = async (groupedKey: string, confirmed: boolean = false) => {
 }
 
 const submitPeriodo = async () => {
-  if (!periodoForm.value.nombre || !periodoForm.value.fecha_inicio || !periodoForm.value.fecha_fin) {
+  const f = periodoForm.value
+  if (!f.nombre || !f.fecha_inicio || !f.fecha_fin || !f.anio_lectivo) {
     errorMsg.value = 'Todos los campos del periodo son obligatorios.'
+    return
+  }
+  if (new Date(f.fecha_fin) <= new Date(f.fecha_inicio)) {
+    errorMsg.value = 'La fecha de fin debe ser posterior a la fecha de inicio.'
     return
   }
   errorMsg.value = null
@@ -961,7 +972,12 @@ const submitPeriodo = async () => {
       periodos.value.unshift(data) // Ponerlo primero ya que se listan por fecha
     }
     showPeriodoModal.value = false
-    periodoForm.value = { nombre: '', fecha_inicio: '', fecha_fin: '' }
+    periodoForm.value = {
+      nombre: '',
+      anio_lectivo: new Date().getFullYear(),
+      fecha_inicio: '',
+      fecha_fin: '',
+    }
     successMsg.value = isEdit ? 'Periodo actualizado exitosamente.' : 'Periodo creado exitosamente.'
   } catch (err: any) {
     errorMsg.value = err.message
@@ -970,7 +986,11 @@ const submitPeriodo = async () => {
 
 const togglePeriodoActivo = async (periodo: any) => {
   if (periodo.activo) return // No hacer nada si ya está activo (siempre debe haber uno)
-  
+
+  if (!confirm(
+    `¿Activar "${periodo.nombre}"? Los docentes empezarán a diligenciar los ajustes del nuevo periodo y el anterior quedará en modo consulta.`
+  )) return
+
   errorMsg.value = null
   successMsg.value = null
   try {
@@ -1702,6 +1722,7 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               <thead>
                 <tr class="bg-surface-container-low text-label-md text-on-surface-variant border-b border-outline-variant/30">
                   <th class="px-md py-sm font-semibold">Nombre del periodo</th>
+                  <th class="px-md py-sm font-semibold">Año lectivo</th>
                   <th class="px-md py-sm font-semibold">Fecha de inicio</th>
                   <th class="px-md py-sm font-semibold">Fecha fin</th>
                   <th class="px-md py-sm font-semibold text-center">Estado (activo)</th>
@@ -1716,6 +1737,9 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
                 >
                   <td class="px-md py-sm text-body-md font-medium text-on-surface">
                     {{ periodo.nombre }}
+                  </td>
+                  <td class="px-md py-sm text-body-md text-on-surface-variant">
+                    {{ periodo.anio_lectivo }}
                   </td>
                   <td class="px-md py-sm text-body-md text-on-surface-variant">
                     {{ periodo.fecha_inicio }}
@@ -1849,6 +1873,16 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
           />
         </div>
         <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-xs">
+            <label class="font-label-md text-label-md text-on-surface-variant">Año lectivo *</label>
+            <input
+              v-model.number="periodoForm.anio_lectivo"
+              type="number"
+              min="2020"
+              max="2100"
+              class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white"
+            />
+          </div>
           <div class="space-y-xs">
             <label class="font-label-md text-label-md text-on-surface-variant">Fecha de inicio *</label>
             <input

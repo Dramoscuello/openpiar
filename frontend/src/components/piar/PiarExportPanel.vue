@@ -3,8 +3,6 @@
 withDefaults(defineProps<{
   estado: string
   versionActual: number
-  puedeFinalizar: boolean
-  busy?: boolean
   puedeGestionar?: boolean
 }>(), {
   puedeGestionar: true,
@@ -12,7 +10,6 @@ withDefaults(defineProps<{
 const emit = defineEmits<{
   draft: []
   final: []
-  finish: []
   reopen: []
 }>()
 </script>
@@ -29,15 +26,6 @@ const emit = defineEmits<{
       @click="emit('draft')"
     >
       Descargar borrador
-    </button>
-    <button
-      v-if="puedeGestionar && estado !== 'firmado'"
-      type="button"
-      :disabled="!puedeFinalizar || busy"
-      class="px-4 py-2 rounded-xl bg-primary text-white font-bold disabled:opacity-40"
-      @click="emit('finish')"
-    >
-      Finalizar y crear versión
     </button>
     <template v-if="estado === 'firmado'">
       <button type="button" class="px-4 py-2 rounded-xl bg-green-700 text-white font-bold" @click="emit('final')">

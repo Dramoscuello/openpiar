@@ -10,7 +10,7 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, delete, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -23,7 +23,13 @@ from app.adapters.db.models import (
     CargaAcademicaORM,
     PeriodoAcademicoORM,
     GradoORM,
-    AreaORM
+    AreaORM,
+    PiarORM,
+    PiarAsignaturaORM,
+    PiarPeriodoORM,
+    PiarVersionORM,
+    AjusteRazonableORM,
+    ActaAcuerdoORM,
 )
 from app.entrypoints.api.schemas import (
     PeriodoAcademicoCreate,
@@ -1311,9 +1317,13 @@ async def delete_carga_academica(
 @router.get("/periodos", response_model=List[PeriodoAcademicoResponse])
 async def list_periodos(
     current_user: CurrentUser,
+    anio_lectivo: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(PeriodoAcademicoORM).order_by(PeriodoAcademicoORM.fecha_inicio.desc()))
+    query = select(PeriodoAcademicoORM)
+    if anio_lectivo is not None:
+        query = query.where(PeriodoAcademicoORM.anio_lectivo == anio_lectivo)
+    result = await db.execute(query.order_by(PeriodoAcademicoORM.fecha_inicio.desc()))
     return result.scalars().all()
 
 
@@ -1331,6 +1341,7 @@ async def create_periodo(
         nombre=body.nombre,
         fecha_inicio=body.fecha_inicio,
         fecha_fin=body.fecha_fin,
+        anio_lectivo=body.anio_lectivo,
         activo=es_primero
     )
     db.add(periodo)
@@ -1353,14 +1364,62 @@ async def update_periodo(
 
     if body.nombre is not None:
         periodo.nombre = body.nombre
+    if body.anio_lectivo is not None:
+        periodo.anio_lectivo = body.anio_lectivo
     if body.fecha_inicio is not None:
         periodo.fecha_inicio = body.fecha_inicio
     if body.fecha_fin is not None:
         periodo.fecha_fin = body.fecha_fin
 
+    if periodo.fecha_fin <= periodo.fecha_inicio:
+        raise HTTPException(
+            status_code=422,
+            detail="La fecha de fin debe ser posterior a la fecha de inicio.",
+        )
+
     await db.commit()
     await db.refresh(periodo)
     return periodo
+
+
+async def _preparar_piars_para_periodo(db: AsyncSession, periodo: PeriodoAcademicoORM) -> None:
+    """Genera cobertura y estado por periodo para los PIAR del año lectivo."""
+    piars_result = await db.execute(
+        select(PiarORM)
+        .where(PiarORM.anio_lectivo == periodo.anio_lectivo)
+        .options(
+            selectinload(PiarORM.asignaturas_estado),
+            selectinload(PiarORM.periodos),
+        )
+    )
+    for piar in piars_result.scalars().all():
+        existentes = {
+            item.asignatura_id
+            for item in piar.asignaturas_estado
+            if item.periodo_id == periodo.id
+        }
+        plantillas: dict = {}
+        for item in piar.asignaturas_estado:
+            plantillas.setdefault(item.asignatura_id, item)
+        for asignatura_id, plantilla in plantillas.items():
+            if asignatura_id in existentes:
+                continue
+            db.add(PiarAsignaturaORM(
+                piar_id=piar.id,
+                periodo_id=periodo.id,
+                asignatura_id=asignatura_id,
+                docente_id=plantilla.docente_id,
+                nombre_asignatura=plantilla.nombre_asignatura,
+                area_nombre=plantilla.area_nombre,
+                docente_nombre=plantilla.docente_nombre,
+                estado="pendiente",
+            ))
+        if not any(item.periodo_id == periodo.id for item in piar.periodos):
+            db.add(PiarPeriodoORM(
+                piar_id=piar.id,
+                periodo_id=periodo.id,
+                estado="borrador",
+            ))
 
 
 @router.patch("/periodos/{periodo_id}/toggle", response_model=PeriodoAcademicoResponse)
@@ -1374,18 +1433,20 @@ async def toggle_periodo_activo(
     if not periodo:
         raise HTTPException(status_code=404, detail="Periodo académico no encontrado")
 
-    # Si ya está activo, no hacemos nada (siempre debe haber al menos uno activo si se puede,
-    # aunque si el usuario quiere desactivarlo, requeriríamos que active otro. 
-    # Por UX, si le da toggle a uno, lo activa y desactiva los demás).
-    
     # 1. Desactivar todos
-    from sqlalchemy import update
     await db.execute(update(PeriodoAcademicoORM).values(activo=False))
-    
+
     # 2. Activar el seleccionado
     periodo.activo = True
+    await db.flush()
+
+    # 3. Preparar cobertura y estado de los PIAR del mismo año lectivo
+    await _preparar_piars_para_periodo(db, periodo)
     await db.commit()
     await db.refresh(periodo)
+
+    from app.core.notification_service import notificar_periodo_inicio
+    await notificar_periodo_inicio(db, periodo.nombre)
     return periodo
 
 
@@ -1400,8 +1461,30 @@ async def delete_periodo(
     if not periodo:
         raise HTTPException(status_code=404, detail="Periodo académico no encontrado")
 
-    # Si se intenta eliminar un periodo activo y hay otros, tal vez no dejarlo o activar el más reciente
-    # Para simplicidad actual, simplemente se borra (con on delete cascade si tuviera relaciones)
+    dependencias = []
+    for modelo, etiqueta in (
+        (AjusteRazonableORM, "ajustes razonables"),
+        (PiarAsignaturaORM, "cobertura de asignaturas"),
+        (ActaAcuerdoORM, "actas de acuerdo"),
+        (PiarPeriodoORM, "estados de PIAR"),
+        (PiarVersionORM, "versiones"),
+    ):
+        total = await db.scalar(
+            select(func.count()).select_from(modelo).where(modelo.periodo_id == periodo.id)
+        )
+        if total:
+            dependencias.append(f"{etiqueta} ({total})")
+
+    if dependencias:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se puede eliminar el periodo porque tiene información asociada: "
+                + ", ".join(dependencias)
+                + ". Reasigne o elimine esos datos primero."
+            ),
+        )
+
     await db.execute(delete(PeriodoAcademicoORM).where(PeriodoAcademicoORM.id == periodo_id))
     await db.commit()
     return None

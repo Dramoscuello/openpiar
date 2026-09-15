@@ -66,6 +66,7 @@ def crear_piar_pdf_texto_extenso():
         caracterizacion_pedagogica="Caracterización extensa. " * 120,
     )
     ajuste = ns(
+        periodo_id=1,
         area="Matemáticas", titulo_tema="Fracciones", objetivos_propositos="Resolver problemas",
         dba_referencia="DBA 1", barreras_evidenciadas="Barrera comunicativa. " * 90,
         tipo_ajuste="Didácticas", apoyo_requerido="Talento humano: docente.",
@@ -74,6 +75,7 @@ def crear_piar_pdf_texto_extenso():
         medios_verificacion="Portafolio",
     )
     acta = ns(
+        periodo_id=1,
         fecha_firma=date(2026, 9, 8), compromisos_aula="Aplicar los apoyos acordados.",
         compromisos_casa=[ns(nombre_actividad="Lectura", descripcion_estrategia="Leer en familia", frecuencia="diaria")],
         firmado_estudiante=True, firmado_acudiente=True, firmado_docentes_aula=True,
@@ -84,7 +86,7 @@ def crear_piar_pdf_texto_extenso():
         lugar_diligenciamiento="Bogotá D.C.", docentes_elaboran="Docente Uno",
         participantes=[ns(nombre="Docente Uno", area="Matemáticas", rol_piar="docente_aula")],
         caracteristicas=caracteristicas, ajustes_razonables=[ajuste],
-        asignaturas_estado=[], acta_acuerdo=acta,
+        asignaturas_estado=[], actas_acuerdo=[acta],
     )
 
 
@@ -336,20 +338,35 @@ def test_matriz_separa_asignatura_tema_y_propositos_con_saltos_de_linea():
         pagina = next(
             p for p in documento.pages if "Área/asignatura" in (p.extract_text() or "")
         )
-        fila = next(
-            fila for tabla in _tablas_pdf(pagina) for fila in tabla.extract()
-            if (fila[0] or "").startswith("1. Matemáticas")
-        )
-    celda = (fila[0] or "").strip()
-    assert celda.startswith("1. Matemáticas\nFracciones\nObjetivos / Propósitos")
-    assert "\nDBA: DBA 1" in celda
+        # La fila puede dividirse entre páginas; se reconstruyen las líneas de la
+        # primera columna por posición para verificar los saltos de línea.
+        verticales = sorted({
+            round(linea["x0"], 1)
+            for linea in pagina.lines
+            if abs(linea["x0"] - linea["x1"]) < 1
+        })
+        limite = verticales[1] if len(verticales) > 1 else 145
+        lineas: list[tuple[float, list[str]]] = []
+        for palabra in pagina.extract_words():
+            if palabra["x0"] >= limite - 1:
+                continue
+            if not lineas or abs(palabra["top"] - lineas[-1][0]) > 3:
+                lineas.append((palabra["top"], [palabra["text"]]))
+            else:
+                lineas[-1][1].append(palabra["text"])
+        textos = [" ".join(partes) for _, partes in lineas]
+
+    assert "1. Matemáticas" in textos
+    assert "Fracciones" in textos
+    assert any(texto.startswith("Objetivos / Propósitos") for texto in textos)
+    assert "DBA: DBA 1" in textos
 
 
 @pytest.mark.parametrize("con_compromisos", [False, True])
 def test_acta_muestra_textos_en_celdas_y_compromisos_bajo_el_instructivo(con_compromisos):
     piar = crear_piar_pdf_texto_extenso()
     if not con_compromisos:
-        piar.acta_acuerdo.compromisos_aula = None
+        piar.actas_acuerdo[0].compromisos_aula = None
     pdf = generate_piar_oficial_pdf(piar, None, [])
     with pdfplumber.open(BytesIO(pdf)) as documento:
         pagina = next(
@@ -389,7 +406,7 @@ def test_celdas_de_firma_docente_tienen_altura_fija_para_firma_fisica():
 def test_fechas_del_pdf_toman_la_fecha_de_firma_del_acta():
     piar = crear_piar_pdf_texto_extenso()
     piar.fecha_creacion = date(2026, 1, 15)
-    piar.acta_acuerdo.fecha_firma = date(2026, 9, 8)
+    piar.actas_acuerdo[0].fecha_firma = date(2026, 9, 8)
     pdf = generate_piar_oficial_pdf(piar, None, [])
     with pdfplumber.open(BytesIO(pdf)) as documento:
         paginas = [p.extract_text() or "" for p in documento.pages]
@@ -406,7 +423,7 @@ def test_fechas_del_pdf_toman_la_fecha_de_firma_del_acta():
 
 def test_acta_sin_fecha_de_firma_muestra_patron_ddmmaaaa_en_todas_las_secciones():
     piar = crear_piar_pdf_texto_extenso()
-    piar.acta_acuerdo.fecha_firma = None
+    piar.actas_acuerdo[0].fecha_firma = None
     pdf = generate_piar_oficial_pdf(piar, None, [])
     with pdfplumber.open(BytesIO(pdf)) as documento:
         paginas = [p.extract_text() or "" for p in documento.pages]
@@ -421,7 +438,7 @@ def test_acta_sin_fecha_de_firma_muestra_patron_ddmmaaaa_en_todas_las_secciones(
 @pytest.mark.parametrize("cantidad", [0, 1, 3])
 def test_tabla_casa_no_incluye_filas_vacias(cantidad):
     piar = crear_piar_pdf_texto_extenso()
-    piar.acta_acuerdo.compromisos_casa = [
+    piar.actas_acuerdo[0].compromisos_casa = [
         ns(
             nombre_actividad=f"Actividad {indice}",
             descripcion_estrategia=f"Estrategia {indice}",
@@ -463,3 +480,57 @@ def test_firmas_marcan_area_y_firma_con_el_estilo_de_titular():
         coincidencias = pagina.search_for(etiqueta)
         assert coincidencias
         assert all(tiene_fondo_gris(rect) for rect in coincidencias)
+
+
+def test_descripcion_de_ajustes_ocupa_una_sola_celda():
+    piar = crear_piar_pdf_texto_extenso()
+    piar.ajustes_razonables[0].barreras_evidenciadas = "Barrera comunicativa."
+    piar.ajustes_razonables[0].ajustes_estrategias = "Estrategia de apoyo concreta. " * 60
+
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        pagina = next(
+            p for p in documento.pages if "Área/asignatura" in (p.extract_text() or "")
+        )
+        tabla = next(
+            t for t in _tablas_pdf(pagina)
+            if _texto_celda(t.extract()[0][0]).startswith("Área/asignatura")
+        )
+        cx0, ctop, cx1, cbottom = tabla.rows[2].cells[4]  # celda de la descripción
+        lineas_internas = [
+            linea for linea in pagina.lines
+            if abs(linea["top"] - linea["bottom"]) < 1
+            and linea["x0"] <= cx0 + 1 and linea["x1"] >= cx1 - 1
+            and ctop + 2 < linea["top"] < cbottom - 2
+        ]
+
+    assert lineas_internas == []
+    contenido = _texto_celda(tabla.extract()[2][4])
+    assert contenido.count("Estrategia") == 60
+
+
+def test_pdf_por_periodo_solo_incluye_ajustes_del_periodo():
+    piar = crear_piar_pdf_texto_extenso()
+    piar.ajustes_razonables.append(ns(
+        periodo_id=2, area="Ciencias naturales", titulo_tema="Ecosistemas",
+        objetivos_propositos="Identificar ecosistemas", barreras_evidenciadas="Vocabulario técnico",
+        tipo_ajuste="Didácticas", apoyo_requerido="Material concreto",
+        ajustes_estrategias="Usar mapas mentales", evaluacion_ajustes=None,
+        temporalidad=None, responsable=None, medios_verificacion=None, dba_referencia=None,
+    ))
+
+    pdf = generate_piar_oficial_pdf(piar, None, [], periodo=NS(id=1))
+    contenido = " ".join(
+        (p.extract_text() or "") for p in PdfReader(BytesIO(pdf)).pages
+    )
+    contenido = " ".join(contenido.split())
+    assert "Resolver problemas" in contenido
+    assert "Ecosistemas" not in contenido
+
+    pdf_p2 = generate_piar_oficial_pdf(piar, None, [], periodo=NS(id=2))
+    contenido_p2 = " ".join(
+        (p.extract_text() or "") for p in PdfReader(BytesIO(pdf_p2)).pages
+    )
+    contenido_p2 = " ".join(contenido_p2.split())
+    assert "Ecosistemas" in contenido_p2
+    assert "Resolver problemas" not in contenido_p2

@@ -190,11 +190,13 @@ async def _notificar_firmas_pendientes(db: AsyncSession) -> int:
         select(ActaAcuerdoORM, PiarORM, EstudianteORM)
         .join(PiarORM, ActaAcuerdoORM.piar_id == PiarORM.id)
         .join(EstudianteORM, PiarORM.estudiante_id == EstudianteORM.id)
+        .join(PeriodoAcademicoORM, ActaAcuerdoORM.periodo_id == PeriodoAcademicoORM.id)
         .where(
-            (ActaAcuerdoORM.firmado_estudiante == False)
-            | (ActaAcuerdoORM.firmado_acudiente == False)
-            | (ActaAcuerdoORM.firmado_docentes_aula == False)
-            | (ActaAcuerdoORM.firmado_directivo == False)
+            PeriodoAcademicoORM.activo == True,  # noqa: E712
+            (ActaAcuerdoORM.firmado_estudiante == False)  # noqa: E712
+            | (ActaAcuerdoORM.firmado_acudiente == False)  # noqa: E712
+            | (ActaAcuerdoORM.firmado_docentes_aula == False)  # noqa: E712
+            | (ActaAcuerdoORM.firmado_directivo == False),  # noqa: E712
         )
     )
     result = await db.execute(query)

@@ -169,7 +169,7 @@ Cambiar a `true` para reactivarlas. Detalle local en `caracteristicas_ocultas.md
 
 El desarrollo de features sigue especificaciones versionadas en el repo:
 - `spec/constitution/roadmap.md` — principios y roadmap de producto.
-- `spec/features/feature 001/`, `spec/features/feature 002/` y `spec/features/feature 003/` — `plan.md` y `tasks.md` (planificación por feature).
+- `spec/features/feature 001/`, `spec/features/feature 002/`, `spec/features/feature 003/` y `spec/features/feature 004/` — `plan.md` y `tasks.md` (planificación por feature).
 
 ## Referencias
 

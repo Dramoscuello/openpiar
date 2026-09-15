@@ -96,6 +96,7 @@ class PeriodoAcademicoORM(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     nombre: Mapped[str] = mapped_column(Text, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    anio_lectivo: Mapped[int] = mapped_column(Integer, nullable=False)
     fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
@@ -470,7 +471,10 @@ class PiarORM(Base):
     ajustes_razonables: Mapped[list["AjusteRazonableORM"]] = relationship(
         back_populates="piar", cascade="all, delete-orphan"
     )
-    acta_acuerdo: Mapped[Optional["ActaAcuerdoORM"]] = relationship(
+    actas_acuerdo: Mapped[list["ActaAcuerdoORM"]] = relationship(
+        back_populates="piar", cascade="all, delete-orphan"
+    )
+    periodos: Mapped[list["PiarPeriodoORM"]] = relationship(
         back_populates="piar", cascade="all, delete-orphan"
     )
     auditoria_entradas: Mapped[list["AuditoriaCambioORM"]] = relationship(
@@ -643,6 +647,11 @@ class PiarAsignaturaORM(Base):
     piar_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("piars.id", ondelete="CASCADE"), nullable=False
     )
+    periodo_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("periodos_academicos.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     asignatura_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("asignaturas.id", ondelete="RESTRICT"), nullable=False
     )
@@ -659,6 +668,7 @@ class PiarAsignaturaORM(Base):
     )
 
     piar: Mapped["PiarORM"] = relationship(back_populates="asignaturas_estado")
+    periodo: Mapped["PeriodoAcademicoORM"] = relationship()
     asignatura: Mapped["AsignaturaORM"] = relationship()
     docente: Mapped[Optional["UsuarioORM"]] = relationship()
 
@@ -667,8 +677,11 @@ class PiarAsignaturaORM(Base):
             "estado IN ('pendiente', 'con_ajuste', 'no_requiere')",
             name="ck_piar_asignaturas_estado",
         ),
-        UniqueConstraint("piar_id", "asignatura_id", name="uq_piar_asignatura"),
+        UniqueConstraint(
+            "piar_id", "periodo_id", "asignatura_id", name="uq_piar_asignatura_periodo"
+        ),
         Index("piar_asignaturas_piar_id_idx", piar_id),
+        Index("piar_asignaturas_periodo_idx", periodo_id),
     )
 
 
@@ -681,6 +694,11 @@ class PiarVersionORM(Base):
     piar_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("piars.id", ondelete="CASCADE"), nullable=False
     )
+    periodo_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger,
+        ForeignKey("periodos_academicos.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     numero: Mapped[int] = mapped_column(Integer, nullable=False)
     snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
     pdf_archivo: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
@@ -691,12 +709,48 @@ class PiarVersionORM(Base):
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
 
     piar: Mapped["PiarORM"] = relationship(back_populates="versiones")
+    periodo: Mapped[Optional["PeriodoAcademicoORM"]] = relationship()
     creador: Mapped[Optional["UsuarioORM"]] = relationship()
 
     __table_args__ = (
         UniqueConstraint("piar_id", "numero", name="uq_piar_version_numero"),
         CheckConstraint("numero > 0", name="ck_piar_version_numero"),
         Index("piar_versiones_piar_id_idx", piar_id),
+        Index("piar_versiones_periodo_idx", periodo_id),
+    )
+
+
+class PiarPeriodoORM(Base):
+    __tablename__ = "piar_periodos"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    piar_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("piars.id", ondelete="CASCADE"), nullable=False
+    )
+    periodo_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("periodos_academicos.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    estado: Mapped[str] = mapped_column(Text, nullable=False, default="borrador")
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        default=_now, onupdate=_now, server_default=func.now()
+    )
+
+    piar: Mapped["PiarORM"] = relationship(back_populates="periodos")
+    periodo: Mapped["PeriodoAcademicoORM"] = relationship()
+
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('borrador', 'en_revision', 'firmado')",
+            name="ck_piar_periodos_estado",
+        ),
+        UniqueConstraint("piar_id", "periodo_id", name="uq_piar_periodo"),
+        Index("piar_periodos_piar_id_idx", piar_id),
+        Index("piar_periodos_periodo_id_idx", periodo_id),
     )
 
 
@@ -713,7 +767,11 @@ class ActaAcuerdoORM(Base):
     piar_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("piars.id", ondelete="CASCADE"),
-        unique=True,
+        nullable=False,
+    )
+    periodo_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("periodos_academicos.id", ondelete="CASCADE"),
         nullable=False,
     )
     fecha_firma: Mapped[Optional[date]] = mapped_column(Date)
@@ -725,9 +783,16 @@ class ActaAcuerdoORM(Base):
     firmado_directivo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
 
-    piar: Mapped["PiarORM"] = relationship(back_populates="acta_acuerdo")
+    piar: Mapped["PiarORM"] = relationship(back_populates="actas_acuerdo")
+    periodo: Mapped["PeriodoAcademicoORM"] = relationship()
     compromisos_casa: Mapped[list["CompromisoCasaORM"]] = relationship(
         back_populates="acta", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("piar_id", "periodo_id", name="uq_acta_acuerdo_piar_periodo"),
+        Index("actas_acuerdo_piar_id_idx", piar_id),
+        Index("actas_acuerdo_periodo_id_idx", periodo_id),
     )
 
 

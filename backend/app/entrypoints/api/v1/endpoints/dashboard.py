@@ -21,6 +21,7 @@ from app.adapters.db.models import (
     GrupoORM,
     PeriodoAcademicoORM,
     PiarORM,
+    PiarPeriodoORM,
 )
 from app.adapters.db.session import get_db
 from app.entrypoints.api.dependencies import CurrentUser
@@ -44,6 +45,12 @@ async def get_dashboard(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> DashboardResponse:
+    # ── Periodo activo ──
+    periodo_activo = await db.scalar(
+        select(PeriodoAcademicoORM).where(PeriodoAcademicoORM.activo == True)  # noqa: E712
+    )
+    periodo_activo_nombre = periodo_activo.nombre if periodo_activo else None
+
     # ── Conteos básicos ──
     total_estudiantes = await db.scalar(select(func.count(EstudianteORM.id)))
     total_piars = await db.scalar(select(func.count(PiarORM.id)))
@@ -53,21 +60,30 @@ async def get_dashboard(
             PiarORM.estado.in_(["borrador", "generando_ia", "en_revision"])
         )
     )
-    piars_firmados = await db.scalar(
-        select(func.count(PiarORM.id)).where(PiarORM.estado == "firmado")
-    )
-
-    # ── Actas con firmas incompletas ──
-    actas_firmas_incompletas = await db.scalar(
-        select(func.count(ActaAcuerdoORM.id)).where(
-            func.not_(
-                func.coalesce(ActaAcuerdoORM.firmado_estudiante, False)
-                & func.coalesce(ActaAcuerdoORM.firmado_acudiente, False)
-                & func.coalesce(ActaAcuerdoORM.firmado_docente_apoyo, False)
-                & func.coalesce(ActaAcuerdoORM.firmado_docentes_aula, False)
-                & func.coalesce(ActaAcuerdoORM.firmado_directivo, False)
+    piars_firmados = (
+        await db.scalar(
+            select(func.count(PiarPeriodoORM.id)).where(
+                PiarPeriodoORM.periodo_id == periodo_activo.id,
+                PiarPeriodoORM.estado == "firmado",
             )
         )
+        if periodo_activo else 0
+    )
+
+    # ── Actas con firmas incompletas (periodo activo) ──
+    condiciones_actas = [
+        func.not_(
+            func.coalesce(ActaAcuerdoORM.firmado_estudiante, False)
+            & func.coalesce(ActaAcuerdoORM.firmado_acudiente, False)
+            & func.coalesce(ActaAcuerdoORM.firmado_docente_apoyo, False)
+            & func.coalesce(ActaAcuerdoORM.firmado_docentes_aula, False)
+            & func.coalesce(ActaAcuerdoORM.firmado_directivo, False)
+        )
+    ]
+    if periodo_activo:
+        condiciones_actas.append(ActaAcuerdoORM.periodo_id == periodo_activo.id)
+    actas_firmas_incompletas = await db.scalar(
+        select(func.count(ActaAcuerdoORM.id)).where(*condiciones_actas)
     )
 
     # ── PIARs por estado ──
@@ -101,11 +117,7 @@ async def get_dashboard(
         GradoCount(grado=row[0], total=row[1]) for row in grados_result
     ]
 
-    # ── Periodo activo ──
-    periodo_activo = await db.scalar(
-        select(PeriodoAcademicoORM).where(PeriodoAcademicoORM.activo == True)  # noqa: E712
-    )
-    periodo_activo_nombre = periodo_activo.nombre if periodo_activo else None
+    # ── Ajustes del periodo activo ──
     ajustes_este_periodo = (
         await db.scalar(
             select(func.count(AjusteRazonableORM.id)).where(

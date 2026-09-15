@@ -58,7 +58,7 @@ async def get_piar_familia(
         .where(PiarORM.estudiante_id == estudiante.id)
         .options(
             selectinload(PiarORM.ajustes_razonables),
-            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
+            selectinload(PiarORM.actas_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
             selectinload(PiarORM.caracteristicas),
         )
         .order_by(PiarORM.created_at.desc())
@@ -78,6 +78,8 @@ async def get_piar_familia(
 
     ajustes = []
     for a in piar.ajustes_razonables:
+        if periodo_activo and a.periodo_id != periodo_activo.id:
+            continue
         ajustes.append(FamiliaAjusteResponse(
             area=a.area,
             titulo_tema=a.titulo_tema,
@@ -86,16 +88,22 @@ async def get_piar_familia(
             puntuacion=a.puntuacion,
         ))
 
+    acta = next(
+        (
+            acta for acta in piar.actas_acuerdo
+            if periodo_activo and acta.periodo_id == periodo_activo.id
+        ),
+        None,
+    )
+
     compromisos = []
-    if piar.acta_acuerdo:
-        for c in piar.acta_acuerdo.compromisos_casa:
+    if acta:
+        for c in acta.compromisos_casa:
             compromisos.append(FamiliaCompromisoResponse(
                 nombre_actividad=c.nombre_actividad,
                 descripcion_estrategia=c.descripcion_estrategia,
                 frecuencia=c.frecuencia,
             ))
-
-    acta = piar.acta_acuerdo
 
     return FamiliaPIARResponse(
         estudiante_nombre=f"{estudiante.nombres} {estudiante.apellidos}",
@@ -136,18 +144,30 @@ async def firmar_acta_familia(
     piar_query = (
         select(PiarORM)
         .where(PiarORM.estudiante_id == estudiante.id)
-        .options(selectinload(PiarORM.acta_acuerdo))
+        .options(selectinload(PiarORM.actas_acuerdo))
         .order_by(PiarORM.created_at.desc())
     )
     piar_result = await db.execute(piar_query)
     piar = piar_result.scalars().first()
-    if not piar or not piar.acta_acuerdo:
+    if not piar:
+        raise HTTPException(status_code=404, detail="No hay acta de acuerdo para firmar.")
+
+    periodo_query = select(PeriodoAcademicoORM).where(PeriodoAcademicoORM.activo == True)
+    periodo_activo = (await db.execute(periodo_query)).scalars().first()
+    acta = next(
+        (
+            acta for acta in piar.actas_acuerdo
+            if periodo_activo and acta.periodo_id == periodo_activo.id
+        ),
+        None,
+    )
+    if not acta:
         raise HTTPException(status_code=404, detail="No hay acta de acuerdo para firmar.")
 
     if data.rol == "estudiante":
-        piar.acta_acuerdo.firmado_estudiante = True
+        acta.firmado_estudiante = True
     elif data.rol == "acudiente":
-        piar.acta_acuerdo.firmado_acudiente = True
+        acta.firmado_acudiente = True
 
     await db.commit()
     return {"success": True, "message": f"Firma como {data.rol} registrada correctamente."}
@@ -182,13 +202,13 @@ async def get_acta_pdf_familia(
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias).selectinload(EvidenciaAjusteORM.creador),
-            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
+            selectinload(PiarORM.actas_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
         )
         .order_by(PiarORM.created_at.desc())
     )
     piar_result = await db.execute(piar_query)
     piar = piar_result.scalars().first()
-    if not piar or not piar.acta_acuerdo:
+    if not piar:
         raise HTTPException(status_code=404, detail="El estudiante no tiene un PIAR con acta firmada.")
 
     from datetime import date
@@ -196,19 +216,24 @@ async def get_acta_pdf_familia(
         select(PeriodoAcademicoORM).order_by(PeriodoAcademicoORM.fecha_inicio)
     )
     all_periodos = periodos_result.scalars().all()
-    periods_with_adjustments = {aj.periodo_id for aj in piar.ajustes_razonables if aj.periodo_id}
+    periodo_activo = next((p for p in all_periodos if p.activo), None)
+    if periodo_activo is None:
+        raise HTTPException(status_code=404, detail="No hay ningún periodo académico activo.")
 
-    selected_periods = []
-    today = date.today()
-    for p in all_periodos:
-        if p.activo or p.fecha_inicio <= today or p.id in periods_with_adjustments:
-            selected_periods.append(p)
+    acta = next(
+        (acta for acta in piar.actas_acuerdo if acta.periodo_id == periodo_activo.id),
+        None,
+    )
+    if not acta:
+        raise HTTPException(status_code=404, detail="El estudiante no tiene un acta de acuerdo para el periodo activo.")
+
+    selected_periods = [periodo_activo]
 
     config_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
     config = config_result.scalars().first()
 
     from app.core.pdf_generator import generate_piar_oficial_pdf
-    pdf_bytes = generate_piar_oficial_pdf(piar, config, selected_periods)
+    pdf_bytes = generate_piar_oficial_pdf(piar, config, selected_periods, periodo=periodo_activo)
 
     filename = f"PIAR_{estudiante_orm.numero_documento}.pdf"
     return Response(

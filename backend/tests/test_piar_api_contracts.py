@@ -46,6 +46,22 @@ def test_contratos_principales_del_flujo_piar():
     modo = next(param for param in pdf_params if param["name"] == "modo")
     assert modo["schema"]["pattern"] == "^(borrador|final)$"
 
+    for ruta, metodo in (
+        ("/api/v1/piars/estudiante/{estudiante_id}", "get"),
+        ("/api/v1/piars/{piar_id}", "patch"),
+        ("/api/v1/piars/{piar_id}/completitud", "get"),
+        ("/api/v1/piars/{piar_id}/pdf", "get"),
+        ("/api/v1/piars/{piar_id}/finalizar", "post"),
+        ("/api/v1/piars/{piar_id}/reabrir", "post"),
+    ):
+        parametros = paths[ruta][metodo].get("parameters", [])
+        assert any(param["name"] == "periodo_id" for param in parametros), ruta
+
+    schemas = schema["components"]["schemas"]
+    assert "periodo_id" in schemas["PiarResponse"]["properties"]
+    assert "periodo_id" in schemas["ActaAcuerdoCreate"]["properties"]
+    assert "anio_lectivo" in schemas["PeriodoAcademicoCreate"]["properties"]
+
 
 def test_ajuste_e_ia_aceptan_ausencia_de_campos_ocultos():
     ajuste = AjusteRazonableCreate(
@@ -91,18 +107,20 @@ def test_permisos_de_asignatura_y_bloqueo_de_version_final():
 @pytest.mark.parametrize("estado", ["pendiente", "no_requiere"])
 async def test_cobertura_rechaza_suplir_al_docente(monkeypatch, rol, estado):
     usuario_id, docente_id, asignatura_id = uuid4(), uuid4(), uuid4()
-    cobertura = NS(asignatura_id=asignatura_id, docente_id=docente_id,
+    cobertura = NS(asignatura_id=asignatura_id, docente_id=docente_id, periodo_id=1,
                    estado="no_requiere", justificacion="Justificación del docente")
     piar = NS(estado="borrador", asignaturas_estado=[cobertura],
+              periodos=[NS(periodo_id=1, estado="borrador")],
               estudiante=NS(grupo=NS(director_id=usuario_id if rol == "director" else None)))
     monkeypatch.setattr(piars, "_cargar_piar_completo", AsyncMock(return_value=piar))
+    monkeypatch.setattr(piars, "_resolver_periodo", AsyncMock(return_value=NS(id=1, activo=True)))
     db = NS(flush=AsyncMock())
 
     with pytest.raises(HTTPException) as error:
         await piars.update_estado_asignatura(
             uuid4(), asignatura_id,
             PiarAsignaturaEstadoUpdate(estado=estado, justificacion="Texto ajeno"),
-            NS(id=usuario_id, rol=NS(es_directivo=rol == "directivo")), db,
+            NS(id=usuario_id, rol=NS(es_directivo=rol == "directivo")), None, db,
         )
     assert error.value.status_code == 403
     assert cobertura.justificacion == "Justificación del docente"
@@ -114,16 +132,18 @@ async def test_cobertura_rechaza_suplir_al_docente(monkeypatch, rol, estado):
 @pytest.mark.parametrize("estado", ["pendiente", "no_requiere"])
 async def test_docente_asignado_resuelve_su_cobertura(monkeypatch, estado):
     docente_id, asignatura_id = uuid4(), uuid4()
-    cobertura = NS(asignatura_id=asignatura_id, docente_id=docente_id,
+    cobertura = NS(asignatura_id=asignatura_id, docente_id=docente_id, periodo_id=1,
                    estado="pendiente", justificacion=None)
     monkeypatch.setattr(piars, "_cargar_piar_completo", AsyncMock(return_value=NS(
         estado="borrador", asignaturas_estado=[cobertura],
+        periodos=[NS(periodo_id=1, estado="borrador")],
     )))
+    monkeypatch.setattr(piars, "_resolver_periodo", AsyncMock(return_value=NS(id=1, activo=True)))
     db = NS(flush=AsyncMock())
     resultado = await piars.update_estado_asignatura(
         uuid4(), asignatura_id,
         PiarAsignaturaEstadoUpdate(estado=estado, justificacion="  Logra los objetivos.  "),
-        NS(id=docente_id, rol=NS(es_directivo=False)), db,
+        NS(id=docente_id, rol=NS(es_directivo=False)), None, db,
     )
     assert resultado.estado == estado
     assert resultado.justificacion == ("Logra los objetivos." if estado == "no_requiere" else None)

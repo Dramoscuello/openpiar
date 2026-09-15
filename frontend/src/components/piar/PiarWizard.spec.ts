@@ -30,15 +30,15 @@ describe('asistente PIAR', () => {
     expect(wrapper.emitted('open')).toEqual([['salud']])
   })
 
-  it('bloquea la finalización incompleta y expone descarga de borrador', async () => {
+  it('expone solo la descarga de borrador y no ofrece finalizar desde el panel', async () => {
     const wrapper = mount(PiarExportPanel, {
-      props: { estado: 'borrador', versionActual: 0, puedeFinalizar: false },
+      props: { estado: 'borrador', versionActual: 0 },
     })
 
+    expect(wrapper.text()).not.toContain('Finalizar y crear versión')
     const botones = wrapper.findAll('button')
-    expect(botones[1]).toBeDefined()
-    expect(botones[1]!.attributes('disabled')).toBeDefined()
-    expect(botones[0]).toBeDefined()
+    expect(botones).toHaveLength(1)
+    expect(botones[0]!.text()).toContain('Descargar borrador')
     await botones[0]!.trigger('click')
     expect(wrapper.emitted('draft')).toHaveLength(1)
   })
@@ -135,12 +135,12 @@ describe('asistente PIAR', () => {
 
   it('oculta borrador y finalización a docentes no directores y conserva la descarga final', async () => {
     const borrador = mount(PiarExportPanel, {
-      props: { estado: 'borrador', versionActual: 0, puedeFinalizar: true, puedeGestionar: false },
+      props: { estado: 'borrador', versionActual: 0, puedeGestionar: false },
     })
     expect(borrador.findAll('button')).toHaveLength(0)
 
     const firmado = mount(PiarExportPanel, {
-      props: { estado: 'firmado', versionActual: 2, puedeFinalizar: true, puedeGestionar: false },
+      props: { estado: 'firmado', versionActual: 2, puedeGestionar: false },
     })
     const botones = firmado.findAll('button')
     expect(botones).toHaveLength(1)

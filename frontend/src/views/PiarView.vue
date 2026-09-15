@@ -21,6 +21,23 @@
         <span v-if="activePiar" class="bg-primary/10 text-primary px-3 py-1 rounded-full text-label-md font-bold uppercase tracking-wider">
           Lectivo: {{ activePiar.anio_lectivo }}
         </span>
+        <select
+          v-if="isDirectorOrAdmin && periodos.length"
+          v-model.number="periodoSeleccionadoId"
+          @change="cambiarPeriodo"
+          class="bg-surface border border-outline-variant rounded-full px-3 py-1.5 text-label-md font-bold text-on-surface cursor-pointer outline-none focus:border-primary"
+          title="Periodo que estás consultando"
+        >
+          <option v-for="periodo in periodos" :key="periodo.id" :value="periodo.id">
+            {{ periodo.nombre }}{{ periodo.activo ? ' (activo)' : '' }}
+          </option>
+        </select>
+        <span
+          v-else-if="periodoSeleccionado"
+          class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full text-label-md font-bold uppercase tracking-wider"
+        >
+          Periodo: {{ periodoSeleccionado.nombre }}
+        </span>
         <span v-if="activePiar" class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-label-md font-bold uppercase tracking-wider">
           Estado: {{ activePiar.estado }}
         </span>
@@ -76,12 +93,9 @@
         <PiarExportPanel
           :estado="activePiar.estado"
           :version-actual="activePiar.version_actual || 0"
-          :puede-finalizar="completitud.puede_exportar_final"
           :puede-gestionar="isDirectorOrAdmin"
-          :busy="isFirmando"
           @draft="descargarBorrador"
           @final="descargarFinal"
-          @finish="finalizarPiar"
           @reopen="reabrirPiar"
         />
       </div>
@@ -260,7 +274,7 @@
             @resolve="resolverAsignatura"
           />
           <!-- Formulario de Ingreso/Edición de Ajuste (5 columnas) -->
-          <div v-if="asignaturasParaAjuste.length" class="col-span-12 lg:col-span-5 space-y-md">
+          <div v-if="asignaturasParaAjuste.length && puedeUsarFormularioAjuste" class="col-span-12 lg:col-span-5 space-y-md">
             <section :class="['glass-card p-md border transition-all', isEditingAjuste ? 'border-secondary-container shadow-md shadow-secondary/5' : 'border-outline-variant/30']">
               <div class="flex justify-between items-center border-b border-outline-variant/30 pb-xs mb-sm">
                 <h3 class="font-headline-md font-bold flex items-center gap-2 text-wrap" :class="isEditingAjuste ? 'text-secondary-container' : 'text-primary'">
@@ -499,6 +513,27 @@
                   {{ isEditingAjuste ? 'Guardar Cambios' : 'Agregar a la Matriz' }}
                 </button>
               </div>
+            </section>
+          </div>
+
+          <!-- Aviso para periodos históricos o finalizados -->
+          <div
+            v-else-if="asignaturasParaAjuste.length && periodoSeleccionado && !puedeUsarFormularioAjuste"
+            class="col-span-12 lg:col-span-5"
+          >
+            <section class="glass-card p-md border border-outline-variant/30 space-y-2 text-body-md text-on-surface-variant">
+              <p class="font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">history</span>
+                Periodo {{ periodoSeleccionado.nombre }} en solo lectura
+              </p>
+              <p v-if="activePiar.estado === 'firmado'">
+                Este periodo está finalizado. Un directivo debe reabrirlo para editarlo.
+              </p>
+              <p v-else>
+                Los ajustes nuevos se registran en el periodo activo
+                (<strong>{{ periodoActivo?.nombre || 'sin periodo activo' }}</strong>).
+                Selecciónalo para agregar ajustes.
+              </p>
             </section>
           </div>
 
@@ -1305,7 +1340,7 @@
             </div>
 
             <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;" class="dark:text-gray-300">
-              ¿Estás seguro de finalizar este PIAR? Se guardará una versión inmutable del PDF. Para hacer cambios posteriores deberás reabrirlo y completar una nueva versión. Asegúrate de haber recogido las firmas físicas de todos los actores.
+              ¿Estás seguro de finalizar el PIAR de este periodo? Este paso es irreversible: se guardará una versión inmutable del PDF y el periodo quedará firmado. Para hacer cambios posteriores deberás reabrirlo y completar una nueva versión. Asegúrate de haber recogido las firmas físicas de todos los actores.
             </p>
 
             <div style="display:flex; justify-content:flex-end; gap:12px;">
@@ -1414,12 +1449,14 @@ const authStore = useAuthStore()
 const studentsStore = useStudentsStore()
 const { activePiar, isLoading, error } = storeToRefs(piarStore)
 const piarId = computed(() => activePiar.value?.id || null)
+const periodos = ref<any[]>([])
+const periodoSeleccionadoId = ref<number | null>(null)
 const {
   completitud,
   loading: workflowLoading,
   refresh: refreshCompletitud,
   descargar: descargarWorkflow,
-} = usePiarWorkflow(piarId)
+} = usePiarWorkflow(piarId, periodoSeleccionadoId)
 
 const estudianteId = route.params.id as string
 const estudiante = ref<any>(null)
@@ -1838,7 +1875,7 @@ const guardarActaAcuerdo = async () => {
         descripcion_estrategia: c.descripcion_estrategia.trim(),
         frecuencia: c.frecuencia
       }))
-    })
+    }, periodoSeleccionadoId.value)
     await refreshCompletitud()
     showToast('Acta de Acuerdo (Anexo 3) guardada con éxito.')
   } catch (e: any) {
@@ -1850,7 +1887,10 @@ const guardarActaAcuerdo = async () => {
 }
 
 const descargarPiarPDF = () => {
-  piarStore.downloadPiarPDF(activePiar.value?.estado === 'firmado' ? 'final' : 'borrador')
+  piarStore.downloadPiarPDF(
+    activePiar.value?.estado === 'firmado' ? 'final' : 'borrador',
+    periodoSeleccionadoId.value,
+  )
 }
 
 async function descargarBorrador() {
@@ -1872,7 +1912,7 @@ async function descargarFinal() {
 async function reabrirPiar() {
   if (!confirm('Se conservará la versión final anterior y se reiniciarán las confirmaciones de firmas. ¿Deseas continuar?')) return
   try {
-    await piarStore.reabrirPiar()
+    await piarStore.reabrirPiar(periodoSeleccionadoId.value)
     cargarActaDesdePiar()
     await refreshCompletitud()
     showToast('PIAR reabierto. La próxima finalización creará una versión nueva.')
@@ -1899,7 +1939,7 @@ async function resolverAsignatura(
   justificacion: string,
 ) {
   try {
-    await piarStore.updateAsignaturaEstado(asignaturaId, estado, justificacion)
+    await piarStore.updateAsignaturaEstado(asignaturaId, estado, justificacion, periodoSeleccionadoId.value)
     await refreshCompletitud()
     showToast('Cobertura de asignatura actualizada.')
   } catch (e: any) {
@@ -1938,9 +1978,9 @@ const confirmarFirmar = async () => {
   showConfirmFirmar.value = false
   isFirmando.value = true
   try {
-    await piarStore.firmarPiar()
+    await piarStore.firmarPiar(periodoSeleccionadoId.value)
     await refreshCompletitud()
-    showToast(`PIAR finalizado. Se creó la versión inmutable ${activePiar.value.version_actual}.`)
+    showToast(`PIAR del periodo finalizado. Se creó la versión inmutable ${activePiar.value.version_actual}.`)
   } catch (e: any) {
     showToast(e.message || 'Error al finalizar el PIAR.', true)
   } finally {
@@ -1949,8 +1989,6 @@ const confirmarFirmar = async () => {
 }
 
 // Periodos Académicos
-const periodos = ref<any[]>([])
-
 async function cargarPeriodos() {
   try {
     const res = await fetch('/api/v1/gestion/periodos', {
@@ -1960,6 +1998,11 @@ async function cargarPeriodos() {
     })
     if (res.ok) {
       periodos.value = await res.json()
+      const activo = periodos.value.find((p: any) => p.activo)
+      const seleccionValida = periodos.value.some((p: any) => p.id === periodoSeleccionadoId.value)
+      if (activo && !seleccionValida) {
+        periodoSeleccionadoId.value = activo.id
+      }
     }
   } catch (e) {
     console.error("Error fetching periodos", e)
@@ -1969,6 +2012,18 @@ async function cargarPeriodos() {
 const periodoActivo = computed(() => {
   return periodos.value.find((p: any) => p.activo)
 })
+
+const periodoSeleccionado = computed(() => {
+  if (periodoSeleccionadoId.value) {
+    return periodos.value.find((p: any) => p.id === periodoSeleccionadoId.value) || null
+  }
+  return periodoActivo.value || null
+})
+
+async function cambiarPeriodo() {
+  cancelarEdicionAjuste()
+  await cargarPiar()
+}
 
 function getPeriodoNombre(periodoId: number): string {
   const p = periodos.value.find((per: any) => per.id === periodoId)
@@ -2060,6 +2115,15 @@ const ajusteForm = ref({
   dba_referencia: ''
 })
 const isEditingAjuste = computed(() => !!ajusteForm.value.id)
+const puedeUsarFormularioAjuste = computed(() => {
+  if (!activePiar.value) return false
+  if (isEditingAjuste.value) return true
+  return (
+    activePiar.value.estado !== 'firmado' &&
+    !!periodoSeleccionado.value &&
+    periodoSeleccionado.value.id === periodoActivo.value?.id
+  )
+})
 const isSavingAjuste = ref(false)
 const isGeneratingIA = ref(false)
 
@@ -2146,9 +2210,9 @@ function showToast(message: string, isError = false) {
 
 onMounted(async () => {
   await cargarEstudiante()
+  await cargarPeriodos()
   await cargarPiar()
   await cargarAsignaturas()
-  await cargarPeriodos()
   cargarEntornoSalud() // sin await: enriquece contexto IA en background
 })
 
@@ -2204,7 +2268,7 @@ async function cargarAsignaturas() {
 }
 
 async function cargarPiar() {
-  await piarStore.fetchPiarForStudent(estudianteId)
+  await piarStore.fetchPiarForStudent(estudianteId, periodoSeleccionadoId.value)
   inicializarFormularios()
   if (activePiar.value) await refreshCompletitud()
   if (activePiar.value?.ajustes_razonables) {
@@ -2288,7 +2352,7 @@ async function guardarCaracteristicas() {
       caracterizacion_pedagogica: caracterizacionPedagogica.value || null,
       entorno_familiar_social_economico: entornoFamiliarSocialEconomico.value || null,
       otras_observaciones: otrasObservaciones.value || null,
-    }, lugarDiligenciamiento.value)
+    }, lugarDiligenciamiento.value, periodoSeleccionadoId.value)
     await refreshCompletitud()
     showToast("Características del estudiante guardadas correctamente.")
   } catch (e: any) {

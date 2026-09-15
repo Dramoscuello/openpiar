@@ -55,6 +55,22 @@ def truncate_text(text: Optional[str], limit=1800) -> str:
     return text[:limit] + "... [Texto truncado por espacio]"
 
 
+def _acta_del_periodo_pdf(piar, periodo):
+    """Acta del periodo indicado; si no se especifica, la primera disponible."""
+    actas = getattr(piar, "actas_acuerdo", None) or []
+    if periodo is None:
+        return actas[0] if actas else None
+    return next((acta for acta in actas if acta.periodo_id == periodo.id), None)
+
+
+def _ajustes_del_periodo_pdf(piar, periodo):
+    """Ajustes razonables del periodo indicado; sin periodo, todos."""
+    ajustes = getattr(piar, "ajustes_razonables", None) or []
+    if periodo is None:
+        return list(ajustes)
+    return [ajuste for ajuste in ajustes if ajuste.periodo_id == periodo.id]
+
+
 def generate_acta_pdf(piar: PiarORM, config: Optional[ConfiguracionSistemaORM], periodos: list[PeriodoAcademicoORM]) -> bytes:
     """
     Genera el archivo PDF completo del PIAR (9 páginas) de un estudiante.
@@ -768,7 +784,7 @@ def generate_acta_pdf(piar: PiarORM, config: Optional[ConfiguracionSistemaORM], 
     story.extend(get_header_table("ANEXO 3", "ACTA DE ACUERDO Y CORRESPONSABILIDAD FAMILIAR"))
     
     fecha_firma_str = "_______"
-    acta = piar.acta_acuerdo
+    acta = piar.actas_acuerdo[0] if piar.actas_acuerdo else None
     if acta and acta.fecha_firma:
         fecha_firma_str = acta.fecha_firma.strftime("%d/%m/%Y")
         
@@ -1340,9 +1356,11 @@ def generate_piar_oficial_pdf(
     periodos: list[PeriodoAcademicoORM],
     modo: str = "final",
     faltantes: Optional[list[str]] = None,
+    periodo: Optional[PeriodoAcademicoORM] = None,
 ) -> bytes:
     """Genera el PDF completo del PIAR en formato oficial MEN Decreto 1421/2017 V15. 08/2020.
-    Portrait para secciones 1-4, landscape para matriz de ajustes."""
+    Portrait para secciones 1-4, landscape para matriz de ajustes.
+    Si se indica `periodo`, la matriz de ajustes y el acta corresponden a ese periodo."""
 
     buffer = io.BytesIO()
 
@@ -1463,7 +1481,7 @@ def generate_piar_oficial_pdf(
     trayectoria = estudiante.trayectoria_educativa
     matricula = estudiante.matricula_actual
     caracteristicas = piar.caracteristicas
-    acta = piar.acta_acuerdo
+    acta = _acta_del_periodo_pdf(piar, periodo)
     fecha_nac = estudiante.fecha_nacimiento.strftime("%d/%m/%Y") if estudiante.fecha_nacimiento else ""
     edad = None
     if estudiante.fecha_nacimiento:
@@ -2012,7 +2030,7 @@ def generate_piar_oficial_pdf(
          P("En clave de temporalidad, responsable y medios.", sty_cg)],
     ]
 
-    ajustes = piar.ajustes_razonables or []
+    ajustes = _ajustes_del_periodo_pdf(piar, periodo)
     areas_agrupadas = {}
     for aj in ajustes:
         areas_agrupadas.setdefault(aj.area, []).append(aj)
@@ -2053,6 +2071,22 @@ def generate_piar_oficial_pdf(
 
     aj_rows = [hdr_aj[0], hdr_sub[0]]
     area_idx = 0
+
+    # La descripción de los ajustes se conserva en una sola celda por asignatura:
+    # se reduce la fuente cuando es extensa para que la fila siga cabiendo en la página.
+    max_desc = max((len(aj.ajustes_estrategias or "") for aj in ajustes), default=0)
+    if max_desc > 6000:
+        desc_font, desc_lead = 4.5, 5.5
+    elif max_desc > 4000:
+        desc_font, desc_lead = 5.0, 6.5
+    elif max_desc > 2500:
+        desc_font, desc_lead = 5.5, 7.0
+    elif max_desc > 1200:
+        desc_font, desc_lead = 6.5, 8.5
+    else:
+        desc_font, desc_lead = 7.5, 9.5
+    sty_desc = ParagraphStyle('DescAjustes', parent=sty_c, fontSize=desc_font, leading=desc_lead)
+
     for area_name, aj_list in sorted(areas_agrupadas.items()):
         area_idx += 1
         for aj in aj_list:
@@ -2082,12 +2116,13 @@ def generate_piar_oficial_pdf(
 
             columnas = [
                 _fragmentar(area_col), _fragmentar(barr), _fragmentar(tipo),
-                _fragmentar(apoyo), _fragmentar(desc), _fragmentar(seg),
+                _fragmentar(apoyo), [desc], _fragmentar(seg),
             ]
+            estilos = [sty_c, sty_c, sty_c, sty_c, sty_desc, sty_c]
             for fragmento in range(max(len(columna) for columna in columnas)):
                 aj_rows.append([
-                    P(columna[fragmento] if fragmento < len(columna) else "", sty_c)
-                    for columna in columnas
+                    P(columna[fragmento] if fragmento < len(columna) else "", estilos[indice])
+                    for indice, columna in enumerate(columnas)
                 ])
 
     for cobertura in getattr(piar, "asignaturas_estado", None) or []:
@@ -2097,11 +2132,11 @@ def generate_piar_oficial_pdf(
                 P("No se identificaron barreras que requieran ajuste.", sty_c),
                 P("No requiere ajuste razonable", sty_c),
                 P("", sty_c),
-                P(cobertura.justificacion or "", sty_c),
+                P(cobertura.justificacion or "", sty_desc),
                 P("Cobertura académica resuelta", sty_c),
             ])
 
-    t_aj = LongTable(aj_rows, colWidths=WA, repeatRows=2, splitByRow=1)
+    t_aj = LongTable(aj_rows, colWidths=WA, repeatRows=2, splitByRow=1, splitInRow=1)
     t_aj.setStyle(TableStyle([
         ('FONTNAME', (0,0), (-1,1), 'Helvetica-Bold'),
         ('FONTSIZE', (0,0), (-1,0), 7),
