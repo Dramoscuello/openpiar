@@ -1708,6 +1708,37 @@ async def download_acta_pdf(
 
 UPLOAD_DIR = "uploads/evidencias"
 
+EXTENSIONES_IMAGEN_EVIDENCIA = {
+    ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff",
+}
+
+
+def validar_archivo_evidencia(filename: str, contenido: bytes) -> str:
+    """Valida que la evidencia sea una imagen soportada y devuelve su nombre normalizado."""
+    import io as _io
+    import os as _os
+
+    nombre = (filename or "evidencia").lower()
+    extension = _os.path.splitext(nombre)[1]
+    if extension not in EXTENSIONES_IMAGEN_EVIDENCIA:
+        raise HTTPException(
+            status_code=422,
+            detail="Solo se permiten imágenes (JPG, JPEG, PNG, WEBP, GIF, BMP, TIFF).",
+        )
+
+    try:
+        from PIL import Image as PilImage
+
+        with PilImage.open(_io.BytesIO(contenido)) as imagen:
+            imagen.verify()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=422, detail="El archivo no es una imagen válida.")
+
+    return nombre
+
+
 @router.post(
     "/{piar_id}/ajustes/{ajuste_id}/evidencias",
     response_model=EvidenciaAjusteResponse,
@@ -1721,7 +1752,7 @@ async def upload_evidencia(
     descripcion: str = Form(..., min_length=2),
     fecha: date = Form(...),
 ):
-    """Sube una imagen o PDF como evidencia de un ajuste DUA (máx 15 MB)."""
+    """Sube una imagen como evidencia de un ajuste DUA (máx 15 MB)."""
     ajuste = await db.get(AjusteRazonableORM, ajuste_id)
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
@@ -1729,20 +1760,12 @@ async def upload_evidencia(
     if ajuste.creado_por != current_user.id:
         raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
 
-    filename = (file.filename or "evidencia").lower()
-    if filename.endswith((".jpg", ".jpeg", ".png")):
-        tipo = "imagen"
-    elif filename.endswith(".pdf"):
-        tipo = "pdf"
-    else:
-        raise HTTPException(
-            status_code=422,
-            detail="Solo se permiten imágenes (JPG, PNG) o documentos PDF.",
-        )
-
     contenido = await file.read()
     if len(contenido) > 15 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="El archivo no puede superar 15 MB.")
+
+    filename = validar_archivo_evidencia(file.filename or "evidencia", contenido)
+    tipo = "imagen"
 
     import os as _os
     upload_dir = _os.path.join(UPLOAD_DIR, str(piar_id))

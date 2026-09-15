@@ -534,3 +534,82 @@ def test_pdf_por_periodo_solo_incluye_ajustes_del_periodo():
     contenido_p2 = " ".join(contenido_p2.split())
     assert "Ecosistemas" in contenido_p2
     assert "Resolver problemas" not in contenido_p2
+
+
+def _evidencia_ns(ruta, **kwargs):
+    base = dict(
+        nombre_archivo="trabajo.jpg", tipo_archivo="imagen", ruta_archivo=str(ruta),
+        descripcion="Trabajo en clase", fecha=date(2026, 9, 10), fecha_subida=None,
+        creador=ns(nombre="Clara", apellido="Gómez"),
+    )
+    base.update(kwargs)
+    return ns(**base)
+
+
+def test_pdf_incluye_evidencias_despues_de_las_firmas(tmp_path):
+    from PIL import Image as PilImage
+
+    ruta = tmp_path / "trabajo.png"
+    PilImage.new("RGB", (640, 360), (200, 30, 30)).save(ruta)
+
+    piar = crear_piar_pdf_texto_extenso()
+    piar.ajustes_razonables[0].evidencias = [
+        _evidencia_ns(ruta, descripcion="Trabajo en clase"),
+        _evidencia_ns(ruta, nombre_archivo="trabajo2.jpg", descripcion="Evaluación aplicada",
+                      fecha=date(2026, 9, 12)),
+    ]
+
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    documento = fitz.open(stream=pdf, filetype="pdf")
+    textos = [pagina.get_text() for pagina in documento]
+    indice_firmas = next(i for i, t in enumerate(textos) if "Firma de los Actores comprometidos" in t)
+    indice_evidencias = next(i for i, t in enumerate(textos) if "EVIDENCIAS" in t)
+
+    assert indice_evidencias > indice_firmas
+    pagina = documento[indice_evidencias]
+    contenido = pagina.get_text()
+    assert pagina.rect.width > pagina.rect.height  # hoja horizontal
+    assert "Asignatura - Docente" in contenido
+    assert "Matemáticas" in contenido
+    assert "Clara Gómez" in contenido
+    assert "Trabajo en clase" in contenido
+    assert "Evaluación aplicada" in contenido
+    assert "10/09/2026" in contenido and "12/09/2026" in contenido
+    assert pagina.get_images()
+    anchos = [info["bbox"][2] - info["bbox"][0] for info in pagina.get_image_info()]
+    assert max(anchos) > 300  # la evidencia se muestra más grande en horizontal
+
+
+def test_pdf_no_muestra_evidencias_de_otro_periodo(tmp_path):
+    from PIL import Image as PilImage
+
+    ruta = tmp_path / "trabajo.png"
+    PilImage.new("RGB", (200, 200), (0, 30, 200)).save(ruta)
+
+    piar = crear_piar_pdf_texto_extenso()
+    piar.ajustes_razonables[0].periodo_id = 2
+    piar.ajustes_razonables[0].evidencias = [_evidencia_ns(ruta)]
+
+    pdf = generate_piar_oficial_pdf(piar, None, [], periodo=NS(id=1))
+    contenido = " ".join(
+        (p.extract_text() or "") for p in PdfReader(BytesIO(pdf)).pages
+    )
+    assert "EVIDENCIAS" not in contenido
+    assert "Trabajo en clase" not in contenido
+
+
+def test_pdf_muestra_placeholder_cuando_falta_la_imagen(tmp_path):
+    piar = crear_piar_pdf_texto_extenso()
+    piar.ajustes_razonables[0].evidencias = [
+        _evidencia_ns(tmp_path / "no_existe.png"),
+        _evidencia_ns(tmp_path / "doc.pdf", tipo_archivo="pdf", nombre_archivo="doc.pdf"),
+    ]
+
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    contenido = " ".join(
+        (p.extract_text() or "") for p in PdfReader(BytesIO(pdf)).pages
+    )
+    assert "EVIDENCIAS" in contenido
+    assert "Imagen no disponible" in contenido
+    assert "Documento PDF: doc.pdf" in contenido
+

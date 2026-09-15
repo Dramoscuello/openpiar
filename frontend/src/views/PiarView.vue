@@ -704,7 +704,7 @@
 
                       <div v-show="evidenciasExpandidas[ajuste.id]" class="mt-2 space-y-2">
                         <div v-if="!ajuste.evidencias || ajuste.evidencias.length === 0" class="text-xs text-on-surface-variant py-1 pl-5">
-                          Sin evidencias. Agrega imágenes o PDFs del trabajo del estudiante.
+                          Sin evidencias. Agrega imágenes del trabajo del estudiante.
                         </div>
                         <div
                           v-for="ev in ajuste.evidencias"
@@ -752,12 +752,12 @@
                           >
                             <span class="material-symbols-outlined text-primary text-sm">attach_file</span>
                             <span class="truncate">
-                              {{ getEvidenciaForm(ajuste.id).fileName || 'Seleccionar archivo (JPG/PNG/PDF, máx 15 MB)' }}
+                              {{ getEvidenciaForm(ajuste.id).fileName || 'Seleccionar imagen (JPG, PNG, WEBP…, máx 15 MB)' }}
                             </span>
                             <input
                               :key="`evidencia-file-${ajuste.id}-${evidenciaFileKeys[ajuste.id] || 0}`"
                               type="file"
-                              accept=".jpg,.jpeg,.png,.pdf"
+                              accept="image/*"
                               @change="onFileChange($event, ajuste.id)"
                               class="hidden"
                             />
@@ -1627,7 +1627,15 @@ function puedeSubirEvidencia(ajusteId: string): boolean {
 function onFileChange(event: Event, ajusteId: string) {
   const target = event.target as HTMLInputElement
   const form = getEvidenciaForm(ajusteId)
-  form.file = target.files?.[0] || null
+  const archivo = target.files?.[0] || null
+  if (archivo && !archivo.type.startsWith('image/')) {
+    form.file = null
+    form.fileName = ''
+    target.value = ''
+    showToast('Solo se permiten imágenes (JPG, PNG, WEBP…).', true)
+    return
+  }
+  form.file = archivo
   form.fileName = form.file?.name || ''
 }
 

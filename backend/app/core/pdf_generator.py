@@ -71,6 +71,43 @@ def _ajustes_del_periodo_pdf(piar, periodo):
     return [ajuste for ajuste in ajustes if ajuste.periodo_id == periodo.id]
 
 
+def _imagen_evidencia_para_pdf(ruta: Optional[str], caja=(130.0, 95.0)) -> Optional[Image]:
+    """Convierte una imagen de evidencia en un flowable listo para incrustar.
+
+    Normaliza formatos (PNG/WEBP/GIF/BMP/TIFF) a JPEG optimizado para no inflar
+    el PDF y escala la imagen a la caja indicada sin ampliarla.
+    """
+    if not ruta or not os.path.exists(ruta):
+        return None
+    try:
+        from PIL import Image as PilImage
+
+        with PilImage.open(ruta) as original:
+            original.load()
+            if original.mode in ("RGBA", "LA") or (
+                original.mode == "P" and "transparency" in original.info
+            ):
+                rgba = original.convert("RGBA")
+                fondo = PilImage.new("RGB", rgba.size, (255, 255, 255))
+                fondo.paste(rgba, mask=rgba.split()[-1])
+                imagen = fondo
+            else:
+                imagen = original.convert("RGB")
+
+            imagen.thumbnail((600, 600))
+            ancho_px, alto_px = imagen.size
+            buffer = io.BytesIO()
+            imagen.save(buffer, format="JPEG", quality=80)
+    except Exception:
+        return None
+
+    if not ancho_px or not alto_px:
+        return None
+    escala = min(caja[0] / ancho_px, caja[1] / alto_px, 1.0)
+    buffer.seek(0)
+    return Image(buffer, width=ancho_px * escala, height=alto_px * escala)
+
+
 def generate_acta_pdf(piar: PiarORM, config: Optional[ConfiguracionSistemaORM], periodos: list[PeriodoAcademicoORM]) -> bytes:
     """
     Genera el archivo PDF completo del PIAR (9 páginas) de un estudiante.
@@ -1458,9 +1495,9 @@ def generate_piar_oficial_pdf(
         """Celda de etiqueta con sombreado gris."""
         return {'bg': gris_label, 'text': P(text, sty_cb)}
 
-    def _banner(title):
+    def _banner(title, ancho=16.2*cm):
         """Titulo tipo banner: fondo navy + texto blanco centrado."""
-        t = Table([[P(title, sty_banner)]], colWidths=[16.2*cm])
+        t = Table([[P(title, sty_banner)]], colWidths=[ancho])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,-1), navy),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
@@ -2333,6 +2370,77 @@ def generate_piar_oficial_pdf(
         ('MINROWHEIGHT', (0,5), (-1,5), 40),
     ]))
     story.append(t_firmas)
+
+    # ═══════ EVIDENCIAS ═══════
+    evidencias = []
+    for ajuste in _ajustes_del_periodo_pdf(piar, periodo):
+        for evidencia in (getattr(ajuste, "evidencias", None) or []):
+            evidencias.append((ajuste, evidencia))
+    evidencias.sort(key=lambda par: (
+        (par[0].area or "").casefold(),
+        str(getattr(par[1], "fecha", "") or ""),
+        str(getattr(par[1], "fecha_subida", "") or ""),
+    ))
+
+    if evidencias:
+        ancho_landscape = ls_size[0] - 3*cm
+        story.append(NextPageTemplate(['Landscape']))
+        story.append(PageBreak())
+        story.append(_banner("EVIDENCIAS", ancho=ancho_landscape))
+        story.append(Spacer(1, 8))
+
+        filas_evidencia = [[
+            P("Asignatura - Docente", sty_cb),
+            P("Descripci\u00f3n y fecha", sty_cb),
+            P("Evidencia", sty_cb),
+        ]]
+        for ajuste, evidencia in evidencias:
+            docente = "\u2014"
+            creador = getattr(evidencia, "creador", None)
+            if creador is not None:
+                nombre_docente = " ".join(
+                    parte for parte in (
+                        getattr(creador, "nombre", ""), getattr(creador, "apellido", "")
+                    ) if parte
+                ).strip()
+                if nombre_docente:
+                    docente = nombre_docente
+
+            fecha_evidencia = getattr(evidencia, "fecha", None)
+            fecha_str = fecha_evidencia.strftime("%d/%m/%Y") if fecha_evidencia else "\u2014"
+
+            imagen_evidencia = _imagen_evidencia_para_pdf(
+                getattr(evidencia, "ruta_archivo", None), caja=(310.0, 240.0)
+            )
+            if imagen_evidencia is not None:
+                celda_evidencia = imagen_evidencia
+            elif getattr(evidencia, "tipo_archivo", "imagen") == "pdf":
+                celda_evidencia = P(
+                    f"Documento PDF: {getattr(evidencia, 'nombre_archivo', '')}", sty_c
+                )
+            else:
+                celda_evidencia = P("Imagen no disponible", sty_c)
+
+            filas_evidencia.append([
+                P(f"{(ajuste.area or '').strip()}\n{docente}", sty_c),
+                P(f"{(getattr(evidencia, 'descripcion', '') or '').strip()}\n{fecha_str}", sty_c),
+                celda_evidencia,
+            ])
+
+        ancho_asignatura, ancho_descripcion = 170.0, 210.0
+        t_evidencias = LongTable(
+            filas_evidencia,
+            colWidths=[ancho_asignatura, ancho_descripcion, ancho_landscape - ancho_asignatura - ancho_descripcion],
+            repeatRows=1,
+        )
+        t_evidencias.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), gris_label),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 5), ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ]))
+        story.append(t_evidencias)
 
     doc.build(story)
     pdf_bytes = buffer.getvalue()
