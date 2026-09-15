@@ -22,7 +22,6 @@ from app.domain.value_objects import Email, Rol
 
 ENTIDADES_AUDITABLES = {
     "ajuste_razonable",
-    "recomendacion_pmi",
     "acta_acuerdo",
     "caracteristicas_estudiante",
     "compromiso_casa",
@@ -202,8 +201,8 @@ class Piar:
     Plan Individual de Ajustes Razonables.
 
     Es el AGREGADO RAÍZ del dominio de inclusión educativa.
-    Las características del estudiante, los ajustes razonables y las
-    recomendaciones PMI solo se acceden y modifican a través de este agregado.
+    Las características del estudiante y los ajustes razonables solo se
+    acceden y modifican a través de este agregado.
 
     Basado en: Decreto 1421 de 2017 — Anexo 2.
     """

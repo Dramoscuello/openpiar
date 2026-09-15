@@ -36,7 +36,6 @@ from app.adapters.db.models import (  # noqa: F401 — importar para registrar m
     EstudianteORM,
     MatriculaActualORM,
     PiarORM,
-    RecomendacionPMIORM,
     TrayectoriaEducativaORM,
     UsuarioORM,
     SedeORM,

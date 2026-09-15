@@ -20,7 +20,6 @@ from app.adapters.db.models import (
     EvidenciaAjusteORM,
     PeriodoAcademicoORM,
     EstudianteORM,
-    RecomendacionPMIORM,
     ConfiguracionSistemaORM,
     ActaAcuerdoORM,
     CompromisoCasaORM,
@@ -49,8 +48,6 @@ from app.entrypoints.api.schemas import (
     GenerarPlanCompletoRequest,
     PlanCompletoIAResponse,
     BaseResponse,
-    RecomendacionPMICreate,
-    RecomendacionPMIResponse,
     ActaAcuerdoCreate,
     ActaAcuerdoResponse,
     AuditoriaCambioResponse,
@@ -69,7 +66,6 @@ from app.entrypoints.api.dependencies import CurrentUser
 from app.entrypoints.api.v1.endpoints.auditoria_helpers import (
     registrar_cambio,
     serializar_ajuste,
-    serializar_pmi,
     serializar_acta,
     serializar_caracteristicas,
     serializar_estado_piar,
@@ -107,7 +103,6 @@ def _opciones_piar_completo() -> tuple:
         selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
         selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.creador),
         selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias).selectinload(EvidenciaAjusteORM.creador),
-        selectinload(PiarORM.recomendaciones_pmi),
         selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
     )
 
@@ -423,6 +418,83 @@ async def get_gemini_key(db: AsyncSession) -> str:
         ),
     )
 
+
+def _texto_ia(valor) -> str:
+    """Normaliza texto opcional para los prompts de IA; ignora vacíos y serializa JSON."""
+    if valor is None:
+        return ""
+    if isinstance(valor, str):
+        return valor.strip()
+    if isinstance(valor, (dict, list)):
+        return json.dumps(valor, ensure_ascii=False, default=str) if valor else ""
+    return str(valor).strip()
+
+
+def construir_contexto_estudiante(piar, overrides: Optional[dict] = None) -> str:
+    """Bloque de contexto del estudiante para los prompts de IA.
+
+    Incluye los campos solicitados y omite con seguridad los que estén vacíos.
+    `overrides` permite preferir lo que el docente editó en el formulario.
+    """
+    overrides = overrides or {}
+    estudiante = getattr(piar, "estudiante", None)
+    caracteristicas = getattr(piar, "caracteristicas", None)
+    salud = getattr(estudiante, "entorno_salud", None) if estudiante else None
+
+    def campo(fuente, atributo: str) -> str:
+        return _texto_ia(getattr(fuente, atributo, None)) if fuente is not None else ""
+
+    filas = [
+        (
+            "Gustos, intereses y expectativas del estudiante y su familia",
+            " ".join(filter(None, (
+                _texto_ia(overrides.get("gustos_intereses")) or campo(caracteristicas, "descripcion_gustos_intereses"),
+                campo(caracteristicas, "expectativas_estudiante"),
+                campo(caracteristicas, "expectativas_familia"),
+            ))),
+        ),
+        (
+            "Habilidades, cualidades, fortalezas y apoyos requeridos",
+            " ".join(filter(None, (
+                _texto_ia(overrides.get("habilidades_fortalezas")) or campo(caracteristicas, "descripcion_habilidades"),
+                campo(caracteristicas, "redes_apoyo"),
+            ))),
+        ),
+        ("Entorno familiar, social y económico",
+         _texto_ia(overrides.get("entorno_familiar_social_economico")) or campo(caracteristicas, "entorno_familiar_social_economico")),
+        ("Otras observaciones",
+         _texto_ia(overrides.get("otras_observaciones")) or campo(caracteristicas, "otras_observaciones")),
+        (
+            "Caracterización pedagógica / Diagnóstico",
+            _texto_ia(overrides.get("caracterizacion_pedagogica")) or campo(caracteristicas, "caracterizacion_pedagogica"),
+        ),
+        (
+            "Diagnóstico médico",
+            _texto_ia(overrides.get("diagnostico_medico")) or campo(salud, "diagnostico_medico"),
+        ),
+    ]
+    lineas = [f"- {etiqueta}: {valor}" for etiqueta, valor in filas if valor]
+    return "\n".join(lineas) if lineas else "- Sin información registrada."
+
+
+def construir_contexto_institucional(config) -> str:
+    """Bloque PEI/contexto institucional para los prompts de IA; tolera campos vacíos."""
+    if config is None:
+        return "Sin contexto institucional registrado."
+    filas = [
+        ("Modelo pedagógico del PEI", _texto_ia(getattr(config, "pei_modelo_pedagogico", None))),
+        ("Valores y principios del PEI", _texto_ia(getattr(config, "pei_valores_principios", None))),
+        ("Contexto institucional", _texto_ia(getattr(config, "contexto_institucion", None))),
+    ]
+    lineas = [f"- {etiqueta}: {valor}" for etiqueta, valor in filas if valor]
+    return "\n".join(lineas) if lineas else "Sin contexto institucional registrado."
+
+
+async def _configuracion_sistema(db: AsyncSession) -> Optional[ConfiguracionSistemaORM]:
+    result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+    return result.scalars().first()
+
+
 @router.get("/estudiante/{estudiante_id}", response_model=PiarResponse)
 async def get_piar_by_estudiante(
     estudiante_id: uuid.UUID,
@@ -442,7 +514,6 @@ async def get_piar_by_estudiante(
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.creador),
-            selectinload(PiarORM.recomendaciones_pmi),
             selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
             selectinload(PiarORM.participantes),
             selectinload(PiarORM.asignaturas_estado),
@@ -661,16 +732,20 @@ async def generar_ajustes_ia(
 ):
     """Genera recomendaciones DUA usando Google Gemini."""
     try:
-        # Verificar PIAR
-        piar = await db.get(PiarORM, piar_id)
+        # Verificar PIAR (con contexto completo del estudiante)
+        piar = await _cargar_piar_completo(db, piar_id)
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+        config = await _configuracion_sistema(db)
+        contexto_estudiante = construir_contexto_estudiante(piar)
+        contexto_institucional = construir_contexto_institucional(config)
 
         # Construir Prompt
         prompt = (
             f"Actúa como un experto en Educación Inclusiva y Diseño Universal para el Aprendizaje (DUA).\n"
             f"Necesito sugerencias de estrategias y ajustes razonables concretos para un estudiante.\n\n"
-            f"Contexto:\n"
+            f"Contexto de la asignatura:\n"
             f"- Área/Materia: {data.area}\n"
         )
         if data.titulo_tema:
@@ -678,6 +753,8 @@ async def generar_ajustes_ia(
         prompt += (
             f"- Objetivos o Propósitos de Aprendizaje: {data.objetivos_propositos}\n"
             f"- Barreras Evidenciadas en el Estudiante: {data.barreras_evidenciadas}\n"
+            f"\nContexto del estudiante:\n{contexto_estudiante}\n"
+            f"\nContexto institucional (PEI):\n{contexto_institucional}\n"
         )
         if data.instrucciones_adicionales:
             prompt += f"\nInstrucciones adicionales del docente: {data.instrucciones_adicionales}\n"
@@ -711,30 +788,32 @@ async def generar_plan_completo_ia(
     Usa JSON structured output para garantizar texto limpio sin markdown.
     """
     try:
-        # Verificar PIAR
-        piar = await db.get(PiarORM, piar_id)
+        # Verificar PIAR (con contexto completo del estudiante)
+        piar = await _cargar_piar_completo(db, piar_id)
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
 
-        # --- Obtener contexto institucional para la IA ---
-        result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
-        config = result.scalars().first()
-        contexto_institucion = config.contexto_institucion if config else None
+        # --- Contexto institucional (PEI) y perfil ampliado del estudiante ---
+        config = await _configuracion_sistema(db)
+        contexto_institucional = construir_contexto_institucional(config)
+        tiene_contexto_institucional = contexto_institucional != "Sin contexto institucional registrado."
 
-        # --- Construir bloque de perfil del estudiante ---
-        perfil_parts = [f"Nombre: {data.estudiante_nombre}"]
+        overrides = {
+            "diagnostico_medico": data.diagnostico_medico,
+            "gustos_intereses": data.gustos_intereses,
+            "habilidades_fortalezas": data.habilidades_fortalezas,
+            "caracterizacion_pedagogica": data.caracterizacion_pedagogica,
+            "entorno_familiar_social_economico": data.entorno_familiar_social_economico,
+            "otras_observaciones": data.otras_observaciones,
+        }
+        perfil_parts = []
+        if data.estudiante_nombre:
+            perfil_parts.append(f"Nombre: {data.estudiante_nombre}")
         if data.edad is not None:
             perfil_parts.append(f"Edad: {data.edad} años")
         if data.grado:
             perfil_parts.append(f"Grado escolar: {data.grado}")
-        if data.diagnostico_medico:
-            perfil_parts.append(f"Diagnóstico o condición reportada: {data.diagnostico_medico}")
-        if data.gustos_intereses:
-            perfil_parts.append(f"Gustos, intereses y expectativas familiares: {data.gustos_intereses}")
-        if data.habilidades_fortalezas:
-            perfil_parts.append(f"Habilidades, fortalezas y apoyos actuales: {data.habilidades_fortalezas}")
-        if data.caracterizacion_pedagogica:
-            perfil_parts.append(f"Caracterización pedagógica / Diagnóstico: {data.caracterizacion_pedagogica}")
+        perfil_parts.append(construir_contexto_estudiante(piar, overrides))
         perfil_texto = "\n".join(perfil_parts)
 
         # --- Construir bloque curricular de referencia ---
@@ -763,6 +842,7 @@ El docente ya definió los objetivos de aprendizaje y las barreras identificadas
 
 AREA O ASIGNATURA: {data.area}
 TÍTULO DEL TEMA O TEMÁTICA: {data.titulo_tema if data.titulo_tema else 'No especificado'}
+OBJETIVOS / PROPÓSITOS DE APRENDIZAJE: {data.objetivos_propositos if data.objetivos_propositos else 'No especificados'}
 
 PERFIL DEL ESTUDIANTE:
 {perfil_texto}
@@ -773,11 +853,11 @@ BARRERAS IDENTIFICADAS POR EL DOCENTE EN ESTE CONTEXTO:
 REFERENCIA CURRICULAR (para contexto de los ajustes):
 {curricular_texto}{instrucciones_extra}
 {("""
-CONTEXTO INSTITUCIONAL:
-""" + contexto_institucion + """
+CONTEXTO INSTITUCIONAL (PEI):
+""" + contexto_institucional + """
 
 IMPORTANTE SOBRE EL CONTEXTO INSTITUCIONAL: Los ajustes razonables que propongas deben ser realistas y viables dentro del contexto real de esta institución. No sugieras recursos tecnológicos, infraestructura, personal especializado o apoyos externos que no estén disponibles en este entorno específico. Por ejemplo: si la institución es rural y tiene conectividad limitada, no propongas estrategias que dependan de internet de alta velocidad, laboratorios especializados o equipos sofisticados. Adapta tus sugerencias a los recursos y posibilidades reales del entorno escolar descrito.
-""") if contexto_institucion else ""}
+""") if tiene_contexto_institucional else ""}
 
 MARCO NORMATIVO A CONSIDERAR PARA LOS AJUSTES:
 - Decreto 1421 de 2017 (Inclusión y Ajustes Razonables): Proponer adaptaciones eficaces basadas en las necesidades específicas del estudiante, promoviendo la máxima autonomía y permanencia dentro del aula regular junto a sus pares, sin segregación.
@@ -1088,104 +1168,6 @@ async def delete_ajuste_razonable(
         db=db,
         entidad_tipo="ajuste_razonable",
         entidad_id=ajuste_id,
-        piar_id=piar_id,
-        accion="eliminar",
-        usuario_id=current_user.id,
-        datos_anteriores=datos_antes,
-    )
-
-    return None
-
-@router.post("/{piar_id}/pmi", response_model=RecomendacionPMIResponse)
-async def add_recomendacion_pmi(
-    piar_id: uuid.UUID,
-    data: RecomendacionPMICreate,
-    current_user: CurrentUser,
-    db: AsyncSession = Depends(get_db)
-):
-    """Crea una recomendación PMI asociada a un actor específico."""
-    piar = await db.get(PiarORM, piar_id)
-    if not piar:
-        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-
-    nueva_rec = RecomendacionPMIORM(
-        piar_id=piar_id,
-        actor=data.actor,
-        acciones=data.acciones,
-        estrategias_implementar=data.estrategias_implementar
-    )
-    db.add(nueva_rec)
-    await db.commit()
-    await db.refresh(nueva_rec)
-
-    await registrar_cambio(
-        db=db,
-        entidad_tipo="recomendacion_pmi",
-        entidad_id=nueva_rec.id,
-        piar_id=piar_id,
-        accion="crear",
-        usuario_id=current_user.id,
-        datos_nuevos=serializar_pmi(nueva_rec),
-    )
-
-    return nueva_rec
-
-@router.put("/{piar_id}/pmi/{pmi_id}", response_model=RecomendacionPMIResponse)
-async def update_recomendacion_pmi(
-    piar_id: uuid.UUID,
-    pmi_id: uuid.UUID,
-    data: RecomendacionPMICreate,
-    current_user: CurrentUser,
-    db: AsyncSession = Depends(get_db)
-):
-    """Modifica una recomendación PMI existente."""
-    rec = await db.get(RecomendacionPMIORM, pmi_id)
-    if not rec or rec.piar_id != piar_id:
-        raise HTTPException(status_code=404, detail="Recomendación PMI no encontrada en este PIAR.")
-
-    datos_antes = serializar_pmi(rec)
-    rec.actor = data.actor
-    rec.acciones = data.acciones
-    rec.estrategias_implementar = data.estrategias_implementar
-
-    await db.commit()
-    await db.refresh(rec)
-
-    await registrar_cambio(
-        db=db,
-        entidad_tipo="recomendacion_pmi",
-        entidad_id=rec.id,
-        piar_id=piar_id,
-        accion="modificar",
-        usuario_id=current_user.id,
-        datos_anteriores=datos_antes,
-        datos_nuevos=serializar_pmi(rec),
-    )
-
-    return rec
-
-@router.delete("/{piar_id}/pmi/{pmi_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_recomendacion_pmi(
-    piar_id: uuid.UUID,
-    pmi_id: uuid.UUID,
-    current_user: CurrentUser,
-    db: AsyncSession = Depends(get_db)
-):
-    """Elimina una recomendación PMI."""
-    rec = await db.get(RecomendacionPMIORM, pmi_id)
-    if not rec or rec.piar_id != piar_id:
-        raise HTTPException(status_code=404, detail="Recomendación PMI no encontrada en este PIAR.")
-
-    datos_antes = serializar_pmi(rec)
-    pmi_id = rec.id
-
-    await db.delete(rec)
-    await db.commit()
-
-    await registrar_cambio(
-        db=db,
-        entidad_tipo="recomendacion_pmi",
-        entidad_id=pmi_id,
         piar_id=piar_id,
         accion="eliminar",
         usuario_id=current_user.id,

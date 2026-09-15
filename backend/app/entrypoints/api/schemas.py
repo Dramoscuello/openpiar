@@ -530,15 +530,6 @@ class AjustePuntuacionRequest(BaseModel):
     puntuacion: int = Field(..., ge=1, le=5)
     comentario: Optional[str] = None
 
-class RecomendacionPMICreate(BaseModel):
-    actor: Literal['Familia', 'Docentes', 'Directivos', 'Administrativos', 'Pares']
-    acciones: str = Field(..., min_length=2)
-    estrategias_implementar: str = Field(..., min_length=2)
-
-class RecomendacionPMIResponse(RecomendacionPMICreate, BaseResponse):
-    id: uuid.UUID
-    piar_id: uuid.UUID
-
 class PiarCreate(BaseModel):
     estudiante_id: uuid.UUID
     anio_lectivo: int = Field(..., ge=2020)
@@ -641,7 +632,6 @@ class PiarResponse(PiarCreate, BaseResponse):
     version_actual: int = 0
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
     ajustes_razonables: list[AjusteRazonableConEvidenciasResponse] = Field(default_factory=list)
-    recomendaciones_pmi: list[RecomendacionPMIResponse] = Field(default_factory=list)
     acta_acuerdo: Optional[ActaAcuerdoResponse] = None
     participantes: list[PiarParticipanteResponse] = Field(default_factory=list)
     asignaturas_estado: list[PiarAsignaturaResponse] = Field(default_factory=list)
@@ -659,6 +649,7 @@ class GenerarPlanCompletoRequest(BaseModel):
     """Payload para generar un plan de ajuste razonable completo por área usando IA."""
     area: str
     titulo_tema: Optional[str] = None
+    objetivos_propositos: Optional[str] = None
     # Datos del estudiante
     estudiante_nombre: str
     grado: Optional[str] = None
@@ -668,6 +659,8 @@ class GenerarPlanCompletoRequest(BaseModel):
     gustos_intereses: Optional[str] = None
     habilidades_fortalezas: Optional[str] = None
     caracterizacion_pedagogica: Optional[str] = None
+    entorno_familiar_social_economico: Optional[str] = None
+    otras_observaciones: Optional[str] = None
     # Malla curricular de referencia
     dba_referencia: Optional[str] = None
     ebc_referencia: Optional[str] = None

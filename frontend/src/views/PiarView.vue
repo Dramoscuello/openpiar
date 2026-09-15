@@ -67,11 +67,17 @@
     <!-- Main Workspace -->
     <div v-else class="flex-1 flex flex-col overflow-hidden">
       <div v-if="completitud" class="flex-shrink-0 px-lg py-3 bg-surface-container-lowest border-b border-outline-variant/30 space-y-3">
-        <PiarCompletionPanel :value="completitud" :loading="workflowLoading" @open="abrirSeccionPiar" />
+        <PiarCompletionPanel
+          :value="completitud"
+          :loading="workflowLoading"
+          :pasos-habilitados="isDirectorOrAdmin ? undefined : ['ajustes']"
+          @open="abrirSeccionPiar"
+        />
         <PiarExportPanel
           :estado="activePiar.estado"
           :version-actual="activePiar.version_actual || 0"
           :puede-finalizar="completitud.puede_exportar_final"
+          :puede-gestionar="isDirectorOrAdmin"
           :busy="isFirmando"
           @draft="descargarBorrador"
           @final="descargarFinal"
@@ -98,19 +104,11 @@
         </button>
         <button 
           v-if="isDirectorOrAdmin"
-          @click="activeTab = 'pmi'" 
-          :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'pmi' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
-        >
-          <span class="material-symbols-outlined text-[20px]">groups</span>
-          3. Recomendaciones PMI
-        </button>
-        <button 
-          v-if="isDirectorOrAdmin"
           @click="activeTab = 'acta'" 
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'acta' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
           <span class="material-symbols-outlined text-[20px]">assignment_turned_in</span>
-          4. Acta de acuerdo (Anexo 3)
+          3. Acta de acuerdo (Anexo 3)
         </button>
         <button 
           v-if="isDirectorOrAdmin"
@@ -118,7 +116,7 @@
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'historial' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
           <span class="material-symbols-outlined text-[20px]">history</span>
-          5. Historial de cambios
+          4. Historial de cambios
         </button>
       </div>
 
@@ -764,136 +762,7 @@
           </div>
         </div>
 
-        <!-- TAB 3: RECOMENDACIONES PMI -->
-        <div v-if="activeTab === 'pmi' && isDirectorOrAdmin" class="grid grid-cols-12 gap-lg items-start">
-          <!-- Formulario de ingreso PMI (5 cols) -->
-          <div class="col-span-12 lg:col-span-5 space-y-md">
-            <section :class="['glass-card p-md border transition-all', isEditingPMI ? 'border-secondary-container shadow-md shadow-secondary/5' : 'border-outline-variant/30']">
-              <div class="flex justify-between items-center border-b border-outline-variant/30 pb-xs mb-sm">
-                <h3 class="font-headline-md font-bold flex items-center gap-2" :class="isEditingPMI ? 'text-secondary-container' : 'text-primary'">
-                  <span class="material-symbols-outlined">{{ isEditingPMI ? 'edit_square' : 'add_circle' }}</span>
-                  {{ isEditingPMI ? 'Editar Recomendación' : 'Nueva Recomendación' }}
-                </h3>
-                <button 
-                  v-if="isEditingPMI"
-                  @click="cancelarEdicionPMI"
-                  class="text-label-sm text-outline hover:text-error font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <span class="material-symbols-outlined text-[16px]">cancel</span> Cancelar
-                </button>
-              </div>
-
-              <div class="space-y-sm">
-                <!-- Actor -->
-                <div class="flex flex-col gap-1">
-                  <label class="font-label-md text-label-sm text-on-surface-variant">Actor del Sistema Educativo</label>
-                  <select 
-                    v-model="pmiForm.actor" 
-                    class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all font-semibold"
-                  >
-                    <option v-for="actorOpt in ACTORES_PMI" :key="actorOpt" :value="actorOpt">{{ actorOpt }}</option>
-                  </select>
-                </div>
-
-                <!-- Acciones -->
-                <div class="flex flex-col gap-1">
-                  <label class="font-label-md text-label-sm text-on-surface-variant">Acciones a realizar</label>
-                  <textarea 
-                    v-model="pmiForm.acciones"
-                    class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-24"
-                    placeholder="Ej: Adecuar rampas físicas de la sede escolar o gestionar software especializado."
-                  ></textarea>
-                </div>
-
-                <!-- Estrategias a implementar -->
-                <div class="flex flex-col gap-1">
-                  <label class="font-label-md text-label-sm text-on-surface-variant">Estrategias a implementar</label>
-                  <textarea 
-                    v-model="pmiForm.estrategias"
-                    class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-24"
-                    placeholder="Ej: Capacitación técnica a docentes de informática, acompañamiento semanal."
-                  ></textarea>
-                </div>
-              </div>
-
-              <!-- Action buttons -->
-              <div class="flex justify-end gap-xs pt-md mt-sm border-t border-outline-variant/30">
-                <button 
-                  v-if="isEditingPMI"
-                  @click="cancelarEdicionPMI"
-                  class="px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant font-bold rounded-lg transition-all cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  @click="guardarPMI"
-                  :disabled="isSavingPMI || !pmiForm.acciones || !pmiForm.estrategias"
-                  class="px-5 py-2.5 bg-primary text-on-primary font-bold rounded-lg flex items-center gap-1 hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-                >
-                  <span class="material-symbols-outlined text-[20px]">
-                    {{ isSavingPMI ? 'progress_activity' : 'playlist_add_check' }}
-                  </span>
-                  {{ isEditingPMI ? 'Guardar Cambios' : 'Agregar Recomendación' }}
-                </button>
-              </div>
-            </section>
-          </div>
-
-          <!-- Recomendaciones por Actor (7 cols) -->
-          <div class="col-span-12 lg:col-span-7 space-y-sm">
-            <h3 class="text-headline-md font-bold text-on-surface flex items-center gap-2 mb-xs">
-              <span class="material-symbols-outlined text-primary">view_cozy</span>
-              Articulación con el Plan de Mejoramiento Institucional (PMI)
-            </h3>
-
-            <!-- Grouped by Actor -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
-              <div 
-                v-for="actorGroup in ACTORES_PMI" 
-                :key="actorGroup"
-                class="bg-surface border border-outline-variant/30 rounded-2xl p-md flex flex-col min-h-48"
-              >
-                <div class="flex items-center justify-between border-b border-outline-variant/20 pb-xs mb-sm">
-                  <span class="font-headline-md font-bold text-primary text-sm uppercase tracking-wide flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[18px]">group</span>
-                    {{ actorGroup }}
-                  </span>
-                  <span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
-                    {{ getPMIForActor(actorGroup).length }}
-                  </span>
-                </div>
-
-                <div class="flex-1 space-y-sm overflow-y-auto max-h-60 pr-xs">
-                  <p v-if="getPMIForActor(actorGroup).length === 0" class="text-center text-outline text-xs py-8">Sin recomendaciones cargadas.</p>
-                  <div 
-                    v-else
-                    v-for="rec in getPMIForActor(actorGroup)" 
-                    :key="rec.id"
-                    class="bg-surface-container-low p-3 rounded-xl border border-outline-variant/20 flex flex-col gap-1 relative group"
-                  >
-                    <div class="absolute top-2 right-2 flex gap-xs lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button @click="cargarPMIParaEdicion(rec)" class="text-outline hover:text-primary transition-colors cursor-pointer" title="Editar">
-                        <span class="material-symbols-outlined text-[16px]">edit</span>
-                      </button>
-                      <button @click="eliminarPMI(rec.id)" class="text-outline hover:text-error transition-colors cursor-pointer" title="Eliminar">
-                        <span class="material-symbols-outlined text-[16px]">delete</span>
-                      </button>
-                    </div>
-
-                    <div class="pr-6">
-                      <p class="text-[11px] font-bold text-on-surface-variant uppercase">Acción:</p>
-                      <p class="text-body-md text-on-surface leading-tight font-medium">{{ rec.acciones }}</p>
-                      <p class="text-[11px] font-bold text-on-surface-variant uppercase mt-1">Estrategia:</p>
-                      <p class="text-body-md text-on-surface-variant leading-tight">{{ rec.estrategias_implementar }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 4: ACTA DE ACUERDO -->
+        <!-- TAB 3: ACTA DE ACUERDO -->
         <div v-if="activeTab === 'acta' && isDirectorOrAdmin" class="grid grid-cols-12 gap-lg items-start">
           <!-- Columna izquierda: Formularios de compromisos -->
           <div class="col-span-8 space-y-md">
@@ -1800,7 +1669,7 @@ async function eliminarEvidencia(evidenciaId: string) {
   }
 }
 
-// TAB 5: Historial de cambios
+// TAB 4: Historial de cambios
 const historialItems = ref<any[]>([])
 const isLoadingHistorial = ref(false)
 const isDownloadingHistorialPDF = ref(false)
@@ -1808,7 +1677,6 @@ const isDownloadingHistorialPDF = ref(false)
 const etiquetaEntidad = (tipo: string) => {
   const mapa: Record<string, string> = {
     ajuste_razonable: 'Ajuste Razonable',
-    recomendacion_pmi: 'Recomendación PMI',
     acta_acuerdo: 'Acta de Acuerdo',
     caracteristicas_estudiante: 'Características',
     compromiso_casa: 'Compromiso Casa',
@@ -1891,7 +1759,7 @@ const entornoFamiliarSocialEconomico = ref('')
 const otrasObservaciones = ref('')
 const isSavingCarac = ref(false)
 
-// TAB 4: Acta de Acuerdo (Anexo 3)
+// TAB 3: Acta de Acuerdo (Anexo 3)
 const actaForm = ref({
   fechaFirma: '',
   compromisosAula: '',
@@ -2261,17 +2129,6 @@ const searchArea = computed(() => {
   
   return 'Matemáticas' // fallback
 })
-
-// TAB 3: Formulario PMI
-const ACTORES_PMI = ['Familia', 'Docentes', 'Directivos', 'Administrativos', 'Pares'] as const
-const pmiForm = ref({
-  id: '',
-  actor: 'Familia' as typeof ACTORES_PMI[number],
-  acciones: '',
-  estrategias: ''
-})
-const isEditingPMI = computed(() => !!pmiForm.value.id)
-const isSavingPMI = ref(false)
 
 // Notificaciones flotantes
 const successMessage = ref('')
@@ -2647,6 +2504,7 @@ async function generarConIA() {
     const payload = {
       area: ajusteForm.value.area,
       titulo_tema: ajusteForm.value.titulo_tema || null,
+      objetivos_propositos: ajusteForm.value.objetivos || null,
       estudiante_nombre: `${estudiante.value?.nombres || ''} ${estudiante.value?.apellidos || ''}`.trim(),
       grado: estudiante.value?.grado || null,
       edad: estudiante.value?.edad || null,
@@ -2654,6 +2512,8 @@ async function generarConIA() {
       gustos_intereses: activePiar.value.caracteristicas?.descripcion_gustos_intereses || null,
       habilidades_fortalezas: activePiar.value.caracteristicas?.descripcion_habilidades || null,
       caracterizacion_pedagogica: activePiar.value.caracteristicas?.caracterizacion_pedagogica || null,
+      entorno_familiar_social_economico: activePiar.value.caracteristicas?.entorno_familiar_social_economico || null,
+      otras_observaciones: activePiar.value.caracteristicas?.otras_observaciones || null,
       dba_referencia: dbaTexto,
       ebc_referencia: ebcTexto,
       barreras_evidenciadas: ajusteForm.value.barreras,
@@ -2744,71 +2604,6 @@ function seleccionarCurriculo(enunciado: string) {
   const prefijo = searchType.value === 'dba' ? `DBA (${formatGrado(searchGrade.value)}): ` : 'EBC: '
   ajusteForm.value.objetivos = prefijo + enunciado
   showCurriculumSearch.value = false
-}
-
-// CRUD Tab 3: Recomendaciones PMI
-async function guardarPMI() {
-  isSavingPMI.value = true
-  try {
-    if (isEditingPMI.value) {
-      await piarStore.updateRecomendacionPMI(
-        pmiForm.value.id,
-        pmiForm.value.actor,
-        pmiForm.value.acciones,
-        pmiForm.value.estrategias
-      )
-      showToast("Recomendación PMI modificada correctamente.")
-    } else {
-      await piarStore.addRecomendacionPMI(
-        pmiForm.value.actor,
-        pmiForm.value.acciones,
-        pmiForm.value.estrategias
-      )
-      showToast("Recomendación PMI agregada a la lista.")
-    }
-    cancelarEdicionPMI()
-  } catch (e: any) {
-    showToast(e.message || "Error al registrar la recomendación PMI.", true)
-  } finally {
-    isSavingPMI.value = false
-  }
-}
-
-function cargarPMIParaEdicion(rec: any) {
-  pmiForm.value = {
-    id: rec.id,
-    actor: rec.actor,
-    acciones: rec.acciones,
-    estrategias: rec.estrategias_implementar
-  }
-}
-
-function cancelarEdicionPMI() {
-  pmiForm.value = {
-    id: '',
-    actor: 'Familia',
-    acciones: '',
-    estrategias: ''
-  }
-}
-
-async function eliminarPMI(pmiId: string) {
-  if (confirm("¿Deseas eliminar esta recomendación de mejoramiento institucional?")) {
-    try {
-      await piarStore.deleteRecomendacionPMI(pmiId)
-      showToast("Recomendación PMI eliminada.")
-      if (pmiForm.value.id === pmiId) {
-        cancelarEdicionPMI()
-      }
-    } catch (e: any) {
-      showToast("Error al eliminar la recomendación PMI.", true)
-    }
-  }
-}
-
-function getPMIForActor(actor: string) {
-  if (!activePiar.value || !activePiar.value.recomendaciones_pmi) return []
-  return activePiar.value.recomendaciones_pmi.filter((r: any) => r.actor === actor)
 }
 </script>
 

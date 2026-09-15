@@ -31,6 +31,8 @@ def test_contratos_principales_del_flujo_piar():
     assert "get" in paths["/api/v1/piars/{piar_id}/pdf"]
     assert "post" in paths["/api/v1/piars/{piar_id}/finalizar"]
     assert "post" in paths["/api/v1/piars/{piar_id}/reabrir"]
+    assert not any("/pmi" in path for path in paths)
+    assert "recomendaciones_pmi" not in schema["components"]["schemas"]["PiarResponse"]["properties"]
 
     crear = schema["components"]["schemas"]["CrearEstudianteRequest"]
     assert set(crear["required"]) == {
@@ -59,6 +61,10 @@ def test_ajuste_e_ia_aceptan_ausencia_de_campos_ocultos():
     )
     assert generacion.dba_referencia is None
     assert generacion.ebc_referencia is None
+    for campo in (
+        "objetivos_propositos", "entorno_familiar_social_economico", "otras_observaciones",
+    ):
+        assert getattr(generacion, campo) is None
 
 
 def test_permisos_de_asignatura_y_bloqueo_de_version_final():

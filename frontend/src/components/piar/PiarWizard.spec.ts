@@ -99,4 +99,53 @@ describe('asistente PIAR', () => {
     expect(wrapper.find('input').exists()).toBe(false)
     expect(wrapper.findAll('button')).toHaveLength(0)
   })
+
+  it('muestra los siete pasos pero solo permite abrir el de ajustes para docentes no directores', async () => {
+    const sieteSecciones: PiarCompletitud = {
+      ...completitud,
+      secciones: [
+        { codigo: 'general', nombre: 'Información general', completa: false, faltantes: ['Nombres'] },
+        { codigo: 'salud', nombre: 'Entorno salud', completa: true, faltantes: [] },
+        { codigo: 'hogar', nombre: 'Entorno hogar', completa: false, faltantes: ['Cuidador'] },
+        { codigo: 'trayectoria', nombre: 'Entorno educativo', completa: false, faltantes: ['Último grado'] },
+        { codigo: 'caracterizacion', nombre: 'Caracterización', completa: false, faltantes: ['Gustos'] },
+        { codigo: 'ajustes', nombre: 'Matriz de ajustes razonables', completa: false, faltantes: ['Matemáticas'] },
+        { codigo: 'acta', nombre: 'Acta de acuerdo', completa: false, faltantes: ['Firmas'] },
+      ],
+    }
+    const wrapper = mount(PiarCompletionPanel, {
+      props: { value: sieteSecciones, pasosHabilitados: ['ajustes'] },
+    })
+
+    const botones = wrapper.findAll('button')
+    expect(botones).toHaveLength(7)
+    botones.forEach((boton, index) => {
+      if (index === 5) {
+        expect(boton.attributes('disabled')).toBeUndefined()
+      } else {
+        expect(boton.attributes('disabled')).toBeDefined()
+      }
+    })
+
+    await botones[5]!.trigger('click')
+    expect(wrapper.emitted('open')).toEqual([['ajustes']])
+    await botones[0]!.trigger('click')
+    expect(wrapper.emitted('open')).toEqual([['ajustes']])
+  })
+
+  it('oculta borrador y finalización a docentes no directores y conserva la descarga final', async () => {
+    const borrador = mount(PiarExportPanel, {
+      props: { estado: 'borrador', versionActual: 0, puedeFinalizar: true, puedeGestionar: false },
+    })
+    expect(borrador.findAll('button')).toHaveLength(0)
+
+    const firmado = mount(PiarExportPanel, {
+      props: { estado: 'firmado', versionActual: 2, puedeFinalizar: true, puedeGestionar: false },
+    })
+    const botones = firmado.findAll('button')
+    expect(botones).toHaveLength(1)
+    expect(botones[0]!.text()).toContain('Descargar PDF final v2')
+    await botones[0]!.trigger('click')
+    expect(firmado.emitted('final')).toHaveLength(1)
+  })
 })

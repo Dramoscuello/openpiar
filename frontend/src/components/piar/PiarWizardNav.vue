@@ -2,8 +2,12 @@
 <script setup lang="ts">
 import type { PiarSeccionCompletitud } from '../../types/piar'
 
-defineProps<{ secciones: PiarSeccionCompletitud[] }>()
+const props = defineProps<{ secciones: PiarSeccionCompletitud[]; pasosHabilitados?: string[] }>()
 const emit = defineEmits<{ select: [codigo: string] }>()
+
+function habilitado(codigo: string): boolean {
+  return !props.pasosHabilitados || props.pasosHabilitados.includes(codigo)
+}
 </script>
 
 <template>
@@ -12,7 +16,8 @@ const emit = defineEmits<{ select: [codigo: string] }>()
       v-for="(seccion, index) in secciones"
       :key="seccion.codigo"
       type="button"
-      class="rounded-xl border px-3 py-2 text-left transition-colors"
+      :disabled="!habilitado(seccion.codigo)"
+      class="rounded-xl border px-3 py-2 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       :class="seccion.completa ? 'border-green-600/30 bg-green-600/10' : 'border-amber-600/30 bg-amber-500/10'"
       @click="emit('select', seccion.codigo)"
     >

@@ -21,7 +21,6 @@ from app.adapters.db.models import (
     CargaAcademicaORM,
     AsignaturaORM,
     EvidenciaAjusteORM,
-    RecomendacionPMIORM,
 )
 from app.adapters.db.session import get_db
 from app.entrypoints.api.schemas import (
@@ -183,7 +182,6 @@ async def get_acta_pdf_familia(
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias).selectinload(EvidenciaAjusteORM.creador),
-            selectinload(PiarORM.recomendaciones_pmi),
             selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
         )
         .order_by(PiarORM.created_at.desc())

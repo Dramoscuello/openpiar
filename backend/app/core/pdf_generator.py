@@ -746,67 +746,6 @@ def generate_acta_pdf(piar: PiarORM, config: Optional[ConfiguracionSistemaORM], 
         current_ajustes = periodos_dict.get(p.id, [])
         story.append(build_matrix_page(p_name, current_ajustes))
 
-    story.append(PageBreak())
-    story.extend(get_header_table("ANEXO 2 (Mejoramiento)", "RECOMENDACIONES PARA EL PLAN DE MEJORAMIENTO INSTITUCIONAL (PMI)"))
-    story.append(Paragraph("7. RECOMENDACIONES PARA LA ELIMINACIÓN DE BARRERAS (PMI)", section_heading_style))
-    
-    rec_pmi = piar.recomendaciones_pmi
-    standard_actors = [
-        "Familia, cuidadores o con quienes vive",
-        "Docentes",
-        "Directivos",
-        "Administrativos",
-        "Pares (Sus compañeros)"
-    ]
-    
-    pmi_by_actor = {actor.lower(): [] for actor in standard_actors}
-    
-    for r in rec_pmi:
-        act_lower = r.actor.lower() if r.actor else ""
-        for std_actor in standard_actors:
-            if act_lower in std_actor.lower() or std_actor.lower() in act_lower:
-                pmi_by_actor[std_actor.lower()].append(r)
-                break
-                
-    pmi_table_data = [
-        [
-            Paragraph("ACTORES", table_header_style),
-            Paragraph("ACCIONES", table_header_style),
-            Paragraph("ESTRATEGIAS A IMPLEMENTAR", table_header_style)
-        ]
-    ]
-    
-    for actor in standard_actors:
-        recs = pmi_by_actor[actor.lower()]
-        if not recs:
-            pmi_table_data.append([
-                Paragraph(f"<b>{actor}</b>", table_cell_bold_style),
-                Paragraph("________________________________________", table_cell_style),
-                Paragraph("________________________________________", table_cell_style)
-            ])
-        else:
-            acciones = []
-            estrategias = []
-            for r in recs:
-                acciones.append(r.acciones)
-                estrategias.append(r.estrategias_implementar)
-            pmi_table_data.append([
-                Paragraph(f"<b>{actor}</b>", table_cell_bold_style),
-                Paragraph("<br/><br/>".join(acciones), table_cell_style),
-                Paragraph("<br/><br/>".join(estrategias), table_cell_style)
-            ])
-            
-    pmi_table = Table(pmi_table_data, colWidths=[130, 201, 201])
-    pmi_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), primary_color),
-        ('GRID', (0,0), (-1,-1), 0.5, border_color),
-        ('PADDING', (0,0), (-1,-1), 6),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, bg_light]),
-    ]))
-    story.append(pmi_table)
-    story.append(Spacer(1, 10))
-    
     val_firmas = []
     val_firmas.append(Paragraph("<b>Firmas del equipo de valoración pedagógica y diseño del PIAR:</b>", ParagraphStyle('ValTitle', parent=body_style, fontName='Helvetica-Bold', spaceBefore=5, spaceAfter=10)))
     
@@ -1272,7 +1211,6 @@ def generate_auditoria_pdf(
 
     etiquetas = {
         "ajuste_razonable": "Ajuste Razonable",
-        "recomendacion_pmi": "Recomendación PMI",
         "acta_acuerdo": "Acta de Acuerdo",
         "caracteristicas_estudiante": "Características del Estudiante",
         "compromiso_casa": "Compromiso Casa",
@@ -1535,7 +1473,11 @@ def generate_piar_oficial_pdf(
             < (estudiante.fecha_nacimiento.month, estudiante.fecha_nacimiento.day)
         )
     edad_str = f"{edad} a\u00f1os" if edad is not None else ""
-    fecha_creacion = piar.fecha_creacion.strftime("%d/%m/%Y") if piar.fecha_creacion else ""
+    fecha_firma = (
+        acta.fecha_firma.strftime("%d/%m/%Y")
+        if (acta and acta.fecha_firma) else ""
+    )
+    fecha_diligenciamiento = fecha_firma or "DD/MM/AAAA"
     participantes = list(getattr(piar, "participantes", None) or [])
     docentes_texto = piar.docentes_elaboran or ""
     if participantes:
@@ -1571,7 +1513,7 @@ def generate_piar_oficial_pdf(
         story.append(pendiente)
         story.append(Spacer(1, 6))
     data_top = [
-        [_label_cell("Fecha y Lugar de Diligenciamiento"), P(f"{fecha_creacion}  {direccion_institucion}".strip(), sty_c)],
+        [_label_cell("Fecha y Lugar de Diligenciamiento"), P(f"{fecha_diligenciamiento}  {direccion_institucion}".strip(), sty_c)],
         [_label_cell("Nombre y rol de la Persona que diligencia"), P(responsable_diligenciamiento, sty_c)],
         [_label_cell("Instituci\u00f3n Educativa"), P(inst_nombre, sty_c)],
     ]
@@ -1981,7 +1923,7 @@ def generate_piar_oficial_pdf(
         for docente in docentes_agrupados.values()
     ) or docentes_texto
     anexo2_meta = [
-        [P("Fecha de elaboración", sty_cb), P(fecha_creacion, sty_c),
+        [P("Fecha de elaboración", sty_cb), P(fecha_diligenciamiento, sty_c),
          P("Institución educativa", sty_cb), P(inst_nombre, sty_c)],
         [P("Sede", sty_cb), P(sede_nombre, sty_c),
          P("Grado", sty_cb), P(grado_nombre, sty_c)],
@@ -2076,21 +2018,38 @@ def generate_piar_oficial_pdf(
         areas_agrupadas.setdefault(aj.area, []).append(aj)
 
     def _fragmentar(texto, limite=480):
-        """Divide celdas extensas para que ReportLab pueda paginar la matriz."""
-        palabras = str(texto or "").split()
-        if not palabras:
+        """Divide celdas extensas para que ReportLab pueda paginar la matriz,
+        conservando los saltos de línea explícitos del contenido."""
+        bloques = [linea.strip() for linea in str(texto or "").split("\n")]
+        bloques = [linea for linea in bloques if linea]
+        if not bloques:
             return [""]
-        partes, actual = [], []
-        longitud = 0
-        for palabra in palabras:
-            if actual and longitud + len(palabra) + 1 > limite:
-                partes.append(" ".join(actual))
-                actual, longitud = [], 0
-            actual.append(palabra)
-            longitud += len(palabra) + 1
+
+        fragmentos: list[str] = []
+        actual = ""
+        for bloque in bloques:
+            piezas: list[str] = []
+            palabras: list[str] = []
+            longitud = 0
+            for palabra in bloque.split():
+                if palabras and longitud + len(palabra) + 1 > limite:
+                    piezas.append(" ".join(palabras))
+                    palabras, longitud = [], 0
+                palabras.append(palabra)
+                longitud += len(palabra) + 1
+            if palabras:
+                piezas.append(" ".join(palabras))
+
+            for pieza in piezas:
+                candidato = actual + "\n" + pieza if actual else pieza
+                if len(candidato) > limite and actual:
+                    fragmentos.append(actual)
+                    actual = pieza
+                else:
+                    actual = candidato
         if actual:
-            partes.append(" ".join(actual))
-        return partes
+            fragmentos.append(actual)
+        return fragmentos or [""]
 
     aj_rows = [hdr_aj[0], hdr_sub[0]]
     area_idx = 0
@@ -2208,11 +2167,13 @@ def generate_piar_oficial_pdf(
                 rows[1][i] = P(nom, sty_cc)
                 rows[3][i] = P(area, sty_cc)
         if block_num > 0: story.append(Spacer(1, 6))
-        t = Table(rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm], splitByRow=0)
+        t = Table(rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm], splitByRow=0, rowHeights=[None, None, None, None, None, 2*cm])
         t.setStyle(TableStyle([
             ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 9),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-            ('BACKGROUND', (0,0), (-1,0), gris_label), ('BACKGROUND', (1,0), (-1,0), gris_label), ('BACKGROUND', (2,0), (-1,0), gris_label),
+            ('BACKGROUND', (0,0), (-1,0), gris_label),
+            ('BACKGROUND', (0,2), (-1,2), gris_label),
+            ('BACKGROUND', (0,4), (-1,4), gris_label),
             ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
         ]))
         story.append(t)
@@ -2227,11 +2188,13 @@ def generate_piar_oficial_pdf(
         [P("Firma", sty_cc), P("Firma", sty_cc), P("Firma", sty_cc)],
         [P("", sty_cc), P("", sty_cc), P("", sty_cc)],
     ]
-    t_apoyo = Table(apoyo_rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm])
+    t_apoyo = Table(apoyo_rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm], rowHeights=[None, None, None, None, None, 2*cm])
     t_apoyo.setStyle(TableStyle([
         ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 9),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
         ('BACKGROUND', (0,0), (-1,0), gris_label),
+        ('BACKGROUND', (0,2), (-1,2), gris_label),
+        ('BACKGROUND', (0,4), (-1,4), gris_label),
         ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
     ]))
     story.append(t_apoyo)
@@ -2274,25 +2237,35 @@ def generate_piar_oficial_pdf(
         [('BACKGROUND', (0,0), (0,0), gris_label), ('BACKGROUND', (2,0), (2,0), gris_label), ('BACKGROUND', (4,0), (4,0), gris_label)]))
     story.append(Spacer(1, 8))
 
-    story.append(P(u"Seg\u00fan el Decreto 1421 de 2017 la educaci\u00f3n inclusiva es un proceso permanente que reconoce, valora y responde a la diversidad de caracter\u00edsticas, intereses, posibilidades y expectativas de los estudiantes para promover su desarrollo, aprendizaje y participaci\u00f3n, en un ambiente de aprendizaje com\u00fan, sin discriminaci\u00f3n o exclusi\u00f3n.", sty_norm))
-    story.append(P("La inclusi\u00f3n solo es posible cuando se unen los esfuerzos del colegio, el estudiante, docentes, directivos docentes y familias. De ah\u00ed la importancia de formalizar con las firmas, la presente Acta de Acuerdo.", sty_norm))
-    story.append(Spacer(1, 6))
-    story.append(P("El Establecimiento Educativo ha realizado la valoraci\u00f3n pedag\u00f3gica y definido los ajustes razonables que facilitar\u00e1n al estudiante su proceso.", sty_norm))
-    story.append(Spacer(1, 6))
-    story.append(P("La Familia se compromete a cumplir y firmar los compromisos se\u00f1alados en el PIAR y en las actas de acuerdo, para fortalecer los procesos escolares del estudiante y en particular a:", sty_norm))
-    comp_text = acta.compromisos_aula if (acta and acta.compromisos_aula) else "Incluya aqu\u00ed los compromisos espec\u00edficos para implementar en el aula que requieran ampliaci\u00f3n o detalle adicional al incluido en el PIAR."
+    def _celda_acta(contenido):
+        tabla = Table([[contenido]], colWidths=[16.2*cm])
+        tabla.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+            ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 6), ('RIGHTPADDING', (0,0), (-1,-1), 6),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ]))
+        return tabla
 
-    # Tabla compromisos con borde
-    t_comp = Table([[P(comp_text, sty_norm)]], colWidths=[16.2*cm])
-    t_comp.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('LEFTPADDING', (0,0), (-1,-1), 6), ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    story.append(_celda_acta([
+        P(u"Seg\u00fan el Decreto 1421 de 2017 la educaci\u00f3n inclusiva es un proceso permanente que reconoce, valora y responde a la diversidad de caracter\u00edsticas, intereses, posibilidades y expectativas de los estudiantes para promover su desarrollo, aprendizaje y participaci\u00f3n, en un ambiente de aprendizaje com\u00fan, sin discriminaci\u00f3n o exclusi\u00f3n.", sty_norm),
+        P("La inclusi\u00f3n solo es posible cuando se unen los esfuerzos del colegio, el estudiante, docentes, directivos docentes y familias. De ah\u00ed la importancia de formalizar con las firmas, la presente Acta de Acuerdo.", sty_norm),
+        P("El Establecimiento Educativo ha realizado la valoraci\u00f3n pedag\u00f3gica y definido los ajustes razonables que facilitar\u00e1n al estudiante su proceso.", sty_norm),
+        P("La Familia se compromete a cumplir y firmar los compromisos se\u00f1alados en el PIAR y en las actas de acuerdo, para fortalecer los procesos escolares del estudiante y en particular a:", sty_norm),
     ]))
+    story.append(Spacer(1, 6))
+
+    comp_intro = "Incluya aqu\u00ed los compromisos espec\u00edficos para implementar en el aula que requieran ampliaci\u00f3n o detalle adicional al incluido en el PIAR."
+    contenido_comp = [P(comp_intro, sty_norm)]
+    if acta and acta.compromisos_aula and acta.compromisos_aula.strip():
+        contenido_comp.append(Spacer(1, 4))
+        contenido_comp.append(P(acta.compromisos_aula, sty_norm))
+    t_comp = _celda_acta(contenido_comp)
     story.append(t_comp)
     story.append(Spacer(1, 6))
 
-    story.append(P("Y en casa apoyar\u00e1 con las siguientes actividades:", sty_norm))
+    t_casa = _celda_acta([P("Y en casa apoyar\u00e1 con las siguientes actividades:", sty_norm)])
+    story.append(t_casa)
     story.append(Spacer(1, 4))
     act_cols = [5*cm, 7*cm, 5*cm]
     act_hdr = [
@@ -2302,8 +2275,6 @@ def generate_piar_oficial_pdf(
     if acta and acta.compromisos_casa:
         for c in acta.compromisos_casa:
             act_hdr.append([P(c.nombre_actividad or "", sty_c), P(c.descripcion_estrategia or "", sty_c), P(c.frecuencia or "", sty_c)])
-    while len(act_hdr) < 5:
-        act_hdr.append([P("", sty_c), P("", sty_c), P("", sty_c)])
     story.append(_table(act_hdr, act_cols, [('BACKGROUND', (0,0), (-1,0), gris_label)]))
     story.append(Spacer(1, 12))
 

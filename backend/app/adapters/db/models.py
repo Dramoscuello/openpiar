@@ -470,9 +470,6 @@ class PiarORM(Base):
     ajustes_razonables: Mapped[list["AjusteRazonableORM"]] = relationship(
         back_populates="piar", cascade="all, delete-orphan"
     )
-    recomendaciones_pmi: Mapped[list["RecomendacionPMIORM"]] = relationship(
-        back_populates="piar", cascade="all, delete-orphan"
-    )
     acta_acuerdo: Mapped[Optional["ActaAcuerdoORM"]] = relationship(
         back_populates="piar", cascade="all, delete-orphan"
     )
@@ -704,39 +701,6 @@ class PiarVersionORM(Base):
 
 
 # ---------------------------------------------------------------------------
-# Tabla 11: recomendaciones_pmi (Anexo 2 — Sección 7 PMI)
-# ---------------------------------------------------------------------------
-
-class RecomendacionPMIORM(Base):
-    __tablename__ = "recomendaciones_pmi"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
-    )
-    piar_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("piars.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    actor: Mapped[str] = mapped_column(Text, nullable=False)
-    acciones: Mapped[str] = mapped_column(Text, nullable=False)
-    estrategias_implementar: Mapped[str] = mapped_column(Text, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        default=_now, onupdate=_now, server_default=func.now()
-    )
-
-    piar: Mapped["PiarORM"] = relationship(back_populates="recomendaciones_pmi")
-
-    __table_args__ = (
-        CheckConstraint(
-            "actor IN ('Familia', 'Docentes', 'Directivos', 'Administrativos', 'Pares')",
-            name="ck_recomendaciones_actor",
-        ),
-        Index("recomendaciones_pmi_piar_id_idx", piar_id),
-    )
-
-
-# ---------------------------------------------------------------------------
 # Tabla 12: actas_acuerdo (Anexo 3 — Acta legal)
 # ---------------------------------------------------------------------------
 
@@ -839,7 +803,7 @@ class AuditoriaCambioORM(Base):
     __table_args__ = (
         CheckConstraint(
             "entidad_tipo IN ("
-            "'ajuste_razonable', 'recomendacion_pmi', 'acta_acuerdo', "
+            "'ajuste_razonable', 'acta_acuerdo', "
             "'caracteristicas_estudiante', 'compromiso_casa', 'piar_estado', 'evidencia_ajuste'"
             ")",
             name="ck_auditoria_entidad_tipo",

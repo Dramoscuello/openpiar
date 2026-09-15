@@ -3,7 +3,11 @@
 import type { PiarCompletitud } from '../../types/piar'
 import PiarWizardNav from './PiarWizardNav.vue'
 
-defineProps<{ value: PiarCompletitud; loading?: boolean }>()
+defineProps<{
+  value: PiarCompletitud
+  loading?: boolean
+  pasosHabilitados?: string[]
+}>()
 const emit = defineEmits<{ open: [codigo: string] }>()
 </script>
 
@@ -19,6 +23,10 @@ const emit = defineEmits<{ open: [codigo: string] }>()
     <div class="h-2 rounded-full bg-surface-container-high overflow-hidden">
       <div class="h-full bg-primary transition-all" :style="{ width: `${value.porcentaje}%` }"></div>
     </div>
-    <PiarWizardNav :secciones="value.secciones" @select="emit('open', $event)" />
+    <PiarWizardNav
+      :secciones="value.secciones"
+      :pasos-habilitados="pasosHabilitados"
+      @select="emit('open', $event)"
+    />
   </section>
 </template>

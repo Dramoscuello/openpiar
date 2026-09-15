@@ -5,6 +5,7 @@ from datetime import date
 from io import BytesIO
 from types import SimpleNamespace as NS
 
+import fitz
 import pdfplumber
 import pytest
 from pypdf import PdfReader
@@ -327,3 +328,138 @@ def test_tabla_firmas_incluye_cada_docente_una_vez_con_todas_sus_areas(cantidad_
         (f"Docente {numero:02}", "Matemáticas, Ciencias naturales" + (", Lenguaje" if numero == 0 else ""))
         for numero in range(cantidad_docentes)
     ]
+
+
+def test_matriz_separa_asignatura_tema_y_propositos_con_saltos_de_linea():
+    pdf = generate_piar_oficial_pdf(crear_piar_pdf_texto_extenso(), None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        pagina = next(
+            p for p in documento.pages if "Área/asignatura" in (p.extract_text() or "")
+        )
+        fila = next(
+            fila for tabla in _tablas_pdf(pagina) for fila in tabla.extract()
+            if (fila[0] or "").startswith("1. Matemáticas")
+        )
+    celda = (fila[0] or "").strip()
+    assert celda.startswith("1. Matemáticas\nFracciones\nObjetivos / Propósitos")
+    assert "\nDBA: DBA 1" in celda
+
+
+@pytest.mark.parametrize("con_compromisos", [False, True])
+def test_acta_muestra_textos_en_celdas_y_compromisos_bajo_el_instructivo(con_compromisos):
+    piar = crear_piar_pdf_texto_extenso()
+    if not con_compromisos:
+        piar.acta_acuerdo.compromisos_aula = None
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        pagina = next(
+            p for p in documento.pages if "ACTA DE ACUERDO" in (p.extract_text() or "")
+        )
+        contenido = pagina.extract_text() or ""
+
+        for texto in ("Según el Decreto 1421", "Y en casa apoyará con las siguientes actividades:"):
+            caja = pagina.search(texto)[0]
+            lineas = [
+                linea for linea in pagina.lines
+                if abs(linea["top"] - linea["bottom"]) < 1
+                and linea["x0"] <= caja["x0"] + 2
+                and linea["x1"] >= caja["x1"] - 2
+            ]
+            assert any(linea["top"] < caja["top"] for linea in lineas)
+            assert any(linea["bottom"] > caja["bottom"] for linea in lineas)
+
+    instructivo = "Incluya aquí los compromisos específicos para implementar en el aula"
+    assert instructivo in contenido
+    if con_compromisos:
+        assert "Aplicar los apoyos acordados." in contenido
+        assert contenido.index(instructivo) < contenido.index("Aplicar los apoyos acordados.")
+
+
+def test_celdas_de_firma_docente_tienen_altura_fija_para_firma_fisica():
+    pdf = generate_piar_oficial_pdf(crear_piar_pdf_texto_extenso(), None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        tablas = [tabla for pagina in documento.pages for tabla in _tablas_pdf(pagina)]
+    docente = next(t for t in tablas if t.extract()[0] == ["Nombre docente"] * 3)
+    apoyo = next(t for t in tablas if t.extract()[0][0] == "Nombre docente orientador")
+    for tabla in (docente, apoyo):
+        altura_firma = tabla.rows[5].bbox[3] - tabla.rows[5].bbox[1]
+        assert altura_firma >= 56  # 2 cm de espacio para la firma física.
+
+
+def test_fechas_del_pdf_toman_la_fecha_de_firma_del_acta():
+    piar = crear_piar_pdf_texto_extenso()
+    piar.fecha_creacion = date(2026, 1, 15)
+    piar.acta_acuerdo.fecha_firma = date(2026, 9, 8)
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        paginas = [p.extract_text() or "" for p in documento.pages]
+
+    primera = paginas[0]
+    assert "08/09/2026" in primera
+    assert "15/01/2026" not in primera
+    anexo2 = next(texto for texto in paginas if "ANEXO 2" in texto)
+    assert "08/09/2026" in anexo2
+    assert "15/01/2026" not in anexo2
+    acta = next(texto for texto in paginas if "ACTA DE ACUERDO" in texto)
+    assert "08/09/2026" in acta
+
+
+def test_acta_sin_fecha_de_firma_muestra_patron_ddmmaaaa_en_todas_las_secciones():
+    piar = crear_piar_pdf_texto_extenso()
+    piar.acta_acuerdo.fecha_firma = None
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        paginas = [p.extract_text() or "" for p in documento.pages]
+
+    assert "DD/MM/AAAA" in paginas[0]
+    anexo2 = next(texto for texto in paginas if "ANEXO 2" in texto)
+    assert "DD/MM/AAAA" in anexo2
+    acta = next(texto for texto in paginas if "ACTA DE ACUERDO" in texto)
+    assert "DD/MM/AAAA" in acta
+
+
+@pytest.mark.parametrize("cantidad", [0, 1, 3])
+def test_tabla_casa_no_incluye_filas_vacias(cantidad):
+    piar = crear_piar_pdf_texto_extenso()
+    piar.acta_acuerdo.compromisos_casa = [
+        ns(
+            nombre_actividad=f"Actividad {indice}",
+            descripcion_estrategia=f"Estrategia {indice}",
+            frecuencia="diaria",
+        )
+        for indice in range(cantidad)
+    ]
+    pdf = generate_piar_oficial_pdf(piar, None, [])
+    with pdfplumber.open(BytesIO(pdf)) as documento:
+        pagina = next(
+            p for p in documento.pages if "ACTA DE ACUERDO" in (p.extract_text() or "")
+        )
+        tabla = next(
+            t for t in _tablas_pdf(pagina)
+            if _texto_celda(t.extract()[0][0]) == "Nombre de la Actividad"
+        )
+    assert len(tabla.extract()) == cantidad + 1
+
+
+def test_firmas_marcan_area_y_firma_con_el_estilo_de_titular():
+    pdf = generate_piar_oficial_pdf(crear_piar_pdf_texto_extenso(), None, [])
+    documento = fitz.open(stream=pdf, filetype="pdf")
+    pagina = next(p for p in documento if "Nombre docente" in p.get_text())
+    fondos = pagina.get_drawings()
+
+    def tiene_fondo_gris(rect) -> bool:
+        x = (rect.x0 + rect.x1) / 2
+        y = (rect.y0 + rect.y1) / 2
+        for dibujo in fondos:
+            relleno = dibujo.get("fill")
+            if not relleno or len(relleno) < 3 or not all(abs(c - 0.851) < 0.02 for c in relleno[:3]):
+                continue
+            for item in dibujo["items"]:
+                if item[0] == "re" and item[1].x0 <= x <= item[1].x1 and item[1].y0 <= y <= item[1].y1:
+                    return True
+        return False
+
+    for etiqueta in ("Nombre docente", "Área", "Firma"):
+        coincidencias = pagina.search_for(etiqueta)
+        assert coincidencias
+        assert all(tiene_fondo_gris(rect) for rect in coincidencias)

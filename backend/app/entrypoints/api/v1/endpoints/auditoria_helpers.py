@@ -5,7 +5,7 @@ de PIAR. Centraliza la lógica de logging para mantener limpios los endpoints.
 
 Uso desde un endpoint:
     from app.entrypoints.api.v1.endpoints.auditoria_helpers import (
-        registrar_cambio, serializar_ajuste, serializar_pmi,
+        registrar_cambio, serializar_ajuste,
         serializar_acta, serializar_caracteristicas,
     )
 
@@ -39,7 +39,6 @@ from app.adapters.db.models import (
     ActaAcuerdoORM,
     CaracteristicasEstudianteORM,
     CompromisoCasaORM,
-    RecomendacionPMIORM,
 )
 from app.adapters.db.postgres.auditoria_repository import (
     PostgresAuditoriaRepository,
@@ -64,14 +63,6 @@ def serializar_ajuste(ajuste: AjusteRazonableORM) -> dict:
         "responsable": ajuste.responsable,
         "medios_verificacion": ajuste.medios_verificacion,
         "dba_referencia": ajuste.dba_referencia,
-    }
-
-
-def serializar_pmi(pmi: RecomendacionPMIORM) -> dict:
-    return {
-        "actor": pmi.actor,
-        "acciones": pmi.acciones,
-        "estrategias_implementar": pmi.estrategias_implementar,
     }
 
 
