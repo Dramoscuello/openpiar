@@ -174,17 +174,18 @@ class EstudianteORM(Base):
     fecha_nacimiento: Mapped[date] = mapped_column(Date, nullable=False)
     edad: Mapped[int] = mapped_column(Integer, nullable=False)
     lugar_nacimiento: Mapped[Optional[str]] = mapped_column(Text)
-    departamento_residencia: Mapped[str] = mapped_column(Text, nullable=False)
-    municipio_residencia: Mapped[str] = mapped_column(Text, nullable=False)
-    direccion: Mapped[str] = mapped_column(Text, nullable=False)
-    barrio_vereda: Mapped[str] = mapped_column(Text, nullable=False)
+    departamento_residencia: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    municipio_residencia: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    direccion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    barrio_vereda: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     telefono: Mapped[Optional[str]] = mapped_column(Text)
     correo: Mapped[Optional[str]] = mapped_column(Text)
-    en_centro_proteccion: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    en_centro_proteccion: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     centro_proteccion_donde: Mapped[Optional[str]] = mapped_column(Text)
+    pertenece_grupo_etnico: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     grupo_etnico: Mapped[Optional[str]] = mapped_column(Text)
-    victima_conflicto: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    registro_victima: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    victima_conflicto: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    registro_victima: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     creado_por: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
     )
@@ -261,8 +262,14 @@ class EntornoSaludORM(Base):
         JSONB, nullable=False, server_default="[]"
     )
     tratamiento_medico: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    atenciones_medicas: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
     tratamiento_medico_cual: Mapped[Optional[str]] = mapped_column(Text)
     consume_medicamentos: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    medicamentos_lista: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
     medicamentos_detalle: Mapped[Optional[str]] = mapped_column(Text)
     productos_apoyo_movilidad: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     productos_apoyo_cual: Mapped[Optional[str]] = mapped_column(Text)
@@ -363,9 +370,11 @@ class TrayectoriaEducativaORM(Base):
         unique=True,
         nullable=False,
     )
+    vinculado_sistema_anterior: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     vinculado_educacion_inicial: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     educacion_inicial_instituciones: Mapped[Optional[str]] = mapped_column(Text)
     ultimo_grado_cursado: Mapped[Optional[str]] = mapped_column(Text)
+    estado_ultimo_grado: Mapped[Optional[str]] = mapped_column(Text)
     aprobo_ultimo_grado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     observaciones_trayectoria: Mapped[Optional[str]] = mapped_column(Text)
     recibe_informe_pedagogico: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -377,6 +386,13 @@ class TrayectoriaEducativaORM(Base):
     )
 
     estudiante: Mapped["EstudianteORM"] = relationship(back_populates="trayectoria_educativa")
+
+    __table_args__ = (
+        CheckConstraint(
+            "estado_ultimo_grado IN ('aprobado', 'reprobado', 'sin_terminar') OR estado_ultimo_grado IS NULL",
+            name="ck_trayectorias_estado_ultimo_grado",
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -432,7 +448,11 @@ class PiarORM(Base):
     )
     anio_lectivo: Mapped[int] = mapped_column(Integer, nullable=False)
     fecha_creacion: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
+    lugar_diligenciamiento: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     estado: Mapped[str] = mapped_column(Text, nullable=False, default="borrador")
+    version_actual: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     creado_por: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
     )
@@ -459,6 +479,19 @@ class PiarORM(Base):
     auditoria_entradas: Mapped[list["AuditoriaCambioORM"]] = relationship(
         back_populates="piar", cascade="all, delete-orphan"
     )
+    participantes: Mapped[list["PiarParticipanteORM"]] = relationship(
+        back_populates="piar",
+        cascade="all, delete-orphan",
+        order_by="PiarParticipanteORM.orden",
+    )
+    asignaturas_estado: Mapped[list["PiarAsignaturaORM"]] = relationship(
+        back_populates="piar", cascade="all, delete-orphan"
+    )
+    versiones: Mapped[list["PiarVersionORM"]] = relationship(
+        back_populates="piar",
+        cascade="all, delete-orphan",
+        order_by="PiarVersionORM.numero",
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -466,6 +499,7 @@ class PiarORM(Base):
             name="ck_piars_estado",
         ),
         CheckConstraint("anio_lectivo >= 2020", name="ck_piars_anio"),
+        UniqueConstraint("estudiante_id", "anio_lectivo", name="uq_piars_estudiante_anio"),
         Index("piars_estudiante_id_idx", estudiante_id),
         Index("piars_creado_por_idx", creado_por),
     )
@@ -489,6 +523,12 @@ class CaracteristicasEstudianteORM(Base):
     )
     descripcion_gustos_intereses: Mapped[str] = mapped_column(Text, nullable=False)
     descripcion_habilidades: Mapped[str] = mapped_column(Text, nullable=False)
+    caracterizacion_pedagogica: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    expectativas_estudiante: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    expectativas_familia: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    redes_apoyo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    entorno_familiar_social_economico: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    otras_observaciones: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         default=_now, onupdate=_now, server_default=func.now()
     )
@@ -521,6 +561,11 @@ class AjusteRazonableORM(Base):
         ForeignKey("usuarios.id", ondelete="SET NULL"),
         nullable=True,
     )
+    asignatura_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("asignaturas.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     area: Mapped[str] = mapped_column(Text, nullable=False)
     titulo_tema: Mapped[Optional[str]] = mapped_column(Text)
     objetivos_propositos: Mapped[str] = mapped_column(Text, nullable=False)
@@ -531,6 +576,12 @@ class AjusteRazonableORM(Base):
         Integer, CheckConstraint("puntuacion BETWEEN 1 AND 5", name="ck_ajustes_puntuacion"), nullable=True
     )
     comentario_puntuacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tipo_ajuste: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    apoyo_requerido: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    temporalidad: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    responsable: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    medios_verificacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    dba_referencia: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         default=_now, onupdate=_now, server_default=func.now()
     )
@@ -540,6 +591,7 @@ class AjusteRazonableORM(Base):
     )
     piar: Mapped["PiarORM"] = relationship(back_populates="ajustes_razonables")
     periodo: Mapped["PeriodoAcademicoORM"] = relationship()
+    asignatura: Mapped[Optional["AsignaturaORM"]] = relationship()
     evidencias: Mapped[list["EvidenciaAjusteORM"]] = relationship(
         back_populates="ajuste_razonable", cascade="all, delete-orphan"
     )
@@ -547,6 +599,107 @@ class AjusteRazonableORM(Base):
     __table_args__ = (
         Index("ajustes_razonables_piar_id_idx", piar_id),
         Index("ajustes_razonables_creado_por_idx", creado_por),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Participantes, cobertura académica y versiones inmutables del PIAR
+# ---------------------------------------------------------------------------
+
+class PiarParticipanteORM(Base):
+    __tablename__ = "piar_participantes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    piar_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("piars.id", ondelete="CASCADE"), nullable=False
+    )
+    usuario_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    cargo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    area: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rol_piar: Mapped[str] = mapped_column(Text, nullable=False)
+    orden: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    confirmado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    piar: Mapped["PiarORM"] = relationship(back_populates="participantes")
+    usuario: Mapped[Optional["UsuarioORM"]] = relationship()
+
+    __table_args__ = (
+        CheckConstraint(
+            "rol_piar IN ('director_grupo', 'docente_aula', 'docente_apoyo', 'orientador', 'coordinador')",
+            name="ck_piar_participantes_rol",
+        ),
+        Index("piar_participantes_piar_id_idx", piar_id),
+    )
+
+
+class PiarAsignaturaORM(Base):
+    __tablename__ = "piar_asignaturas"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    piar_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("piars.id", ondelete="CASCADE"), nullable=False
+    )
+    asignatura_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("asignaturas.id", ondelete="RESTRICT"), nullable=False
+    )
+    docente_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    nombre_asignatura: Mapped[str] = mapped_column(Text, nullable=False)
+    area_nombre: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    docente_nombre: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    estado: Mapped[str] = mapped_column(Text, nullable=False, default="pendiente")
+    justificacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        default=_now, onupdate=_now, server_default=func.now()
+    )
+
+    piar: Mapped["PiarORM"] = relationship(back_populates="asignaturas_estado")
+    asignatura: Mapped["AsignaturaORM"] = relationship()
+    docente: Mapped[Optional["UsuarioORM"]] = relationship()
+
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('pendiente', 'con_ajuste', 'no_requiere')",
+            name="ck_piar_asignaturas_estado",
+        ),
+        UniqueConstraint("piar_id", "asignatura_id", name="uq_piar_asignatura"),
+        Index("piar_asignaturas_piar_id_idx", piar_id),
+    )
+
+
+class PiarVersionORM(Base):
+    __tablename__ = "piar_versiones"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    piar_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("piars.id", ondelete="CASCADE"), nullable=False
+    )
+    numero: Mapped[int] = mapped_column(Integer, nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    pdf_archivo: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    creado_por: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(default=_now, server_default=func.now())
+
+    piar: Mapped["PiarORM"] = relationship(back_populates="versiones")
+    creador: Mapped[Optional["UsuarioORM"]] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("piar_id", "numero", name="uq_piar_version_numero"),
+        CheckConstraint("numero > 0", name="ck_piar_version_numero"),
+        Index("piar_versiones_piar_id_idx", piar_id),
     )
 
 

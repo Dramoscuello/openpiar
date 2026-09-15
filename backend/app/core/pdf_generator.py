@@ -3,10 +3,13 @@ import io
 import os
 from datetime import date
 from typing import Any, Optional
+from xml.sax.saxutils import escape
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, PageBreak, Image
+from reportlab.lib.units import cm
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, LongTable, TableStyle, KeepTogether, PageBreak, NextPageTemplate, Image, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from app.adapters.db.models import PiarORM, ConfiguracionSistemaORM, PeriodoAcademicoORM
@@ -1391,3 +1394,879 @@ def generate_auditoria_pdf(
     buffer.close()
     return pdf_bytes
 
+
+
+def generate_piar_oficial_pdf(
+    piar: PiarORM,
+    config: Optional[ConfiguracionSistemaORM],
+    periodos: list[PeriodoAcademicoORM],
+    modo: str = "final",
+    faltantes: Optional[list[str]] = None,
+) -> bytes:
+    """Genera el PDF completo del PIAR en formato oficial MEN Decreto 1421/2017 V15. 08/2020.
+    Portrait para secciones 1-4, landscape para matriz de ajustes."""
+
+    buffer = io.BytesIO()
+
+    frame_portrait = Frame(1.5*cm, 1.5*cm, letter[0] - 3*cm, letter[1] - 5*cm, id='p')
+    tmpl_portrait = PageTemplate(id='Portrait', frames=[frame_portrait],
+                                 onPage=lambda c,d: _header_footer(c, d, letter), pagesize=letter)
+
+    from reportlab.lib.pagesizes import landscape
+    ls_size = landscape(letter)
+    frame_landscape = Frame(1.5*cm, 1.5*cm, ls_size[0] - 3*cm, ls_size[1] - 5*cm, id='l')
+    tmpl_landscape = PageTemplate(id='Landscape', frames=[frame_landscape],
+                                  onPage=lambda c,d: _header_footer(c, d, ls_size), pagesize=ls_size)
+
+    doc = BaseDocTemplate(buffer, pagesize=letter, rightMargin=0, leftMargin=0, topMargin=0, bottomMargin=0)
+    doc.addPageTemplates([tmpl_portrait, tmpl_landscape])
+
+    navy = colors.HexColor('#1F3864')
+    gris_label = colors.HexColor('#D9D9D9')
+    gris_fondo = colors.HexColor('#f0f0f0')
+    gris_header = colors.HexColor('#e0e0e0')
+    gris_footer = colors.grey
+    negro = colors.HexColor('#1a1a1a')
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    logo_path = os.path.join(base_dir, "assets", "logo.png")
+    has_logo = os.path.exists(logo_path)
+
+    def _header_footer(canvas, doc_obj, page_size):
+        canvas.saveState()
+        x_right = page_size[0] - 1.5*cm
+        y_top = page_size[1] - 1*cm
+        # Logo centrado verticalmente en el recuadro
+        if has_logo:
+            canvas.drawImage(logo_path, 1.6*cm, y_top - 38, width=130, height=28, preserveAspectRatio=True, mask='auto')
+        # Texto PIAR / Decreto / 1421/2017 centrado verticalmente
+        canvas.setFont('Helvetica-Bold', 9)
+        canvas.drawRightString(x_right, y_top - 12, "PIAR")
+        canvas.setFont('Helvetica-Bold', 7)
+        canvas.drawRightString(x_right, y_top - 22, "Decreto")
+        canvas.drawRightString(x_right, y_top - 30, "1421/2017")
+        # Borde del header con padding interno
+        canvas.setStrokeColor(colors.black)
+        canvas.setLineWidth(0.5)
+        canvas.rect(1.5*cm, y_top - 52, page_size[0] - 3*cm, 52, stroke=1, fill=0)
+        # Footer
+        canvas.setFont('Helvetica', 7)
+        canvas.setFillColor(gris_footer)
+        canvas.drawCentredString(page_size[0]/2, 1.8*cm,
+            u"V15. 08/2020. Ministerio de Educaci\u00f3n Nacional \u2013 Viceministerio de Educaci\u00f3n Preescolar, B\u00e1sica y Media \u2013 Decreto 1421 de 2017")
+        if modo == "borrador":
+            canvas.saveState()
+            canvas.setFillColor(colors.Color(0.78, 0.78, 0.78, alpha=0.28))
+            canvas.setFont("Helvetica-Bold", 58)
+            canvas.translate(page_size[0] / 2, page_size[1] / 2)
+            canvas.rotate(35)
+            canvas.drawCentredString(0, 0, "BORRADOR")
+            canvas.restoreState()
+        canvas.restoreState()
+
+    styles = getSampleStyleSheet()
+    sty_hdr = ParagraphStyle('h', parent=styles['Normal'], fontSize=10, leading=12, alignment=TA_CENTER, fontName='Helvetica-Bold')
+    sty_banner = ParagraphStyle('banner', parent=sty_hdr, fontSize=12, leading=16, alignment=TA_CENTER,
+                                fontName='Helvetica-Bold', textColor=colors.white, spaceAfter=0, spaceBefore=0)
+    sty_sec = ParagraphStyle('s', parent=styles['Normal'], fontSize=11, leading=13, alignment=TA_LEFT,
+                             fontName='Helvetica-Bold', textColor=negro, spaceAfter=6, leftIndent=8, firstLineIndent=-8)
+    sty_norm = ParagraphStyle('n', parent=styles['Normal'], fontSize=9, leading=11, alignment=TA_LEFT, spaceAfter=4)
+    sty_c = ParagraphStyle('c', parent=styles['Normal'], fontSize=7.5, leading=9.5, alignment=TA_LEFT, spaceAfter=0)
+    sty_cc = ParagraphStyle('cc', parent=styles['Normal'], fontSize=7.5, leading=9.5, alignment=TA_CENTER, spaceAfter=0)
+    sty_cb = ParagraphStyle('cb', parent=sty_c, fontName='Helvetica-Bold')
+    sty_cg = ParagraphStyle('cg', parent=sty_c, fontSize=6.5, leading=8, textColor=colors.HexColor('#808080'))
+    sty_cb_white = ParagraphStyle('cbw', parent=sty_cb, textColor=colors.white)
+    sty_ccw = ParagraphStyle('ccw', parent=sty_cc, textColor=colors.white)
+
+    def P(text, style=sty_c):
+        seguro = escape(str(text or "")).replace("\n", "<br/>")
+        return Paragraph(seguro, style)
+
+    def _table(data, widths, extra=None, repeat=0):
+        t = Table(data, colWidths=widths, repeatRows=repeat)
+        s = [
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 7.5),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+            ('TOPPADDING', (0,0), (-1,-1), 2),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+            ('LEFTPADDING', (0,0), (-1,-1), 3),
+            ('RIGHTPADDING', (0,0), (-1,-1), 3),
+        ]
+        if extra: s.extend(extra)
+        t.setStyle(TableStyle(s))
+        return t
+
+    def _label_cell(text):
+        """Celda de etiqueta con sombreado gris."""
+        return {'bg': gris_label, 'text': P(text, sty_cb)}
+
+    def _banner(title):
+        """Titulo tipo banner: fondo navy + texto blanco centrado."""
+        t = Table([[P(title, sty_banner)]], colWidths=[16.2*cm])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), navy),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('TOPPADDING', (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]))
+        return t
+
+    story = []
+    estudiante = piar.estudiante
+    grupo = estudiante.grupo
+    grado_nombre = grupo.grado.nombre if (grupo and grupo.grado) else ""
+    sede_nombre = grupo.sede.nombre if (grupo and grupo.sede) else ""
+    inst_nombre = config.nombre_institucion if config else ""
+    salud = estudiante.entorno_salud
+    hogar = estudiante.entorno_hogar
+    trayectoria = estudiante.trayectoria_educativa
+    matricula = estudiante.matricula_actual
+    caracteristicas = piar.caracteristicas
+    acta = piar.acta_acuerdo
+    fecha_nac = estudiante.fecha_nacimiento.strftime("%d/%m/%Y") if estudiante.fecha_nacimiento else ""
+    edad = None
+    if estudiante.fecha_nacimiento:
+        referencia = piar.fecha_creacion or date.today()
+        edad = referencia.year - estudiante.fecha_nacimiento.year - (
+            (referencia.month, referencia.day)
+            < (estudiante.fecha_nacimiento.month, estudiante.fecha_nacimiento.day)
+        )
+    edad_str = f"{edad} a\u00f1os" if edad is not None else ""
+    fecha_creacion = piar.fecha_creacion.strftime("%d/%m/%Y") if piar.fecha_creacion else ""
+    participantes = list(getattr(piar, "participantes", None) or [])
+    docentes_texto = piar.docentes_elaboran or ""
+    if participantes:
+        docentes_texto = ", ".join(
+            f"{item.nombre}{f' ({item.area})' if item.area else ''}"
+            for item in participantes
+        )
+    primer_docente = docentes_texto.split(",")[0].strip() if docentes_texto else ""
+
+    # ═══════ BLOQUE 1: ENCABEZADO ═══════
+    story.append(_banner("PLAN INDIVIDUAL DE AJUSTES RAZONABLES"))
+    story.append(Spacer(1, 6))
+    if modo == "borrador" and faltantes:
+        pendiente_texto = "SECCIONES PENDIENTES: " + " | ".join(faltantes)
+        pendiente = Table([[P(pendiente_texto, sty_c)]], colWidths=[16.2*cm])
+        pendiente.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFF2CC')),
+            ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#A66A00')),
+            ('TOPPADDING', (0,0), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ]))
+        story.append(pendiente)
+        story.append(Spacer(1, 6))
+    data_top = [
+        [_label_cell("Fecha y Lugar de Diligenciamiento"), P(f"{fecha_creacion}  {piar.lugar_diligenciamiento or sede_nombre}", sty_c)],
+        [_label_cell("Nombre y rol de la Persona que diligencia"), P(primer_docente, sty_c)],
+        [_label_cell("Instituci\u00f3n Educativa"), P(inst_nombre, sty_c)],
+    ]
+    # Construir tabla con celdas label con bg
+    top_rows = []
+    for label, val in data_top:
+        lbl = label['text']
+        bg = label['bg']
+        top_rows.append([P(lbl.text, sty_cb), val])
+    t_top = Table(top_rows, colWidths=[7*cm, 9.2*cm])
+    t_top.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 7.5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BACKGROUND', (0,0), (0,-1), gris_label),
+        ('TOPPADDING', (0,0), (-1,-1), 3), ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 4), ('RIGHTPADDING', (0,0), (-1,-1), 4),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.black),
+        ('LINEAFTER', (0,0), (0,-1), 0.5, colors.black),
+    ]))
+    story.append(t_top)
+    story.append(Spacer(1, 8))
+
+    # ═══════ BLOQUE 2: INFO GENERAL (8 cols) ═══════
+    story.append(P(u"\u00a0\u00a0\u00a0\u00a01.\u00a0\u00a0\u00a0\u00a0Informaci\u00f3n general del estudiante", sty_sec))
+
+    W = [3*cm, 1.8*cm, 1.8*cm, 1.8*cm, 2*cm, 2*cm, 1.6*cm, 2.2*cm]
+
+    tipo_doc = estudiante.tipo_documento or "CC"
+    con_vic = estudiante.registro_victima
+    def _chk(yes):
+        if yes is None:
+            return '___'
+        return '_x_' if yes else '___'
+
+    def _si_no(valor):
+        if valor is None:
+            return "Si ___ No ___"
+        return f"Si {_chk(valor)} No {_chk(not valor)}"
+    proteccion = estudiante.en_centro_proteccion
+    etnia = estudiante.grupo_etnico or ""
+
+    info = [
+        # Row 0: Nombres | Apellidos | Tipo ID | No. ID
+        [P("Nombres", sty_cb), "", P("Apellidos", sty_cb), "", P("Tipo identificaci\u00f3n", sty_cb), "", P("No. de identificaci\u00f3n", sty_cb), ""],
+        [P(estudiante.nombres or "", sty_c), "", P(estudiante.apellidos or "", sty_c), "",
+         P("TI %s  CC %s  RC [ ]  otro__" % (_chk(tipo_doc=='TI'), _chk(tipo_doc=='CC')), sty_c), "",
+         P(estudiante.numero_documento or "", sty_c), ""],
+
+        # Row 2: Lugar nac | Edad | Fecha nac | Grado | Año anterior
+        [P("Lugar de nacimiento", sty_cb), "", P("Edad", sty_cb), P("Fecha de nacimiento", sty_cb),
+         P("Grado actual o al que ingresa:", sty_cb), "",
+         P("El a\u00f1o anterior estuvo vinculado(a) al Sistema Educativo", sty_cb), ""],
+        [P(estudiante.lugar_nacimiento or "", sty_c), "", P(edad_str, sty_c), P(fecha_nac, sty_c),
+         P(grado_nombre, sty_c), "", P(_si_no(getattr(trayectoria, 'vinculado_sistema_anterior', None) if trayectoria else None), sty_c), ""],
+
+        # Row 4: Depto | Municipio | Barrio/vereda
+        [P("Departamento donde vive", sty_cb), P(estudiante.departamento_residencia or "", sty_c),
+         P("Municipio", sty_cb), P(estudiante.municipio_residencia or "", sty_c),
+         P("Barrio/vereda", sty_cb), "", P(estudiante.barrio_vereda or "", sty_c), ""],
+
+        # Row 5: Dirección | Celular | Correo
+        [P("Direcci\u00f3n de vivienda", sty_cb), P(estudiante.direccion or "", sty_c),
+         P("Celular", sty_cb), P(estudiante.telefono or "", sty_c),
+         P("Correo electr\u00f3nico", sty_cb), "", P(estudiante.correo or "", sty_c), ""],
+
+        # Row 6: Víctima + registro | Centro protección | Grupo étnico
+        [P(u"\u00bfSe reconoce como v\u00edctima del conflicto armado?", sty_cb),
+         P(f"{_si_no(estudiante.victima_conflicto)}\n(Cuenta con el respectivo registro? {_si_no(con_vic)})", sty_c),
+         P(u"\u00bfEst\u00e1 en alg\u00fan Centro de Protecci\u00f3n?", sty_cb),
+         P(f"{_si_no(proteccion)} \u00bfCu\u00e1l? {estudiante.centro_proteccion_donde or ''}", sty_c),
+         P(u"\u00bfSe reconoce o pertenece a un grupo \u00e9tnico?", sty_cb),
+         P(f"{_si_no(getattr(estudiante, 'pertenece_grupo_etnico', None))} \u00bfCu\u00e1l? {etnia}", sty_c),
+         P("", sty_c), P("", sty_c)],
+        # Row 7 (contenida en las celdas de row 6, esta fila extra vacía para espaciado)
+        [P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c)],
+    ]
+
+    # Lateral description rows
+    _lbl = u"Descripci\u00f3n general del estudiante con \u00e9nfasis en sus capacidades, gustos e intereses o aspectos que le desagradan, expectativas del estudiante y la familia, acompa\u00f1amiento familiar y redes de apoyo con los que se cuenta."
+    info.append([P(_lbl, sty_cb), P("", sty_c), P("Capacidades", sty_cb), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P(caracteristicas.descripcion_habilidades or "" if caracteristicas else "", sty_c), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P("Gustos e intereses", sty_cb), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P(caracteristicas.descripcion_gustos_intereses or "" if caracteristicas else "", sty_c), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P("Expectativas del estudiante", sty_cb), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P((caracteristicas.expectativas_estudiante or "") if (caracteristicas and hasattr(caracteristicas, 'expectativas_estudiante')) else "", sty_c), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P("Expectativas de la familia", sty_cb), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P((caracteristicas.expectativas_familia or "") if (caracteristicas and hasattr(caracteristicas, 'expectativas_familia')) else "", sty_c), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P("Redes de apoyo", sty_cb), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P((caracteristicas.entorno_familiar_social_economico or "") if (caracteristicas and hasattr(caracteristicas, 'entorno_familiar_social_economico')) else "", sty_c), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P("Otras", sty_cb), "", "", "", "", ""])
+    info.append([P("", sty_c), P("", sty_c), P((caracteristicas.otras_observaciones or "") if (caracteristicas and hasattr(caracteristicas, 'otras_observaciones')) else "", sty_c), "", "", "", "", ""])
+
+    spans_info = [
+        # Row 0: Nombres(0-1) | Apellidos(2-3) | Tipo ID(4-5) | No. ID(6-7)
+        ('SPAN', (0,0), (1,0)), ('SPAN', (2,0), (3,0)), ('SPAN', (4,0), (5,0)), ('SPAN', (6,0), (7,0)),
+        # Row 1: spans same as row 0
+        ('SPAN', (0,1), (1,1)), ('SPAN', (2,1), (3,1)), ('SPAN', (4,1), (5,1)), ('SPAN', (6,1), (7,1)),
+        # Row 2: Lugar(0-1) | Edad(2) | Fecha(3) | Grado(4-5) | Año ant(6-7)
+        ('SPAN', (0,2), (1,2)), ('SPAN', (4,2), (5,2)), ('SPAN', (6,2), (7,2)),
+        # Row 3: same as row 2
+        ('SPAN', (0,3), (1,3)), ('SPAN', (4,3), (5,3)), ('SPAN', (6,3), (7,3)),
+        # Row 4: Depto(0) | Municipio(2) | Barrio(4) + data spans
+        ('SPAN', (1,4), (1,4)), ('SPAN', (3,4), (3,4)), ('SPAN', (5,4), (5,4)), ('SPAN', (6,4), (7,4)),
+        # Row 5: Dirección(0) | Celular(2) | Correo(4) + data spans
+        ('SPAN', (1,5), (1,5)), ('SPAN', (3,5), (3,5)), ('SPAN', (5,5), (5,5)), ('SPAN', (6,5), (7,5)),
+        # Row 6: Víctima(0-1) | Centro(2-3) | Etnia(4-5)
+        ('SPAN', (0,6), (1,6)), ('SPAN', (2,6), (3,6)), ('SPAN', (4,6), (5,6)),
+        # Row 7
+        ('SPAN', (0,7), (7,7)),
+        # Lateral rowspan: col 0-1, rows 8-19
+        ('SPAN', (0,8), (1,19)),
+    ]
+    for r in range(8, 19, 2):
+        if r < len(info): spans_info.append(('SPAN', (2, r), (7, r)))
+    for r in range(9, 20, 2):
+        if r < len(info): spans_info.append(('SPAN', (2, r), (7, r)))
+    # Sombreado gris en filas de label
+    label_rows = [0, 2, 4, 5, 6, 8]
+    for lr in label_rows:
+        for c in range(8):
+            spans_info.append(('BACKGROUND', (c, lr), (c, lr), gris_label))
+
+    t_info = Table(info, colWidths=W)
+    t_info.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 7.5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 2), ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 3), ('RIGHTPADDING', (0,0), (-1,-1), 3),
+    ] + spans_info))
+    story.append(t_info)
+    story.append(Spacer(1, 6))
+
+    # ═══════ BLOQUE 3: SALUD ═══════
+    story.append(PageBreak())
+    story.append(P(u"\u00a0\u00a0\u00a0\u00a02.\u00a0\u00a0\u00a0\u00a0Entorno Salud", sty_sec))
+
+    afil_ok = salud.afiliacion_salud if salud else False
+    regimen_ok = (salud.regimen or "").lower() if salud else ""
+    subs = regimen_ok == "subsidiado"
+    contrib = regimen_ok == "contributivo"
+    tiene_diag = salud.tiene_diagnostico_medico if salud else False
+    tiene_med = salud.consume_medicamentos if salud else False
+    tiene_apoyo = (salud.productos_apoyo_movilidad if salud else False)
+    px = _chk
+
+    WS = [3.5*cm, 2*cm, 2*cm, 2.5*cm, 1.8*cm, 1.8*cm, 2.4*cm]
+    atencion_med = salud.atendido_sector_salud if salud else False
+    asiste_ter = salud.asiste_terapias if salud else False
+    tiene_med = salud.consume_medicamentos if salud else False
+    tiene_apoyo = (salud.productos_apoyo_movilidad if salud else False)
+    px = _chk
+
+    # Preparar listas JSONB para sub-filas
+    am_list = (salud.atenciones_medicas if (salud and hasattr(salud, 'atenciones_medicas') and salud.atenciones_medicas) else [])
+    if not isinstance(am_list, list): am_list = []
+    while len(am_list) < 3: am_list.append({"cual": "", "frecuencia": ""})
+
+    tp_list = (salud.terapias_detalle if (salud and salud.terapias_detalle) else [])
+    if not isinstance(tp_list, list): tp_list = []
+    while len(tp_list) < 3: tp_list.append({"tipo": "", "frecuencia": ""})
+
+    med_list = (salud.medicamentos_lista if (salud and hasattr(salud, 'medicamentos_lista') and salud.medicamentos_lista) else [])
+    if not isinstance(med_list, list): med_list = []
+    while len(med_list) < 2: med_list.append({"cual": "", "frecuencia": ""})
+
+    salud_data = [
+        # Afiliación
+        [P(u"Afiliaci\u00f3n al sistema de salud", sty_cb), P("SI %s No____" % ('_X__' if afil_ok else '__'), sty_c),
+         P("Contributivo", sty_cb), P('X' if contrib else '', sty_c),
+         P("Subsidiado", sty_cb), P('X' if subs else '', sty_c),
+         P("Cu\u00e1l %s" % (salud.eps or '' if salud else ''), sty_cb)],
+        # Lugar emergencias
+        [P("Lugar donde le atienden en caso de emergencia", sty_cb),
+         P(salud.lugar_emergencias or "" if salud else "", sty_c),
+         P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c), P("", sty_c)],
+        # Diagnóstico
+        [P(u"Cuenta con diagn\u00f3stico m\u00e9dico", sty_cb),
+         P("Si %s No___" % (px(tiene_diag)), sty_c),
+         P(u"\u00bfCu\u00e1l?", sty_cb),
+         P(salud.diagnostico_medico or "" if salud else "", sty_c),
+         P("", sty_c), P("", sty_c), P("", sty_c)],
+
+        # Atención médica (rowspan 3)
+        [P(u"Cuenta con atenci\u00f3n m\u00e9dica", sty_cb),
+         P("Si %s No___" % (px(atencion_med)), sty_c),
+         P(u"\u00bfCu\u00e1l?", sty_cb),
+         P(am_list[0].get("cual", ""), sty_c),
+         P("Frecuencia", sty_cb),
+         P(am_list[0].get("frecuencia", ""), sty_c),
+         P("", sty_c)],
+        [P("", sty_c), P("", sty_c),
+         P(u"\u00bfCu\u00e1l?", sty_cb), P(am_list[1].get("cual", ""), sty_c),
+         P("Frecuencia", sty_cb), P(am_list[1].get("frecuencia", ""), sty_c), P("", sty_c)],
+        [P("", sty_c), P("", sty_c),
+         P(u"\u00bfCu\u00e1l?", sty_cb), P(am_list[2].get("cual", ""), sty_c),
+         P("Frecuencia", sty_cb), P(am_list[2].get("frecuencia", ""), sty_c), P("", sty_c)],
+
+        # Intervención terapéutica (rowspan 3)
+        [P(u"Cuenta con intervenci\u00f3n o tratamiento terap\u00e9utico integral", sty_cb),
+         P("Si %s No___" % (px(asiste_ter)), sty_c),
+         P(u"\u00bfCu\u00e1l?", sty_cb),
+         P(tp_list[0].get("tipo", "") or tp_list[0].get("cual", ""), sty_c),
+         P("Frecuencia", sty_cb),
+         P(tp_list[0].get("frecuencia", ""), sty_c),
+         P("", sty_c)],
+        [P("", sty_c), P("", sty_c),
+         P(u"\u00bfCu\u00e1l?", sty_cb),
+         P(tp_list[1].get("tipo", "") or tp_list[1].get("cual", ""), sty_c),
+         P("Frecuencia", sty_cb),
+         P(tp_list[1].get("frecuencia", ""), sty_c),
+         P("", sty_c)],
+        [P("", sty_c), P("", sty_c),
+         P(u"\u00bfCu\u00e1l?", sty_cb),
+         P(tp_list[2].get("tipo", "") or tp_list[2].get("cual", ""), sty_c),
+         P("Frecuencia", sty_cb),
+         P(tp_list[2].get("frecuencia", ""), sty_c),
+         P("", sty_c)],
+
+        # Medicamentos (rowspan 2)
+        [P(u"\u00bfConsume medicamentos?", sty_cb),
+         P("Si %s No %s" % (px(tiene_med), px(not tiene_med)), sty_c),
+         P(u"\u00bfCu\u00e1les?", sty_cb),
+         P(med_list[0].get("cual", ""), sty_c),
+         P("Frecuencia y horario", sty_cb),
+         P(med_list[0].get("frecuencia", ""), sty_c),
+         P("", sty_c)],
+        [P("", sty_c), P("", sty_c),
+         P(u"\u00bfCu\u00e1les?", sty_cb),
+         P(med_list[1].get("cual", ""), sty_c),
+         P("Frecuencia y horario", sty_cb),
+         P(med_list[1].get("frecuencia", ""), sty_c),
+         P("", sty_c)],
+
+        # Apoyos
+        [P(u"\u00bfCuenta con apoyos o ayudas t\u00e9cnicas o tecnol\u00f3gicas para favorecer su movilidad, comunicaci\u00f3n e independencia?", sty_cb),
+         P("Si %s No %s" % (px(tiene_apoyo), px(not tiene_apoyo)), sty_c),
+         P(u"\u00bfCu\u00e1les?", sty_cb),
+         P(salud.productos_apoyo_cual or "" if salud else "", sty_c),
+         P("", sty_c), P("", sty_c), P("", sty_c)],
+    ]
+    ss = [
+        ('SPAN', (1,1), (6,1)),  # Lugar emergencias
+        ('SPAN', (3,2), (6,2)),  # Diagnóstico ¿Cuál?
+        # Atención médica rowspans
+        ('SPAN', (0,3), (0,5)), ('SPAN', (1,3), (1,5)),
+        # Intervención rowspans
+        ('SPAN', (0,6), (0,8)), ('SPAN', (1,6), (1,8)),
+        # Medicamentos rowspans
+        ('SPAN', (0,9), (0,10)), ('SPAN', (1,9), (1,10)),
+        # Apoyos
+        ('SPAN', (3,11), (6,11)),
+    ]
+    # Sombreado gris en labels
+    for r in range(len(salud_data)):
+        ss.append(('BACKGROUND', (0, r), (0, r), gris_label))
+    # También gris en labels de sub-filas (¿Cuál?, Frecuencia)
+    for r in [3,4,5,6,7,8,9,10]:
+        if r < len(salud_data):
+            ss.append(('BACKGROUND', (2, r), (2, r), gris_label))
+            ss.append(('BACKGROUND', (4, r), (4, r), gris_label))
+    t_salud = Table(salud_data, colWidths=WS)
+    t_salud.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 7.5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 2), ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 3), ('RIGHTPADDING', (0,0), (-1,-1), 3),
+    ] + ss))
+    story.append(t_salud)
+    story.append(Spacer(1, 8))
+
+    # ═══════ BLOQUE 4: HOGAR ═══════
+    story.append(P(u"\u00a0\u00a0\u00a0\u00a03.\u00a0\u00a0\u00a0\u00a0Entorno Hogar", sty_sec))
+    WH = [4*cm, 4*cm, 4*cm, 4*cm]
+    def _h(s):
+        return str(hogar and getattr(hogar, s, None) or '')
+
+    hogar_data = [
+        [P("Nombre de la madre", sty_cb), P(_h('nombre_madre'), sty_c),
+         P("Nombre del padre", sty_cb), P(_h('nombre_padre'), sty_c)],
+        [P(u"Ocupaci\u00f3n de la madre", sty_cb), P(_h('ocupacion_madre'), sty_c),
+         P(u"Ocupaci\u00f3n del padre", sty_cb), P(_h('ocupacion_padre'), sty_c)],
+        [P("Nivel educativo madre", sty_cb), P("%s  %s" % ("Prim/Bto/T\u00e9c/Tecn/univ.", _h('nivel_educativo_madre')), sty_c),
+         P("Nivel educativo padre", sty_cb), P("%s  %s" % ("Prim/Bto/T\u00e9c/Tecn/univ.", _h('nivel_educativo_padre')), sty_c)],
+        [P("Nombre Cuidador", sty_cb), P(_h('nombre_cuidador'), sty_c),
+         P("Nivel educativo cuidador", sty_cb), P("Prim/Bto/T\u00e9c/Tecn/univ.  " + _h('nivel_educativo_cuidador'), sty_c)],
+        [P("Parentesco del cuidador", sty_cb), P(_h('parentesco_cuidador'), sty_c),
+         P("Celular", sty_cb), P(_h('telefono_cuidador'), sty_c)],
+        [P(u"Correo electr\u00f3nico", sty_cb), P(_h('correo_cuidador'), sty_c),
+         P("Personas con quien vive", sty_cb), P(_h('personas_vive_estudiante'), sty_c)],
+        [P("No. Hermanos", sty_cb), P(str(hogar.numero_hermanos) if hogar else "", sty_c),
+         P("Lugar que ocupa", sty_cb), P(str(hogar.lugar_que_ocupa) if (hogar and hogar.lugar_que_ocupa) else "", sty_c)],
+        [P(u"\u00bfQui\u00e9nes apoyan la crianza del estudiante?", sty_cb), P(_h('apoyo_crianza'), sty_c),
+         P("", sty_c), P("", sty_c)],
+    ]
+    hs_labels = []
+    for r in range(len(hogar_data)):
+        hs_labels.append(('BACKGROUND', (0, r), (0, r), gris_label))
+        hs_labels.append(('BACKGROUND', (2, r), (2, r), gris_label))
+    hs_labels.append(('SPAN', (2, 7), (3, 7)))
+
+    t_hogar = Table(hogar_data, colWidths=WH)
+    t_hogar.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 7.5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 2), ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 3), ('RIGHTPADDING', (0,0), (-1,-1), 3),
+    ] + hs_labels))
+    story.append(t_hogar)
+    story.append(Spacer(1, 8))
+
+    # ═══════ BLOQUE 5: EDUCATIVO ═══════
+    story.append(P(u"\u00a0\u00a0\u00a0\u00a04.\u00a0\u00a0\u00a0\u00a0Entorno Educativo", sty_sec))
+    WE = [4*cm, 3*cm, 3*cm, 3*cm, 3.1*cm]
+    trayect_vin = trayectoria.vinculado_educacion_inicial if trayectoria else None
+    estado_ultimo = getattr(trayectoria, 'estado_ultimo_grado', None) if trayectoria else None
+    recibe_inf = trayectoria.recibe_informe_pedagogico if trayectoria else False
+    asiste_prog = trayectoria.asiste_programas_complementarios if trayectoria else False
+
+    edu_data = [
+        [P(u"\u00bfHa estado vinculado en otra instituci\u00f3n educativa, fundaci\u00f3n o bajo otra modalidad de educaci\u00f3n?", sty_cb),
+         P("", sty_c), P("No___ \u00bfPor qu\u00e9?" if not trayect_vin else "", sty_c),
+         P("SI %s" % (_chk(trayect_vin)), sty_c),
+         P(u"\u00bfCu\u00e1les? %s" % (trayectoria.educacion_inicial_instituciones or '' if trayectoria else ''), sty_c)],
+        [P(u"\u00daltimo grado cursado", sty_cb),
+         P(trayectoria.ultimo_grado_cursado or "" if trayectoria else "", sty_c),
+         P("Estado", sty_cb),
+         P("Aprobado %s  Reprobado %s  Sin terminar %s" % (
+             _chk(estado_ultimo == 'aprobado'),
+             _chk(estado_ultimo == 'reprobado'),
+             _chk(estado_ultimo == 'sin_terminar'),
+         ), sty_c),
+         P("Observaciones: %s" % (trayectoria.observaciones_trayectoria or '' if trayectoria else ''), sty_c)],
+        [P(u"\u00bfSe recibe informe pedag\u00f3gico cualitativo o certificado que describa el proceso de desarrollo y aprendizaje del estudiante y/o PIAR?", sty_cb),
+         P("", sty_c), P("", sty_c),
+         P("Si %s  No %s" % (_chk(recibe_inf), _chk(not recibe_inf)), sty_c), P("", sty_c)],
+        [P(u"\u00bfDe qu\u00e9 instituci\u00f3n o modalidad proviene el informe?", sty_cb),
+         P(trayectoria.institucion_procedencia_informe or "" if trayectoria else "", sty_c), P("", sty_c),
+         P(u"\u00bfEst\u00e1 asistiendo en la actualidad a programas complementarios?", sty_cb),
+         P("No %s  Si %s  \u00bfCu\u00e1les?" % (_chk(not asiste_prog), _chk(asiste_prog)), sty_c)],
+    ]
+    es = [
+        ('SPAN', (0,0), (1,0)), ('SPAN', (4,0), (4,0)),
+        ('SPAN', (0,1), (0,1)), ('SPAN', (4,1), (4,1)),
+        ('SPAN', (0,2), (2,2)), ('SPAN', (3,2), (4,2)),
+        ('SPAN', (0,3), (1,3)), ('SPAN', (3,3), (4,3)),
+    ]
+    for r in range(len(edu_data)):
+        es.append(('BACKGROUND', (0, r), (0, r), gris_label))
+        if r == 1 or r == 2:
+            es.append(('BACKGROUND', (2, r), (2, r), gris_label))
+
+    t_edu = Table(edu_data, colWidths=WE)
+    t_edu.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 7.5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 2), ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 3), ('RIGHTPADDING', (0,0), (-1,-1), 3),
+    ] + es))
+    story.append(t_edu)
+    story.append(Spacer(1, 8))
+
+    # ═══════ FIRMAS INICIALES ═══════
+    story.append(PageBreak())
+    firmas_ini = [
+        [P("Nombre y firma de quien diligencia", sty_cb), P("Nombre y firma acudiente", sty_cb)],
+        [P("", sty_c), P("", sty_c)], [P("", sty_c), P("", sty_c)], [P("", sty_c), P("", sty_c)],
+    ]
+    t_fi = Table(firmas_ini, colWidths=[8*cm, 8*cm])
+    t_fi.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (0,0), gris_label), ('BACKGROUND', (1,0), (1,0), gris_label),
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 12), ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+        ('MINROWHEIGHT', (1,0), (-1,-1), 20),
+    ]))
+    story.append(t_fi)
+    story.append(Spacer(1, 6))
+
+    # ═══════ CARACTERIZACION PEDAGOGICA ═══════
+    story.append(PageBreak())
+    story.append(_banner("PLAN INDIVIDUAL DE AJUSTES RAZONABLES - PIAR -"))
+    story.append(Spacer(1, 4))
+    story.append(_banner("ANEXO 2"))
+    story.append(Spacer(1, 6))
+    participantes_texto = "\n".join(
+        f"{item.nombre} - {getattr(item, 'cargo', None) or item.rol_piar.replace('_', ' ')}"
+        f"{f' - {item.area}' if getattr(item, 'area', None) else ''}"
+        for item in participantes
+    ) or docentes_texto
+    anexo2_meta = [
+        [P("Fecha de elaboración", sty_cb), P(fecha_creacion, sty_c),
+         P("Institución educativa", sty_cb), P(inst_nombre, sty_c)],
+        [P("Sede", sty_cb), P(sede_nombre, sty_c),
+         P("Grado", sty_cb), P(grado_nombre, sty_c)],
+        [P("Docentes que elaboran y cargo", sty_cb), P(participantes_texto, sty_c), "", ""],
+    ]
+    t_meta = Table(anexo2_meta, colWidths=[3.5*cm, 4.5*cm, 3.5*cm, 4.7*cm])
+    t_meta.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('BACKGROUND', (0,0), (0,-1), gris_label),
+        ('BACKGROUND', (2,0), (2,1), gris_label),
+        ('SPAN', (1,2), (3,2)),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 3), ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+    ]))
+    story.append(t_meta)
+    story.append(Spacer(1, 6))
+    story.append(P("DATOS DEL ESTUDIANTE", sty_sec))
+    story.append(_table([
+        [P("Nombre del estudiante", sty_cb), P(f"{estudiante.nombres} {estudiante.apellidos}", sty_c),
+         P("Documento de identificación", sty_cb), P(estudiante.numero_documento, sty_c)],
+        [P("Edad", sty_cb), P(edad_str, sty_c), P("Grado", sty_cb), P(grado_nombre, sty_c)],
+    ], [3.8*cm, 4.6*cm, 4*cm, 3.8*cm], [
+        ('BACKGROUND', (0,0), (0,-1), gris_label),
+        ('BACKGROUND', (2,0), (2,-1), gris_label),
+    ]))
+    story.append(Spacer(1, 6))
+    story.append(P("1. CARACTERÍSTICAS DEL ESTUDIANTE", sty_sec))
+    story.append(P("Entorno familiar, social y económico", sty_cb))
+    story.append(P(
+        caracteristicas.entorno_familiar_social_economico
+        if caracteristicas and caracteristicas.entorno_familiar_social_economico
+        else "No registrado",
+        sty_norm,
+    ))
+    story.append(Spacer(1, 6))
+    story.append(_banner("Caracterizaci\u00f3n pedag\u00f3gica o diagn\u00f3stico"))
+    story.append(Spacer(1, 8))
+    if caracteristicas and hasattr(caracteristicas, 'caracterizacion_pedagogica') and caracteristicas.caracterizacion_pedagogica:
+        story.append(P(caracteristicas.caracterizacion_pedagogica, sty_norm))
+    elif caracteristicas and caracteristicas.descripcion_habilidades:
+        story.append(P(caracteristicas.descripcion_habilidades, sty_norm))
+    else:
+        story.append(P("No registrada", sty_norm))
+
+    # ═══════ MATRIZ AJUSTES — LANDSCAPE ═══════
+    story.append(NextPageTemplate(['Landscape']))
+    story.append(PageBreak())
+
+    story.append(_banner("AJUSTES RAZONABLES"))
+    story.append(Spacer(1, 6))
+
+    WA = [3.5*cm, 4*cm, 3.8*cm, 3.8*cm, 6.6*cm, 4*cm]
+
+    hdr_aj = [
+        [P(u"\u00c1rea/asignatura/campo de pensamiento/\u00e1rea de desarrollo/dimensiones/articulaci\u00f3n con la educaci\u00f3n media/din\u00e1micas de la vida diaria/convivencia u otra seg\u00fan sea el caso", sty_ccw),
+         P(u"Barreras identificadas en el contexto \u2014 Describir.", sty_ccw),
+         P("Tipo de ajuste razonable \u2014 facilitador", sty_ccw),
+         P("Apoyo requerido (Talento humano, t\u00e9cnico, tecnol\u00f3gico, comunicativo, otro)", sty_ccw),
+         P(u"Descripci\u00f3n de tipo de ajustes y apoyos", sty_ccw),
+         P("Seguimiento \u2014 En clave de temporalidad, responsable y medios.", sty_ccw)],
+    ]
+    # Subtitulos grises bajo headers
+    hdr_sub = [
+        ["", P("Actitudinales, tecnol\u00f3gicas, comunicativas, metodol\u00f3gicas, infraestructura, entre otras.", sty_cg),
+         P("(Recursos o materiales, did\u00e1cticas o de estrategias, tiempo, metas de aprendizaje, estrategias de evaluaci\u00f3n, infraestructura)", sty_cg),
+         P("(Talento humano, t\u00e9cnico, tecnol\u00f3gico, comunicativo, otro)", sty_cg),
+         P("Si el ajuste se realiza en la meta de aprendizaje, escribir la nueva meta que corresponde para el actual per\u00edodo seg\u00fan el plan de estudios. Incluir la frecuencia del ajuste y del apoyo.", sty_cg),
+         P("En clave de temporalidad, responsable y medios.", sty_cg)],
+    ]
+
+    ajustes = piar.ajustes_razonables or []
+    areas_agrupadas = {}
+    for aj in ajustes:
+        areas_agrupadas.setdefault(aj.area, []).append(aj)
+
+    def _fragmentar(texto, limite=480):
+        """Divide celdas extensas para que ReportLab pueda paginar la matriz."""
+        palabras = str(texto or "").split()
+        if not palabras:
+            return [""]
+        partes, actual = [], []
+        longitud = 0
+        for palabra in palabras:
+            if actual and longitud + len(palabra) + 1 > limite:
+                partes.append(" ".join(actual))
+                actual, longitud = [], 0
+            actual.append(palabra)
+            longitud += len(palabra) + 1
+        if actual:
+            partes.append(" ".join(actual))
+        return partes
+
+    aj_rows = [hdr_aj[0], hdr_sub[0]]
+    area_idx = 0
+    for area_name, aj_list in sorted(areas_agrupadas.items()):
+        area_idx += 1
+        for aj in aj_list:
+            area_col = str(area_idx) + ". " + area_name
+            titulo = (aj.titulo_tema or "") if hasattr(aj, 'titulo_tema') else ""
+            objetivos = aj.objetivos_propositos or ""
+            dba = (aj.dba_referencia or "") if hasattr(aj, 'dba_referencia') else ""
+            if titulo: area_col += "\n" + titulo
+            if objetivos: area_col += "\nObjetivos / Prop\u00f3sitos de Aprendizaje: " + objetivos
+            if dba: area_col += "\nDBA: " + dba
+
+            barr = aj.barreras_evidenciadas or ""
+            tipo = aj.tipo_ajuste or ""
+            apoyo = aj.apoyo_requerido or ""
+            desc = aj.ajustes_estrategias or ""
+
+            seg = ""
+            eva = aj.evaluacion_ajustes or ""
+            if eva: seg += u"Evaluaci\u00f3n: " + eva
+            temp = aj.temporalidad or ""
+            resp = aj.responsable or ""
+            med = aj.medios_verificacion or ""
+            if temp: seg += ("\n" if seg else "") + "Temporalidad: " + temp
+            if resp: seg += ("\n" if seg else "") + "Responsable: " + resp
+            if med: seg += ("\n" if seg else "") + "Medios: " + med
+            if not seg: seg = "Pendiente"
+
+            columnas = [
+                _fragmentar(area_col), _fragmentar(barr), _fragmentar(tipo),
+                _fragmentar(apoyo), _fragmentar(desc), _fragmentar(seg),
+            ]
+            for fragmento in range(max(len(columna) for columna in columnas)):
+                aj_rows.append([
+                    P(columna[fragmento] if fragmento < len(columna) else "", sty_c)
+                    for columna in columnas
+                ])
+
+    for cobertura in getattr(piar, "asignaturas_estado", None) or []:
+        if cobertura.estado == "no_requiere":
+            aj_rows.append([
+                P(cobertura.nombre_asignatura, sty_c),
+                P("No se identificaron barreras que requieran ajuste.", sty_c),
+                P("No requiere ajuste razonable", sty_c),
+                P("", sty_c),
+                P(cobertura.justificacion or "", sty_c),
+                P("Cobertura académica resuelta", sty_c),
+            ])
+
+    t_aj = LongTable(aj_rows, colWidths=WA, repeatRows=2, splitByRow=1)
+    t_aj.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 7),
+        ('FONTSIZE', (0,1), (-1,1), 6.5),
+        ('BACKGROUND', (0,0), (-1,0), navy),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('BACKGROUND', (0,1), (-1,1), gris_fondo),
+        ('FONTNAME', (0,2), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,2), (-1,-1), 7.5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 3),
+        ('RIGHTPADDING', (0,0), (-1,-1), 3),
+    ]))
+    story.append(t_aj)
+
+    # ═══════ Volver a portrait ═══════
+    story.append(NextPageTemplate(['Portrait']))
+    story.append(PageBreak())
+
+    # ═══════ FIRMAS DOCENTES (3 bloques de 3 + apoyo) ═══════
+    docentes_list = [
+        (item.nombre, item.area or "")
+        for item in participantes
+        if item.rol_piar == "docente_aula"
+    ]
+    if not docentes_list:
+        docentes_list = []
+        for docente in [d.strip() for d in docentes_texto.split(",") if d.strip()]:
+            if "(" in docente and ")" in docente:
+                docentes_list.append((docente[:docente.rfind("(")].strip(), docente[docente.rfind("(")+1:docente.rfind(")")].strip()))
+            else:
+                docentes_list.append((docente, ""))
+
+    for block_num in range(3):
+        rows = []
+        rows.append([P("Nombre docente", sty_cc), P("Nombre docente", sty_cc), P("Nombre docente", sty_cc)])
+        rows.append([P("", sty_cc), P("", sty_cc), P("", sty_cc)])
+        rows.append([P(u"\u00c1rea", sty_cc), P(u"\u00c1rea", sty_cc), P(u"\u00c1rea", sty_cc)])
+        rows.append([P("", sty_cc), P("", sty_cc), P("", sty_cc)])
+        rows.append([P("Firma", sty_cc), P("Firma", sty_cc), P("Firma", sty_cc)])
+        rows.append([P("", sty_cc), P("", sty_cc), P("", sty_cc)])
+        for i in range(3):
+            idx = block_num * 3 + i
+            if idx < len(docentes_list):
+                nom, area = docentes_list[idx]
+                rows[1][i] = P(nom, sty_cc)
+                rows[3][i] = P(area, sty_cc)
+        if block_num > 0: story.append(Spacer(1, 6))
+        t = Table(rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm])
+        t.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 9),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+            ('BACKGROUND', (0,0), (-1,0), gris_label), ('BACKGROUND', (1,0), (-1,0), gris_label), ('BACKGROUND', (2,0), (-1,0), gris_label),
+            ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]))
+        story.append(t)
+
+    # Bloque apoyo
+    story.append(Spacer(1, 6))
+    apoyo_rows = [
+        [P("Nombre docente orientador", sty_cc), P(u"Nombre docente de apoyo pedag\u00f3gico", sty_cc), P(u"Nombre coordinador pedag\u00f3gico", sty_cc)],
+        [P("", sty_cc), P("", sty_cc), P("", sty_cc)],
+        [P(u"\u00c1rea", sty_cc), P(u"\u00c1rea", sty_cc), P(u"\u00c1rea", sty_cc)],
+        [P("", sty_cc), P("", sty_cc), P("", sty_cc)],
+        [P("Firma", sty_cc), P("Firma", sty_cc), P("Firma", sty_cc)],
+        [P("", sty_cc), P("", sty_cc), P("", sty_cc)],
+    ]
+    t_apoyo = Table(apoyo_rows, colWidths=[5.5*cm, 5.5*cm, 5.5*cm])
+    t_apoyo.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('BACKGROUND', (0,0), (-1,0), gris_label),
+        ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(t_apoyo)
+    story.append(Spacer(1, 6))
+
+    # ═══════ ACTA DE ACUERDO ═══════
+    story.append(PageBreak())
+    story.append(_banner("ACTA DE ACUERDO"))
+    story.append(Spacer(1, 6))
+
+    acta_hdr_data = [
+        [_label_cell("Fecha y Lugar de Diligenciamiento"), P(
+            f"{acta.fecha_firma.strftime('%d/%m/%Y') if (acta and acta.fecha_firma) else 'DD/MM/AAAA'}  {piar.lugar_diligenciamiento or sede_nombre}", sty_c)],
+        [_label_cell("Nombre y rol de la Persona que diligencia"), P(primer_docente, sty_c)],
+        [_label_cell(u"Instituci\u00f3n Educativa"), P(inst_nombre, sty_c)],
+        [_label_cell("Sede"), P(sede_nombre, sty_c)],
+    ]
+    acta_top_rows = []
+    for label, val in acta_hdr_data:
+        acta_top_rows.append([P(label['text'].text, sty_cb), val])
+    t_acta_top = Table(acta_top_rows, colWidths=[7*cm, 9.2*cm])
+    t_acta_top.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'), ('FONTSIZE', (0,0), (-1,-1), 7.5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BACKGROUND', (0,0), (0,-1), gris_label),
+        ('TOPPADDING', (0,0), (-1,-1), 3), ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 4), ('RIGHTPADDING', (0,0), (-1,-1), 4),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.black),
+        ('LINEAFTER', (0,0), (0,-1), 0.5, colors.black),
+    ]))
+    story.append(t_acta_top)
+    story.append(Spacer(1, 6))
+
+    id_data = [
+        [P("Nombre", sty_cb), P(f"{estudiante.nombres} {estudiante.apellidos}", sty_c),
+         P("Edad", sty_cb), P(f"{edad if edad is not None else ''}", sty_c),
+         P("Grado", sty_cb), P(grado_nombre, sty_c)],
+    ]
+    story.append(_table(id_data, [3*cm, 4*cm, 2*cm, 2*cm, 2*cm, 3*cm],
+        [('BACKGROUND', (0,0), (0,0), gris_label), ('BACKGROUND', (2,0), (2,0), gris_label), ('BACKGROUND', (4,0), (4,0), gris_label)]))
+    story.append(Spacer(1, 8))
+
+    story.append(P(u"Seg\u00fan el Decreto 1421 de 2017 la educaci\u00f3n inclusiva es un proceso permanente que reconoce, valora y responde a la diversidad de caracter\u00edsticas, intereses, posibilidades y expectativas de los estudiantes para promover su desarrollo, aprendizaje y participaci\u00f3n, en un ambiente de aprendizaje com\u00fan, sin discriminaci\u00f3n o exclusi\u00f3n.", sty_norm))
+    story.append(P("La inclusi\u00f3n solo es posible cuando se unen los esfuerzos del colegio, el estudiante, docentes, directivos docentes y familias. De ah\u00ed la importancia de formalizar con las firmas, la presente Acta de Acuerdo.", sty_norm))
+    story.append(Spacer(1, 6))
+    story.append(P("El Establecimiento Educativo ha realizado la valoraci\u00f3n pedag\u00f3gica y definido los ajustes razonables que facilitar\u00e1n al estudiante su proceso.", sty_norm))
+    story.append(Spacer(1, 6))
+    story.append(P("La Familia se compromete a cumplir y firmar los compromisos se\u00f1alados en el PIAR y en las actas de acuerdo, para fortalecer los procesos escolares del estudiante y en particular a:", sty_norm))
+    comp_text = acta.compromisos_aula if (acta and acta.compromisos_aula) else "Incluya aqu\u00ed los compromisos espec\u00edficos para implementar en el aula que requieran ampliaci\u00f3n o detalle adicional al incluido en el PIAR."
+
+    # Tabla compromisos con borde
+    t_comp = Table([[P(comp_text, sty_norm)]], colWidths=[16.2*cm])
+    t_comp.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 6), ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 6), ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(t_comp)
+    story.append(Spacer(1, 6))
+
+    story.append(P("Y en casa apoyar\u00e1 con las siguientes actividades:", sty_norm))
+    story.append(Spacer(1, 4))
+    act_cols = [5*cm, 7*cm, 5*cm]
+    act_hdr = [
+        [P("Nombre de la Actividad", sty_cc), P(u"Descripci\u00f3n de la estrategia", sty_cc),
+         P("Frecuencia: D Diaria, S Semanal, P Permanente\nD __ S__ P__", sty_cc)]
+    ]
+    if acta and acta.compromisos_casa:
+        for c in acta.compromisos_casa:
+            act_hdr.append([P(c.nombre_actividad or "", sty_c), P(c.descripcion_estrategia or "", sty_c), P(c.frecuencia or "", sty_c)])
+    while len(act_hdr) < 5:
+        act_hdr.append([P("", sty_c), P("", sty_c), P("", sty_c)])
+    story.append(_table(act_hdr, act_cols, [('BACKGROUND', (0,0), (-1,0), gris_label)]))
+    story.append(Spacer(1, 12))
+
+    story.append(P("Firma de los Actores comprometidos:", sty_sec))
+    firma_data = [
+        [P("Estudiante", sty_cc), P("Acudiente / familia", sty_cc)],
+        [P("", sty_c), P("", sty_c)],
+        [P("Docentes", sty_cc), P("Docentes", sty_cc)],
+        [P("", sty_c), P("", sty_c)],
+        [P("Directivo docente", sty_cc), P("Directivo docente", sty_cc)],
+        [P("", sty_c), P("", sty_c)],
+    ]
+    t_firmas = Table(firma_data, colWidths=[8*cm, 8*cm])
+    t_firmas.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (0,0), gris_label), ('BACKGROUND', (1,0), (1,0), gris_label),
+        ('BACKGROUND', (0,2), (0,2), gris_label), ('BACKGROUND', (1,2), (1,2), gris_label),
+        ('BACKGROUND', (0,4), (0,4), gris_label), ('BACKGROUND', (1,4), (1,4), gris_label),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('TOPPADDING', (0,0), (-1,-1), 8), ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('MINROWHEIGHT', (0,1), (-1,1), 40), ('MINROWHEIGHT', (0,3), (-1,3), 40),
+        ('MINROWHEIGHT', (0,5), (-1,5), 40),
+    ]))
+    story.append(t_firmas)
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes

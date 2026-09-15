@@ -259,27 +259,49 @@ TipoDocumento = Literal["TI", "CC", "RC", "NES", "PEP"]
 
 
 class CrearEstudianteRequest(BaseModel):
-    """Datos mínimos para registrar un estudiante (Anexo 1 — Info General)."""
+    """Registro breve previo al diligenciamiento del PIAR."""
     nombres: str = Field(..., min_length=2, max_length=200)
     apellidos: str = Field(..., min_length=2, max_length=200)
     tipo_documento: TipoDocumento
     numero_documento: str = Field(..., min_length=4, max_length=50)
     fecha_nacimiento: date
-    edad: int = Field(..., ge=0, le=30)
-    departamento_residencia: str = Field(..., min_length=2)
-    municipio_residencia: str = Field(..., min_length=2)
-    direccion: str = Field(..., min_length=5)
-    barrio_vereda: str = Field(..., min_length=2)
-    # Opcionales
-    grupo_id: Optional[uuid.UUID] = None
+    grupo_id: uuid.UUID
+    departamento_residencia: Optional[str] = None
+    municipio_residencia: Optional[str] = None
+    direccion: Optional[str] = None
+    barrio_vereda: Optional[str] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[EmailStr] = None
-    en_centro_proteccion: bool = False
+    en_centro_proteccion: Optional[bool] = None
     centro_proteccion_donde: Optional[str] = None
+    pertenece_grupo_etnico: Optional[bool] = None
     grupo_etnico: Optional[str] = None
-    victima_conflicto: bool = False
-    registro_victima: bool = False
+    victima_conflicto: Optional[bool] = None
+    registro_victima: Optional[bool] = None
+
+
+class ActualizarEstudianteRequest(BaseModel):
+    """Actualización parcial de los datos generales del Anexo 1."""
+    nombres: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    apellidos: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    tipo_documento: Optional[TipoDocumento] = None
+    numero_documento: Optional[str] = Field(default=None, min_length=4, max_length=50)
+    fecha_nacimiento: Optional[date] = None
+    grupo_id: Optional[uuid.UUID] = None
+    departamento_residencia: Optional[str] = None
+    municipio_residencia: Optional[str] = None
+    direccion: Optional[str] = None
+    barrio_vereda: Optional[str] = None
+    lugar_nacimiento: Optional[str] = None
+    telefono: Optional[str] = None
+    correo: Optional[EmailStr] = None
+    en_centro_proteccion: Optional[bool] = None
+    centro_proteccion_donde: Optional[str] = None
+    pertenece_grupo_etnico: Optional[bool] = None
+    grupo_etnico: Optional[str] = None
+    victima_conflicto: Optional[bool] = None
+    registro_victima: Optional[bool] = None
 
 
 class EstudianteResponse(BaseResponse):
@@ -290,10 +312,10 @@ class EstudianteResponse(BaseResponse):
     numero_documento: str
     fecha_nacimiento: date
     edad: int
-    departamento_residencia: str
-    municipio_residencia: str
-    direccion: str
-    barrio_vereda: str
+    departamento_residencia: Optional[str] = None
+    municipio_residencia: Optional[str] = None
+    direccion: Optional[str] = None
+    barrio_vereda: Optional[str] = None
     grupo_id: Optional[uuid.UUID] = None
     grado: Optional[str] = None
     grupo_director_id: Optional[uuid.UUID] = None
@@ -301,11 +323,12 @@ class EstudianteResponse(BaseResponse):
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None
-    en_centro_proteccion: bool
+    en_centro_proteccion: Optional[bool] = None
     centro_proteccion_donde: Optional[str] = None
+    pertenece_grupo_etnico: Optional[bool] = None
     grupo_etnico: Optional[str] = None
-    victima_conflicto: bool
-    registro_victima: bool
+    victima_conflicto: Optional[bool] = None
+    registro_victima: Optional[bool] = None
     created_at: datetime
 
 
@@ -330,8 +353,10 @@ class EntornoSaludRequest(BaseModel):
     asiste_terapias: bool = False
     terapias_detalle: list[dict[str, Any]] = Field(default_factory=list)
     tratamiento_medico: bool = False
+    atenciones_medicas: list[dict[str, Any]] = Field(default_factory=list)
     tratamiento_medico_cual: Optional[str] = None
     consume_medicamentos: bool = False
+    medicamentos_lista: list[dict[str, Any]] = Field(default_factory=list)
     medicamentos_detalle: Optional[str] = None
     productos_apoyo_movilidad: bool = False
     productos_apoyo_cual: Optional[str] = None
@@ -387,9 +412,11 @@ class EntornoHogarResponse(EntornoHogarRequest, BaseResponse):
 # ---------------------------------------------------------------------------
 
 class TrayectoriaEducativaRequest(BaseModel):
+    vinculado_sistema_anterior: Optional[bool] = None
     vinculado_educacion_inicial: bool = False
     educacion_inicial_instituciones: Optional[str] = None
     ultimo_grado_cursado: Optional[str] = None
+    estado_ultimo_grado: Optional[Literal["aprobado", "reprobado", "sin_terminar"]] = None
     aprobo_ultimo_grado: bool = True
     observaciones_trayectoria: Optional[str] = None
     recibe_informe_pedagogico: bool = False
@@ -460,18 +487,31 @@ class EBCListResponse(BaseResponse):
 class CaracteristicasEstudianteCreate(BaseModel):
     descripcion_gustos_intereses: str = Field(..., min_length=2)
     descripcion_habilidades: str = Field(..., min_length=2)
+    caracterizacion_pedagogica: Optional[str] = None
+    expectativas_estudiante: Optional[str] = None
+    expectativas_familia: Optional[str] = None
+    redes_apoyo: Optional[str] = None
+    entorno_familiar_social_economico: Optional[str] = None
+    otras_observaciones: Optional[str] = None
 
 class CaracteristicasEstudianteResponse(CaracteristicasEstudianteCreate, BaseResponse):
     id: uuid.UUID
     piar_id: uuid.UUID
 
 class AjusteRazonableCreate(BaseModel):
+    asignatura_id: Optional[uuid.UUID] = None
     area: str = Field(..., min_length=2)
     titulo_tema: Optional[str] = None
     objetivos_propositos: str = Field(..., min_length=2)
     barreras_evidenciadas: str = Field(..., min_length=2)
     ajustes_estrategias: str = Field(..., min_length=2)
     evaluacion_ajustes: Optional[str] = None
+    tipo_ajuste: Optional[str] = None
+    apoyo_requerido: Optional[str] = None
+    temporalidad: Optional[str] = None
+    responsable: Optional[str] = None
+    medios_verificacion: Optional[str] = None
+    dba_referencia: Optional[str] = None
 
 class AjusteRazonableResponse(AjusteRazonableCreate, BaseResponse):
     id: uuid.UUID
@@ -484,7 +524,7 @@ class AjusteRazonableResponse(AjusteRazonableCreate, BaseResponse):
 
 
 class AjusteRazonableConEvidenciasResponse(AjusteRazonableResponse):
-    evidencias: list["EvidenciaAjusteResponse"] = []
+    evidencias: list["EvidenciaAjusteResponse"] = Field(default_factory=list)
 
 class AjustePuntuacionRequest(BaseModel):
     puntuacion: int = Field(..., ge=1, le=5)
@@ -504,10 +544,12 @@ class PiarCreate(BaseModel):
     anio_lectivo: int = Field(..., ge=2020)
     estado: Literal['borrador', 'generando_ia', 'en_revision', 'firmado'] = 'borrador'
     docentes_elaboran: Optional[str] = None
+    lugar_diligenciamiento: Optional[str] = None
 
 class PiarUpdate(BaseModel):
     estado: Optional[Literal['borrador', 'generando_ia', 'en_revision', 'firmado']] = None
     docentes_elaboran: Optional[str] = None
+    lugar_diligenciamiento: Optional[str] = None
     caracteristicas: Optional[CaracteristicasEstudianteCreate] = None
 
 class CompromisoCasaCreate(BaseModel):
@@ -527,7 +569,7 @@ class ActaAcuerdoCreate(BaseModel):
     firmado_docente_apoyo: bool = False
     firmado_docentes_aula: bool = False
     firmado_directivo: bool = False
-    compromisos_casa: list[CompromisoCasaCreate] = []
+    compromisos_casa: list[CompromisoCasaCreate] = Field(default_factory=list)
 
 class ActaAcuerdoResponse(BaseResponse):
     id: uuid.UUID
@@ -539,17 +581,71 @@ class ActaAcuerdoResponse(BaseResponse):
     firmado_docente_apoyo: bool
     firmado_docentes_aula: bool
     firmado_directivo: bool
-    compromisos_casa: list[CompromisoCasaResponse] = []
+    compromisos_casa: list[CompromisoCasaResponse] = Field(default_factory=list)
+
+
+class PiarParticipanteResponse(BaseResponse):
+    id: uuid.UUID
+    usuario_id: Optional[uuid.UUID] = None
+    nombre: str
+    cargo: Optional[str] = None
+    area: Optional[str] = None
+    rol_piar: Literal['director_grupo', 'docente_aula', 'docente_apoyo', 'orientador', 'coordinador']
+    orden: int
+    confirmado: bool
+
+
+class PiarAsignaturaEstadoUpdate(BaseModel):
+    estado: Literal['pendiente', 'no_requiere']
+    justificacion: Optional[str] = None
+
+
+class PiarAsignaturaResponse(BaseResponse):
+    id: uuid.UUID
+    asignatura_id: uuid.UUID
+    docente_id: Optional[uuid.UUID] = None
+    nombre_asignatura: str
+    area_nombre: Optional[str] = None
+    docente_nombre: Optional[str] = None
+    estado: Literal['pendiente', 'con_ajuste', 'no_requiere']
+    justificacion: Optional[str] = None
+
+
+class PiarSeccionCompletitud(BaseModel):
+    codigo: str
+    nombre: str
+    completa: bool
+    faltantes: list[str] = Field(default_factory=list)
+
+
+class PiarCompletitudResponse(BaseModel):
+    porcentaje: int
+    completa: bool
+    puede_exportar_final: bool
+    secciones: list[PiarSeccionCompletitud] = Field(default_factory=list)
+    asignaturas: list[PiarAsignaturaResponse] = Field(default_factory=list)
+
+
+class PiarVersionResponse(BaseResponse):
+    id: uuid.UUID
+    numero: int
+    sha256: str
+    creado_por: Optional[uuid.UUID] = None
+    created_at: datetime
 
 class PiarResponse(PiarCreate, BaseResponse):
     id: uuid.UUID
     fecha_creacion: date
     creado_por: Optional[uuid.UUID] = None
     director_nombre: Optional[str] = None
+    version_actual: int = 0
     caracteristicas: Optional[CaracteristicasEstudianteResponse] = None
-    ajustes_razonables: list[AjusteRazonableConEvidenciasResponse] = []
-    recomendaciones_pmi: list[RecomendacionPMIResponse] = []
+    ajustes_razonables: list[AjusteRazonableConEvidenciasResponse] = Field(default_factory=list)
+    recomendaciones_pmi: list[RecomendacionPMIResponse] = Field(default_factory=list)
     acta_acuerdo: Optional[ActaAcuerdoResponse] = None
+    participantes: list[PiarParticipanteResponse] = Field(default_factory=list)
+    asignaturas_estado: list[PiarAsignaturaResponse] = Field(default_factory=list)
+    versiones: list[PiarVersionResponse] = Field(default_factory=list)
 
 class GenerarAjustesRequest(BaseModel):
     barreras_evidenciadas: str
@@ -571,6 +667,7 @@ class GenerarPlanCompletoRequest(BaseModel):
     # Contexto del PIAR
     gustos_intereses: Optional[str] = None
     habilidades_fortalezas: Optional[str] = None
+    caracterizacion_pedagogica: Optional[str] = None
     # Malla curricular de referencia
     dba_referencia: Optional[str] = None
     ebc_referencia: Optional[str] = None
@@ -581,8 +678,10 @@ class GenerarPlanCompletoRequest(BaseModel):
 
 
 class PlanCompletoIAResponse(BaseResponse):
-    """Respuesta de la IA: solo los ajustes y estrategias DUA. Los objetivos y barreras los define el docente."""
+    """Respuesta de la IA: ajustes DUA + tipo de ajuste + apoyo requerido."""
     ajustes_estrategias: str
+    tipo_ajuste: Optional[str] = None
+    apoyo_requerido: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

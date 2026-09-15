@@ -44,6 +44,7 @@ class PostgresEstudianteRepository(IEstudianteRepository):
             correo=orm.correo,
             en_centro_proteccion=orm.en_centro_proteccion,
             centro_proteccion_donde=orm.centro_proteccion_donde,
+            pertenece_grupo_etnico=orm.pertenece_grupo_etnico,
             grupo_etnico=orm.grupo_etnico,
             victima_conflicto=orm.victima_conflicto,
             registro_victima=orm.registro_victima,
@@ -72,6 +73,7 @@ class PostgresEstudianteRepository(IEstudianteRepository):
             correo=estudiante.correo,
             en_centro_proteccion=estudiante.en_centro_proteccion,
             centro_proteccion_donde=estudiante.centro_proteccion_donde,
+            pertenece_grupo_etnico=estudiante.pertenece_grupo_etnico,
             grupo_etnico=estudiante.grupo_etnico,
             victima_conflicto=estudiante.victima_conflicto,
             registro_victima=estudiante.registro_victima,
@@ -116,7 +118,7 @@ class PostgresEstudianteRepository(IEstudianteRepository):
                 "departamento_residencia", "municipio_residencia",
                 "direccion", "barrio_vereda", "telefono", "correo",
                 "en_centro_proteccion", "centro_proteccion_donde",
-                "grupo_etnico", "victima_conflicto", "registro_victima",
+                "pertenece_grupo_etnico", "grupo_etnico", "victima_conflicto", "registro_victima",
                 "grupo_id",
             ):
                 setattr(existing, field, getattr(estudiante, field))

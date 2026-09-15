@@ -12,6 +12,7 @@ Cubre:
 """
 
 import uuid
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File, Form
@@ -35,6 +36,7 @@ from app.domain.entities import Usuario
 from app.entrypoints.api.dependencies import CurrentUser, get_estudiante_repo
 from app.entrypoints.api.schemas import (
     BaseResponse,
+    ActualizarEstudianteRequest,
     CrearEstudianteRequest,
     EntornoHogarRequest,
     EntornoHogarResponse,
@@ -59,6 +61,17 @@ from app.core.portable_exporter import (
 )
 
 router = APIRouter(prefix="/estudiantes", tags=["Estudiantes — Anexo 1"])
+
+
+def calcular_edad(fecha_nacimiento: date, referencia: Optional[date] = None) -> int:
+    """Calcula la edad sin aceptar un valor manipulable desde el cliente."""
+    hoy = referencia or date.today()
+    edad = hoy.year - fecha_nacimiento.year
+    if (hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day):
+        edad -= 1
+    if edad < 0 or edad > 120:
+        raise ValueError("La fecha de nacimiento no produce una edad válida.")
+    return edad
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +139,7 @@ async def listar_estudiantes(
                 tipo_documento=e.tipo_documento,
                 numero_documento=e.numero_documento,
                 fecha_nacimiento=e.fecha_nacimiento,
-                edad=e.edad,
+                edad=calcular_edad(e.fecha_nacimiento),
                 departamento_residencia=e.departamento_residencia,
                 municipio_residencia=e.municipio_residencia,
                 direccion=e.direccion,
@@ -136,6 +149,7 @@ async def listar_estudiantes(
                 correo=e.correo,
                 en_centro_proteccion=e.en_centro_proteccion,
                 centro_proteccion_donde=e.centro_proteccion_donde,
+                pertenece_grupo_etnico=e.pertenece_grupo_etnico,
                 grupo_etnico=e.grupo_etnico,
                 victima_conflicto=e.victima_conflicto,
                 registro_victima=e.registro_victima,
@@ -196,6 +210,13 @@ async def crear_estudiante(
     repo=Depends(get_estudiante_repo),
 ) -> EstudianteResponse:
     await check_write_permission(current_user, repo._session)
+    grupo = await repo._session.get(GrupoORM, body.grupo_id)
+    if not grupo:
+        raise HTTPException(status_code=422, detail="El grupo seleccionado no existe.")
+    try:
+        edad = calcular_edad(body.fecha_nacimiento)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     use_case = CrearEstudianteUseCase(repo)
     try:
         estudiante = await use_case.execute(
@@ -205,7 +226,7 @@ async def crear_estudiante(
                 tipo_documento=body.tipo_documento,
                 numero_documento=body.numero_documento,
                 fecha_nacimiento=body.fecha_nacimiento,
-                edad=body.edad,
+                edad=edad,
                 departamento_residencia=body.departamento_residencia,
                 municipio_residencia=body.municipio_residencia,
                 direccion=body.direccion,
@@ -217,6 +238,7 @@ async def crear_estudiante(
                 correo=str(body.correo) if body.correo else None,
                 en_centro_proteccion=body.en_centro_proteccion,
                 centro_proteccion_donde=body.centro_proteccion_donde,
+                pertenece_grupo_etnico=body.pertenece_grupo_etnico,
                 grupo_etnico=body.grupo_etnico,
                 victima_conflicto=body.victima_conflicto,
                 registro_victima=body.registro_victima,
@@ -228,9 +250,9 @@ async def crear_estudiante(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
     grado = None
-    if body.grupo_id:
+    if estudiante.grupo_id:
         result = await repo._session.execute(
-            select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == body.grupo_id)
+            select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == estudiante.grupo_id)
         )
         grupo_orm = result.scalars().first()
         if grupo_orm and grupo_orm.grado:
@@ -243,7 +265,7 @@ async def crear_estudiante(
         tipo_documento=estudiante.tipo_documento,
         numero_documento=estudiante.numero_documento,
         fecha_nacimiento=estudiante.fecha_nacimiento,
-        edad=estudiante.edad,
+        edad=calcular_edad(estudiante.fecha_nacimiento),
         departamento_residencia=estudiante.departamento_residencia,
         municipio_residencia=estudiante.municipio_residencia,
         direccion=estudiante.direccion,
@@ -253,6 +275,7 @@ async def crear_estudiante(
         correo=estudiante.correo,
         en_centro_proteccion=estudiante.en_centro_proteccion,
         centro_proteccion_donde=estudiante.centro_proteccion_donde,
+        pertenece_grupo_etnico=estudiante.pertenece_grupo_etnico,
         grupo_etnico=estudiante.grupo_etnico,
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
@@ -302,7 +325,7 @@ async def obtener_estudiante(
         tipo_documento=estudiante.tipo_documento,
         numero_documento=estudiante.numero_documento,
         fecha_nacimiento=estudiante.fecha_nacimiento,
-        edad=estudiante.edad,
+        edad=calcular_edad(estudiante.fecha_nacimiento),
         departamento_residencia=estudiante.departamento_residencia,
         municipio_residencia=estudiante.municipio_residencia,
         direccion=estudiante.direccion,
@@ -312,6 +335,7 @@ async def obtener_estudiante(
         correo=estudiante.correo,
         en_centro_proteccion=estudiante.en_centro_proteccion,
         centro_proteccion_donde=estudiante.centro_proteccion_donde,
+        pertenece_grupo_etnico=estudiante.pertenece_grupo_etnico,
         grupo_etnico=estudiante.grupo_etnico,
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,
@@ -363,7 +387,7 @@ async def eliminar_estudiante(
 )
 async def actualizar_estudiante(
     estudiante_id: uuid.UUID,
-    body: CrearEstudianteRequest,
+    body: ActualizarEstudianteRequest,
     current_user: CurrentUser = None,
     repo=Depends(get_estudiante_repo),
 ) -> EstudianteResponse:
@@ -375,34 +399,29 @@ async def actualizar_estudiante(
             detail=f"Estudiante {estudiante_id} no encontrado.",
         )
 
-    # Actualizar campos
-    estudiante.nombres = body.nombres.strip()
-    estudiante.apellidos = body.apellidos.strip()
-    estudiante.tipo_documento = body.tipo_documento
-    estudiante.numero_documento = body.numero_documento.strip()
-    estudiante.fecha_nacimiento = body.fecha_nacimiento
-    estudiante.edad = body.edad
-    estudiante.departamento_residencia = body.departamento_residencia
-    estudiante.municipio_residencia = body.municipio_residencia
-    estudiante.direccion = body.direccion
-    estudiante.barrio_vereda = body.barrio_vereda
-    estudiante.lugar_nacimiento = body.lugar_nacimiento
-    estudiante.telefono = body.telefono
-    estudiante.correo = str(body.correo) if body.correo else None
-    estudiante.en_centro_proteccion = body.en_centro_proteccion
-    estudiante.centro_proteccion_donde = body.centro_proteccion_donde
-    estudiante.grupo_etnico = body.grupo_etnico
-    estudiante.victima_conflicto = body.victima_conflicto
-    estudiante.registro_victima = body.registro_victima
-    estudiante.grupo_id = body.grupo_id
+    cambios = body.model_dump(exclude_unset=True)
+    if "correo" in cambios and cambios["correo"] is not None:
+        cambios["correo"] = str(cambios["correo"])
+    if "nombres" in cambios:
+        cambios["nombres"] = cambios["nombres"].strip()
+    if "apellidos" in cambios:
+        cambios["apellidos"] = cambios["apellidos"].strip()
+    if "numero_documento" in cambios:
+        cambios["numero_documento"] = cambios["numero_documento"].strip()
+    if "grupo_id" in cambios and cambios["grupo_id"] is not None:
+        if not await repo._session.get(GrupoORM, cambios["grupo_id"]):
+            raise HTTPException(status_code=422, detail="El grupo seleccionado no existe.")
+    for campo, valor in cambios.items():
+        setattr(estudiante, campo, valor)
+    estudiante.edad = calcular_edad(estudiante.fecha_nacimiento)
 
     # Persistir
     await repo.save(estudiante)
 
     grado = None
-    if body.grupo_id:
+    if estudiante.grupo_id:
         result = await repo._session.execute(
-            select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == body.grupo_id)
+            select(GrupoORM).options(selectinload(GrupoORM.grado)).where(GrupoORM.id == estudiante.grupo_id)
         )
         grupo_orm = result.scalars().first()
         if grupo_orm and grupo_orm.grado:
@@ -415,7 +434,7 @@ async def actualizar_estudiante(
         tipo_documento=estudiante.tipo_documento,
         numero_documento=estudiante.numero_documento,
         fecha_nacimiento=estudiante.fecha_nacimiento,
-        edad=estudiante.edad,
+        edad=calcular_edad(estudiante.fecha_nacimiento),
         departamento_residencia=estudiante.departamento_residencia,
         municipio_residencia=estudiante.municipio_residencia,
         direccion=estudiante.direccion,
@@ -425,6 +444,7 @@ async def actualizar_estudiante(
         correo=estudiante.correo,
         en_centro_proteccion=estudiante.en_centro_proteccion,
         centro_proteccion_donde=estudiante.centro_proteccion_donde,
+        pertenece_grupo_etnico=estudiante.pertenece_grupo_etnico,
         grupo_etnico=estudiante.grupo_etnico,
         victima_conflicto=estudiante.victima_conflicto,
         registro_victima=estudiante.registro_victima,

@@ -149,6 +149,10 @@ class TestEntidades:
 
         piar.firmar()
         assert piar.estado == "firmado"
+        assert piar.es_editable is False
+
+        piar.reabrir()
+        assert piar.estado == "borrador"
         assert piar.es_editable is True
 
     def test_piar_no_puede_firmar_directo_desde_generando(self):
@@ -203,6 +207,7 @@ class TestCrearEstudiante:
             municipio_residencia="Cali",
             direccion="Av. 1 #2-3",
             barrio_vereda="El Centro",
+            grupo_id=uuid.uuid4(),
         )
         await use_case.execute(data)
 

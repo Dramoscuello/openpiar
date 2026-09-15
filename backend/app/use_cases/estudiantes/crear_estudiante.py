@@ -25,20 +25,21 @@ class CrearEstudianteInput:
     numero_documento: str
     fecha_nacimiento: date
     edad: int
-    departamento_residencia: str
-    municipio_residencia: str
-    direccion: str
-    barrio_vereda: str
+    grupo_id: uuid.UUID
+    departamento_residencia: Optional[str] = None
+    municipio_residencia: Optional[str] = None
+    direccion: Optional[str] = None
+    barrio_vereda: Optional[str] = None
     creado_por: Optional[uuid.UUID] = None
-    grupo_id: Optional[uuid.UUID] = None
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None
-    en_centro_proteccion: bool = False
+    en_centro_proteccion: Optional[bool] = None
     centro_proteccion_donde: Optional[str] = None
+    pertenece_grupo_etnico: Optional[bool] = None
     grupo_etnico: Optional[str] = None
-    victima_conflicto: bool = False
-    registro_victima: bool = False
+    victima_conflicto: Optional[bool] = None
+    registro_victima: Optional[bool] = None
 
 
 class CrearEstudianteUseCase:
@@ -92,6 +93,7 @@ class CrearEstudianteUseCase:
             correo=data.correo,
             en_centro_proteccion=data.en_centro_proteccion,
             centro_proteccion_donde=data.centro_proteccion_donde,
+            pertenece_grupo_etnico=data.pertenece_grupo_etnico,
             grupo_etnico=data.grupo_etnico,
             victima_conflicto=data.victima_conflicto,
             registro_victima=data.registro_victima,

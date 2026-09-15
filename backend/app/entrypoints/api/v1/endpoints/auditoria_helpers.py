@@ -49,6 +49,7 @@ from app.domain.entities import AuditoriaCambio
 
 def serializar_ajuste(ajuste: AjusteRazonableORM) -> dict:
     return {
+        "asignatura_id": str(ajuste.asignatura_id) if ajuste.asignatura_id else None,
         "area": ajuste.area,
         "titulo_tema": ajuste.titulo_tema,
         "objetivos_propositos": ajuste.objetivos_propositos,
@@ -57,6 +58,12 @@ def serializar_ajuste(ajuste: AjusteRazonableORM) -> dict:
         "evaluacion_ajustes": ajuste.evaluacion_ajustes,
         "puntuacion": ajuste.puntuacion,
         "comentario_puntuacion": ajuste.comentario_puntuacion,
+        "tipo_ajuste": ajuste.tipo_ajuste,
+        "apoyo_requerido": ajuste.apoyo_requerido,
+        "temporalidad": ajuste.temporalidad,
+        "responsable": ajuste.responsable,
+        "medios_verificacion": ajuste.medios_verificacion,
+        "dba_referencia": ajuste.dba_referencia,
     }
 
 
@@ -92,6 +99,12 @@ def serializar_caracteristicas(caract: CaracteristicasEstudianteORM) -> dict:
     return {
         "descripcion_gustos_intereses": caract.descripcion_gustos_intereses,
         "descripcion_habilidades": caract.descripcion_habilidades,
+        "caracterizacion_pedagogica": caract.caracterizacion_pedagogica,
+        "expectativas_estudiante": caract.expectativas_estudiante,
+        "expectativas_familia": caract.expectativas_familia,
+        "redes_apoyo": caract.redes_apoyo,
+        "entorno_familiar_social_economico": caract.entorno_familiar_social_economico,
+        "otras_observaciones": caract.otras_observaciones,
     }
 
 

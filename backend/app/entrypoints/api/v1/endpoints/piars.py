@@ -1,8 +1,9 @@
+# Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
 import uuid
 import json
 from datetime import date
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status, Response, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -33,6 +34,9 @@ from app.adapters.db.models import (
     AsignaturaORM,
     CargaAcademicaORM,
     UsuarioORM,
+    PiarParticipanteORM,
+    PiarAsignaturaORM,
+    PiarVersionORM,
 )
 from app.entrypoints.api.schemas import (
     PiarCreate,
@@ -54,6 +58,11 @@ from app.entrypoints.api.schemas import (
     EvidenciaAjusteCreate,
     EvidenciaAjusteResponse,
     AjusteRazonableConEvidenciasResponse,
+    PiarAsignaturaEstadoUpdate,
+    PiarAsignaturaResponse,
+    PiarCompletitudResponse,
+    PiarSeccionCompletitud,
+    PiarVersionResponse,
 )
 from app.entrypoints.api.dependencies import CurrentUser
 
@@ -66,9 +75,285 @@ from app.entrypoints.api.v1.endpoints.auditoria_helpers import (
     serializar_estado_piar,
     serializar_evidencia,
 )
+from app.use_cases.piars import (
+    EvaluarCompletitudPiarUseCase,
+    FinalizarPiarUseCase,
+    PiarCompletitudData,
+    PiarIncompletoError,
+    ReabrirPiarUseCase,
+    VersionarPiarUseCase,
+)
 
 router = APIRouter(prefix="/piars", tags=["piars"])
 settings = get_settings()
+
+
+def _opciones_piar_completo() -> tuple:
+    """Relaciones necesarias para completitud, PDF y versionado."""
+    return (
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.grado),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.sede),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.director),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.carga).selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.carga).selectinload(CargaAcademicaORM.docente),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_salud),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_hogar),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.trayectoria_educativa),
+        selectinload(PiarORM.estudiante).selectinload(EstudianteORM.matricula_actual),
+        selectinload(PiarORM.caracteristicas),
+        selectinload(PiarORM.participantes),
+        selectinload(PiarORM.asignaturas_estado),
+        selectinload(PiarORM.versiones),
+        selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
+        selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.creador),
+        selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias).selectinload(EvidenciaAjusteORM.creador),
+        selectinload(PiarORM.recomendaciones_pmi),
+        selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
+    )
+
+
+async def _cargar_piar_completo(db: AsyncSession, piar_id: uuid.UUID) -> Optional[PiarORM]:
+    resultado = await db.execute(
+        select(PiarORM).where(PiarORM.id == piar_id).options(*_opciones_piar_completo())
+    )
+    return resultado.scalars().first()
+
+
+async def _exigir_director_o_directivo(
+    piar: PiarORM, current_user, db: AsyncSession
+) -> None:
+    if current_user.rol.es_directivo:
+        return
+    grupo = piar.estudiante.grupo if piar.estudiante else None
+    if grupo and grupo.director_id == current_user.id:
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="Solo el director de grupo o un directivo puede realizar esta acción.",
+    )
+
+
+def _exigir_piar_editable(piar: PiarORM) -> None:
+    if piar.estado == "firmado":
+        raise HTTPException(
+            status_code=409,
+            detail="El PIAR está finalizado. Debe reabrirse para crear una nueva versión.",
+        )
+
+
+def _buscar_cobertura_asignatura(
+    piar: PiarORM, asignatura_id: Optional[uuid.UUID], area: str
+) -> Optional[PiarAsignaturaORM]:
+    if asignatura_id:
+        return next(
+            (item for item in piar.asignaturas_estado if item.asignatura_id == asignatura_id),
+            None,
+        )
+    coincidencias = [
+        item for item in piar.asignaturas_estado
+        if item.nombre_asignatura.strip().casefold() == area.strip().casefold()
+    ]
+    return coincidencias[0] if len(coincidencias) == 1 else None
+
+
+def _exigir_permiso_asignatura(cobertura: PiarAsignaturaORM, current_user) -> None:
+    if cobertura.docente_id and cobertura.docente_id == current_user.id:
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="Solo el docente asignado a esta asignatura puede modificar sus ajustes o su justificación de cobertura.",
+    )
+
+
+def _ajustes_visibles_para_usuario(piar: PiarORM, current_user) -> list:
+    """La dirección consulta la malla completa; cada docente, su propia autoría y asignación."""
+    grupo = piar.estudiante.grupo if piar.estudiante else None
+    if current_user.rol.es_directivo or (grupo and grupo.director_id == current_user.id):
+        return list(piar.ajustes_razonables)
+    visibles = []
+    for ajuste in piar.ajustes_razonables:
+        cobertura = _buscar_cobertura_asignatura(piar, ajuste.asignatura_id, ajuste.area)
+        if (ajuste.creado_por == current_user.id and cobertura
+                and cobertura.docente_id == current_user.id):
+            visibles.append(ajuste)
+    return visibles
+
+
+def _registro(orm, campos: tuple[str, ...]) -> Optional[dict]:
+    if orm is None:
+        return None
+    return {campo: getattr(orm, campo, None) for campo in campos}
+
+
+def _datos_completitud(piar: PiarORM) -> PiarCompletitudData:
+    estudiante = piar.estudiante
+    salud = estudiante.entorno_salud
+    hogar = estudiante.entorno_hogar
+    trayectoria = estudiante.trayectoria_educativa
+    matricula = estudiante.matricula_actual
+    caracteristicas = piar.caracteristicas
+    acta = piar.acta_acuerdo
+    general = _registro(estudiante, (
+            "nombres", "apellidos", "tipo_documento", "numero_documento",
+            "fecha_nacimiento", "grupo_id", "lugar_nacimiento",
+            "departamento_residencia", "municipio_residencia", "direccion",
+            "barrio_vereda", "en_centro_proteccion", "centro_proteccion_donde",
+            "pertenece_grupo_etnico", "grupo_etnico", "victima_conflicto",
+            "registro_victima",
+        )) or {}
+    general["lugar_diligenciamiento"] = piar.lugar_diligenciamiento
+    return PiarCompletitudData(
+        general=general,
+        salud=_registro(salud, (
+            "afiliacion_salud", "eps", "regimen", "lugar_emergencias",
+            "atendido_sector_salud", "atenciones_medicas", "tiene_diagnostico_medico",
+            "diagnostico_medico", "asiste_terapias", "terapias_detalle",
+            "consume_medicamentos", "medicamentos_lista", "medicamentos_detalle",
+            "productos_apoyo_movilidad", "productos_apoyo_cual",
+        )),
+        hogar=_registro(hogar, (
+            "nombre_madre", "nombre_padre", "nombre_cuidador", "acudiente_principal",
+            "personas_vive_estudiante", "apoyo_crianza", "numero_hermanos",
+        )),
+        trayectoria=_registro(trayectoria, (
+            "vinculado_sistema_anterior", "vinculado_educacion_inicial",
+            "educacion_inicial_instituciones", "ultimo_grado_cursado",
+            "estado_ultimo_grado", "recibe_informe_pedagogico",
+            "institucion_procedencia_informe", "asiste_programas_complementarios",
+            "programas_complementarios_cuales",
+        )),
+        matricula=_registro(matricula, ("institucion_educativa", "sede", "grado_ingreso", "jornada")),
+        caracteristicas=_registro(caracteristicas, (
+            "descripcion_gustos_intereses", "descripcion_habilidades",
+            "caracterizacion_pedagogica", "expectativas_estudiante",
+            "expectativas_familia", "redes_apoyo", "entorno_familiar_social_economico",
+            "otras_observaciones",
+        )),
+        participantes=[
+            _registro(p, ("nombre", "cargo", "area", "rol_piar", "confirmado")) or {}
+            for p in piar.participantes
+        ],
+        asignaturas=[
+            _registro(a, (
+                "asignatura_id", "nombre_asignatura", "area_nombre", "docente_id",
+                "docente_nombre", "estado", "justificacion",
+            )) or {}
+            for a in piar.asignaturas_estado
+        ],
+        ajustes=[
+            _registro(a, (
+                "asignatura_id", "area", "objetivos_propositos", "barreras_evidenciadas",
+                "tipo_ajuste", "apoyo_requerido", "ajustes_estrategias", "temporalidad",
+                "responsable", "medios_verificacion",
+            )) or {}
+            for a in piar.ajustes_razonables
+        ],
+        acta=_registro(acta, (
+            "fecha_firma", "compromisos_aula", "firmado_estudiante",
+            "firmado_acudiente", "firmado_docente_apoyo", "firmado_docentes_aula",
+            "firmado_directivo",
+        )),
+        compromisos_casa=[
+            _registro(c, ("nombre_actividad", "descripcion_estrategia", "frecuencia")) or {}
+            for c in (acta.compromisos_casa if acta else [])
+        ],
+    )
+
+
+def _evaluar_completitud(piar: PiarORM):
+    return EvaluarCompletitudPiarUseCase().execute(_datos_completitud(piar))
+
+
+def _respuesta_completitud(piar: PiarORM) -> PiarCompletitudResponse:
+    resultado = _evaluar_completitud(piar)
+    asignaturas = [PiarAsignaturaResponse.model_validate(a) for a in piar.asignaturas_estado]
+    return PiarCompletitudResponse(
+        porcentaje=resultado.porcentaje,
+        completa=resultado.completa,
+        puede_exportar_final=resultado.completa,
+        secciones=[
+            PiarSeccionCompletitud(
+                codigo=seccion.codigo,
+                nombre=seccion.nombre,
+                completa=seccion.completa,
+                faltantes=list(seccion.faltantes),
+            )
+            for seccion in resultado.secciones
+        ],
+        asignaturas=asignaturas,
+    )
+
+
+def _snapshot_piar(piar: PiarORM) -> dict:
+    """Instantánea JSON reproducible; excluye soportes médicos y evidencias binarias."""
+    data = _datos_completitud(piar)
+
+    def normalizar(valor):
+        if isinstance(valor, (date,)):
+            return valor.isoformat()
+        if isinstance(valor, uuid.UUID):
+            return str(valor)
+        if isinstance(valor, dict):
+            return {k: normalizar(v) for k, v in valor.items()}
+        if isinstance(valor, (list, tuple)):
+            return [normalizar(v) for v in valor]
+        return valor
+
+    return normalizar({
+        "formato": "MEN-PIAR-V15-08-2020",
+        "piar_id": piar.id,
+        "estudiante_id": piar.estudiante_id,
+        "anio_lectivo": piar.anio_lectivo,
+        "fecha_creacion": piar.fecha_creacion,
+        "lugar_diligenciamiento": piar.lugar_diligenciamiento,
+        "general": dict(data.general),
+        "salud": dict(data.salud or {}),
+        "hogar": dict(data.hogar or {}),
+        "trayectoria": dict(data.trayectoria or {}),
+        "matricula": dict(data.matricula or {}),
+        "caracteristicas": dict(data.caracteristicas or {}),
+        "participantes": list(data.participantes),
+        "asignaturas": list(data.asignaturas),
+        "ajustes": [serializar_ajuste(a) for a in piar.ajustes_razonables],
+        "acta": dict(data.acta or {}),
+        "compromisos_casa": list(data.compromisos_casa),
+    })
+
+
+async def _contexto_pdf(db: AsyncSession, piar: PiarORM):
+    """Carga configuración y periodos relevantes para el documento oficial."""
+    periodos_result = await db.execute(
+        select(PeriodoAcademicoORM).order_by(PeriodoAcademicoORM.fecha_inicio)
+    )
+    periodos = periodos_result.scalars().all()
+    ids_con_ajustes = {
+        ajuste.periodo_id for ajuste in piar.ajustes_razonables if ajuste.periodo_id
+    }
+    hoy = date.today()
+    seleccionados = [
+        periodo for periodo in periodos
+        if periodo.activo or periodo.fecha_inicio <= hoy or periodo.id in ids_con_ajustes
+    ]
+    config_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+    return config_result.scalars().first(), seleccionados
+
+
+async def _generar_pdf_actual(
+    db: AsyncSession,
+    piar: PiarORM,
+    modo: str,
+    faltantes: Optional[list[str]] = None,
+) -> bytes:
+    from app.core.pdf_generator import generate_piar_oficial_pdf
+
+    config, periodos = await _contexto_pdf(db, piar)
+    return generate_piar_oficial_pdf(
+        piar,
+        config,
+        periodos,
+        modo=modo,
+        faltantes=faltantes or [],
+    )
 
 
 def _build_ajustes_response(ajustes_orm: list) -> list:
@@ -93,6 +378,8 @@ def _build_ajustes_response(ajustes_orm: list) -> list:
             piar_id=a.piar_id,
             periodo_id=a.periodo_id,
             creado_por=a.creado_por,
+            creador_nombre=f"{a.creador.nombre} {a.creador.apellido}" if a.creador else None,
+            asignatura_id=a.asignatura_id,
             area=a.area,
             titulo_tema=a.titulo_tema,
             objetivos_propositos=a.objetivos_propositos,
@@ -101,6 +388,12 @@ def _build_ajustes_response(ajustes_orm: list) -> list:
             evaluacion_ajustes=a.evaluacion_ajustes,
             puntuacion=a.puntuacion,
             comentario_puntuacion=a.comentario_puntuacion,
+            tipo_ajuste=a.tipo_ajuste,
+            apoyo_requerido=a.apoyo_requerido,
+            temporalidad=a.temporalidad,
+            responsable=a.responsable,
+            medios_verificacion=a.medios_verificacion,
+            dba_referencia=a.dba_referencia,
             evidencias=evidence_list,
         ))
     return items
@@ -134,18 +427,26 @@ async def get_gemini_key(db: AsyncSession) -> str:
 async def get_piar_by_estudiante(
     estudiante_id: uuid.UUID,
     current_user: CurrentUser,
+    anio: Optional[int] = Query(default=None, ge=2020),
     db: AsyncSession = Depends(get_db)
 ):
-    """Obtiene el PIAR activo para un estudiante, incluyendo características, ajustes y recomendaciones PMI."""
+    """Obtiene el PIAR de un estudiante para el año indicado o el más reciente."""
+    condiciones = [PiarORM.estudiante_id == estudiante_id]
+    if anio is not None:
+        condiciones.append(PiarORM.anio_lectivo == anio)
     query = (
         select(PiarORM)
-        .where(PiarORM.estudiante_id == estudiante_id)
+        .where(*condiciones)
         .options(
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.director),
             selectinload(PiarORM.caracteristicas),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias),
+            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.creador),
             selectinload(PiarORM.recomendaciones_pmi),
-            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
+            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),
+            selectinload(PiarORM.participantes),
+            selectinload(PiarORM.asignaturas_estado),
+            selectinload(PiarORM.versiones),
         )
         .order_by(PiarORM.created_at.desc())
     )
@@ -155,15 +456,6 @@ async def get_piar_by_estudiante(
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado para este estudiante.")
 
-    es_directivo = current_user.rol.es_directivo
-    es_director = False
-    if not es_directivo:
-        estudiante = await db.get(EstudianteORM, estudiante_id)
-        if estudiante and estudiante.grupo_id:
-            grupo = await db.get(GrupoORM, estudiante.grupo_id)
-            if grupo and grupo.director_id == current_user.id:
-                es_director = True
-
     director_nombre = None
     if piar.estudiante and piar.estudiante.grupo and piar.estudiante.grupo.director:
         d = piar.estudiante.grupo.director
@@ -171,14 +463,9 @@ async def get_piar_by_estudiante(
 
     response = PiarResponse.model_validate(piar)
 
-    response.ajustes_razonables = _build_ajustes_response(piar.ajustes_razonables)
+    response.ajustes_razonables = _build_ajustes_response(_ajustes_visibles_para_usuario(piar, current_user))
     response.director_nombre = director_nombre
 
-    if not es_directivo and not es_director:
-        response.ajustes_razonables = [
-            a for a in response.ajustes_razonables
-            if a.creado_por == current_user.id
-        ]
     return response
 
 @router.post("/", response_model=PiarResponse)
@@ -187,27 +474,107 @@ async def create_piar(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
-    """Crea un nuevo documento PIAR para el estudiante."""
-    # Verificar si el estudiante existe
-    estudiante = await db.get(EstudianteORM, data.estudiante_id)
+    """Crea el PIAR anual y congela su carga académica inicial."""
+    resultado_estudiante = await db.execute(
+        select(EstudianteORM)
+        .where(EstudianteORM.id == data.estudiante_id)
+        .options(
+            selectinload(EstudianteORM.grupo).selectinload(GrupoORM.sede),
+            selectinload(EstudianteORM.grupo).selectinload(GrupoORM.director),
+            selectinload(EstudianteORM.grupo).selectinload(GrupoORM.carga).selectinload(CargaAcademicaORM.docente),
+            selectinload(EstudianteORM.grupo).selectinload(GrupoORM.carga).selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
+        )
+    )
+    estudiante = resultado_estudiante.scalars().first()
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+    if not estudiante.grupo:
+        raise HTTPException(status_code=409, detail="El estudiante debe tener un grupo asignado.")
+    if not (current_user.rol.es_directivo or estudiante.grupo.director_id == current_user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="Solo el director de grupo o un directivo puede iniciar el PIAR.",
+        )
 
-    docentes = f"{current_user.nombre} {current_user.apellido}"
+    existente = await db.execute(
+        select(PiarORM).where(
+            PiarORM.estudiante_id == data.estudiante_id,
+            PiarORM.anio_lectivo == data.anio_lectivo,
+        )
+    )
+    if existente.scalars().first():
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ya existe un PIAR para el año {data.anio_lectivo}.",
+        )
+
+    cargas = estudiante.grupo.carga or []
+    docentes_lista: list[str] = []
+    for carga in cargas:
+        nombre = f"{carga.docente.nombre} {carga.docente.apellido}"
+        area = carga.asignatura.nombre
+        docentes_lista.append(f"{nombre} ({area})")
+    docentes = ", ".join(dict.fromkeys(docentes_lista)) or f"{current_user.nombre} {current_user.apellido}"
     nuevo_piar = PiarORM(
         estudiante_id=data.estudiante_id,
         anio_lectivo=data.anio_lectivo,
-        estado=data.estado,
+        estado="borrador",
         creado_por=current_user.id,
-        docentes_elaboran=docentes
+        docentes_elaboran=docentes,
+        lugar_diligenciamiento=data.lugar_diligenciamiento or estudiante.grupo.sede.nombre,
     )
     db.add(nuevo_piar)
-    await db.commit()
+    await db.flush()
+
+    orden = 0
+    director = estudiante.grupo.director
+    participantes_vistos: set[tuple[uuid.UUID, str]] = set()
+    if director:
+        db.add(PiarParticipanteORM(
+            piar_id=nuevo_piar.id,
+            usuario_id=director.id,
+            nombre=f"{director.nombre} {director.apellido}",
+            cargo=director.cargo,
+            area=None,
+            rol_piar="director_grupo",
+            orden=orden,
+            confirmado=True,
+        ))
+        orden += 1
+
+    asignaturas_vistas: set[uuid.UUID] = set()
+    for carga in cargas:
+        docente = carga.docente
+        asignatura = carga.asignatura
+        clave_participante = (docente.id, asignatura.nombre)
+        if clave_participante not in participantes_vistos:
+            db.add(PiarParticipanteORM(
+                piar_id=nuevo_piar.id,
+                usuario_id=docente.id,
+                nombre=f"{docente.nombre} {docente.apellido}",
+                cargo=docente.cargo,
+                area=asignatura.nombre,
+                rol_piar="docente_aula",
+                orden=orden,
+                confirmado=True,
+            ))
+            participantes_vistos.add(clave_participante)
+            orden += 1
+        if asignatura.id not in asignaturas_vistas:
+            db.add(PiarAsignaturaORM(
+                piar_id=nuevo_piar.id,
+                asignatura_id=asignatura.id,
+                docente_id=docente.id,
+                nombre_asignatura=asignatura.nombre,
+                area_nombre=asignatura.area.nombre if asignatura.area else None,
+                docente_nombre=f"{docente.nombre} {docente.apellido}",
+                estado="pendiente",
+            ))
+            asignaturas_vistas.add(asignatura.id)
 
     if not estudiante.codigo_acceso_familia:
         import secrets
         estudiante.codigo_acceso_familia = secrets.token_hex(4)[:8]
-        await db.commit()
 
     await registrar_cambio(
         db=db,
@@ -219,19 +586,8 @@ async def create_piar(
         datos_nuevos={"estado": nuevo_piar.estado},
     )
 
-    # Consultar el PIAR recién creado cargando todas sus relaciones para la respuesta
-    query = (
-        select(PiarORM)
-        .where(PiarORM.id == nuevo_piar.id)
-        .options(
-            selectinload(PiarORM.caracteristicas),
-            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias),
-            selectinload(PiarORM.recomendaciones_pmi),
-            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
-        )
-    )
-    result = await db.execute(query)
-    return result.scalars().first()
+    await db.flush()
+    return await _cargar_piar_completo(db, nuevo_piar.id)
 
 @router.post("/{piar_id}/ajustes", response_model=AjusteRazonableResponse)
 async def add_ajuste_razonable(
@@ -241,10 +597,17 @@ async def add_ajuste_razonable(
     db: AsyncSession = Depends(get_db)
 ):
     """Agrega un ajuste razonable a un PIAR asociándolo al periodo académico activo."""
-    # Verificar si el PIAR existe
-    piar = await db.get(PiarORM, piar_id)
+    piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    _exigir_piar_editable(piar)
+    cobertura = _buscar_cobertura_asignatura(piar, data.asignatura_id, data.area)
+    if not cobertura:
+        raise HTTPException(
+            status_code=422,
+            detail="La asignatura no pertenece a la carga académica congelada del PIAR.",
+        )
+    _exigir_permiso_asignatura(cobertura, current_user)
 
     # Buscar el periodo activo
     periodo_query = select(PeriodoAcademicoORM).where(PeriodoAcademicoORM.activo == True)
@@ -258,16 +621,24 @@ async def add_ajuste_razonable(
         piar_id=piar_id,
         periodo_id=periodo_activo.id,
         creado_por=current_user.id,
-        area=data.area,
+        asignatura_id=cobertura.asignatura_id,
+        area=cobertura.nombre_asignatura,
         titulo_tema=data.titulo_tema,
         objetivos_propositos=data.objetivos_propositos,
         barreras_evidenciadas=data.barreras_evidenciadas,
         ajustes_estrategias=data.ajustes_estrategias,
-        evaluacion_ajustes=data.evaluacion_ajustes
+        evaluacion_ajustes=data.evaluacion_ajustes,
+        tipo_ajuste=data.tipo_ajuste,
+        apoyo_requerido=data.apoyo_requerido,
+        temporalidad=data.temporalidad,
+        responsable=data.responsable,
+        medios_verificacion=data.medios_verificacion,
+        dba_referencia=data.dba_referencia,
     )
     db.add(nuevo_ajuste)
-    await db.commit()
-    await db.refresh(nuevo_ajuste)
+    cobertura.estado = "con_ajuste"
+    cobertura.justificacion = None
+    await db.flush()
 
     await registrar_cambio(
         db=db,
@@ -362,6 +733,8 @@ async def generar_plan_completo_ia(
             perfil_parts.append(f"Gustos, intereses y expectativas familiares: {data.gustos_intereses}")
         if data.habilidades_fortalezas:
             perfil_parts.append(f"Habilidades, fortalezas y apoyos actuales: {data.habilidades_fortalezas}")
+        if data.caracterizacion_pedagogica:
+            perfil_parts.append(f"Caracterización pedagógica / Diagnóstico: {data.caracterizacion_pedagogica}")
         perfil_texto = "\n".join(perfil_parts)
 
         # --- Construir bloque curricular de referencia ---
@@ -426,7 +799,9 @@ Reglas de formato para tu respuesta JSON:
 - No uses listas con viñetas, guiones ni asteriscos.
 - No uses negritas, cursivas, títulos ni ningún formato markdown (sin '#' ni '*').
 - Sé altamente específico y accionable: el docente de aula debe poder aplicar cada ajuste directamente en su planeación.
-- Escribe en tercera persona o imperativo (ej: "Presentar la información...", "El estudiante requiere...")."""
+- Escribe en tercera persona o imperativo (ej: "Presentar la información...", "El estudiante requiere...").
+- En 'tipo_ajuste', clasifica el tipo principal de ajuste razonable (facilitador) entre: Didácticas (metodología), Recursos o materiales, Evaluación diferenciada, Tiempo adicional, Estrategias de enseñanza, u otro pertinente.
+- En 'apoyo_requerido', detalla los apoyos categorizados por: Talento humano, Técnico, Tecnológico, Comunicativo. Cada categoría en una oración separada con punto y aparte. Solo menciona las categorías que realmente apliquen al caso."""
 
         # --- Esquema JSON para structured output ---
         schema_json = {
@@ -435,9 +810,17 @@ Reglas de formato para tu respuesta JSON:
                 "ajustes_estrategias": {
                     "type": "string",
                     "description": "Ajustes razonables y estrategias DUA propuestos. Texto plano, consolidado, sin listas ni markdown. Cada ajuste separado con punto y aparte."
+                },
+                "tipo_ajuste": {
+                    "type": "string",
+                    "description": "Tipo de ajuste razonable (facilitador). Ej: 'Didácticas (metodología)', 'Recursos o materiales', 'Evaluación diferenciada'. Una frase corta."
+                },
+                "apoyo_requerido": {
+                    "type": "string",
+                    "description": "Apoyo requerido categorizado. Ej: 'Talento humano: docente de aula, orientador. Técnico: guías paso a paso, tablas impresas. Tecnológico: software PhET. Comunicativo: lenguaje sencillo, organizadores gráficos.'"
                 }
             },
-            "required": ["ajustes_estrategias"]
+            "required": ["ajustes_estrategias", "tipo_ajuste", "apoyo_requerido"]
         }
 
         # --- Llamar a Gemini con el nuevo SDK (google-genai) ---
@@ -458,7 +841,9 @@ Reglas de formato para tu respuesta JSON:
         parsed = json.loads(response.text)
 
         return PlanCompletoIAResponse(
-            ajustes_estrategias=parsed.get("ajustes_estrategias", "").strip()
+            ajustes_estrategias=parsed.get("ajustes_estrategias", "").strip(),
+            tipo_ajuste=parsed.get("tipo_ajuste", "").strip() or None,
+            apoyo_requerido=parsed.get("apoyo_requerido", "").strip() or None,
         )
 
     except HTTPException:
@@ -473,75 +858,55 @@ async def update_piar(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
-    """Actualiza los metadatos de un PIAR (estado, docentes) y sus Características del Estudiante (gustos, habilidades)."""
-    query = (
-        select(PiarORM)
-        .where(PiarORM.id == piar_id)
-        .options(
-            selectinload(PiarORM.caracteristicas),
-            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias),
-            selectinload(PiarORM.recomendaciones_pmi),
-            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
-        )
-    )
-    result = await db.execute(query)
-    piar = result.scalars().first()
+    """Actualiza parcialmente la caracterización y metadatos del PIAR."""
+    piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-
-    # Rechazar solo cambio de estado si ya está firmado (contenido siempre editable)
-    if piar.estado == "firmado" and data.estado is not None and data.estado != "firmado":
+    await _exigir_director_o_directivo(piar, current_user, db)
+    _exigir_piar_editable(piar)
+    if data.estado == "firmado":
         raise HTTPException(
             status_code=409,
-            detail="No se puede cambiar el estado de un PIAR ya firmado."
+            detail="Use el endpoint de finalización para validar y versionar el PIAR.",
         )
 
     estado_anterior = piar.estado
     carac_anteriores = serializar_caracteristicas(piar.caracteristicas) if piar.caracteristicas else None
 
-    if data.estado == "firmado":
-        if not piar.acta_acuerdo:
-            raise HTTPException(
-                status_code=409,
-                detail="Debe existir un acta de acuerdo guardada antes de finalizar el PIAR."
-            )
-        acta = piar.acta_acuerdo
-        firmas_faltantes = []
-        if not acta.firmado_estudiante:
-            firmas_faltantes.append("Estudiante")
-        if not acta.firmado_acudiente:
-            firmas_faltantes.append("Acudiente / Familia")
-        if not acta.firmado_docentes_aula:
-            firmas_faltantes.append("Docentes de Aula")
-        if not acta.firmado_directivo:
-            firmas_faltantes.append("Directivo docente (Rector)")
-        if firmas_faltantes:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Faltan las firmas de: {', '.join(firmas_faltantes)}. "
-                       f"Todas las partes deben firmar antes de finalizar el PIAR."
-            )
-        piar.estado = "firmado"
-    elif data.estado is not None:
+    if data.estado is not None:
         piar.estado = data.estado
 
     if data.docentes_elaboran is not None:
         piar.docentes_elaboran = data.docentes_elaboran
+    if data.lugar_diligenciamiento is not None:
+        piar.lugar_diligenciamiento = data.lugar_diligenciamiento
 
     if data.caracteristicas is not None:
         if piar.caracteristicas:
             piar.caracteristicas.descripcion_gustos_intereses = data.caracteristicas.descripcion_gustos_intereses
             piar.caracteristicas.descripcion_habilidades = data.caracteristicas.descripcion_habilidades
+            piar.caracteristicas.caracterizacion_pedagogica = data.caracteristicas.caracterizacion_pedagogica
+            piar.caracteristicas.expectativas_estudiante = data.caracteristicas.expectativas_estudiante
+            piar.caracteristicas.expectativas_familia = data.caracteristicas.expectativas_familia
+            piar.caracteristicas.redes_apoyo = data.caracteristicas.redes_apoyo
+            piar.caracteristicas.entorno_familiar_social_economico = data.caracteristicas.entorno_familiar_social_economico
+            piar.caracteristicas.otras_observaciones = data.caracteristicas.otras_observaciones
         else:
             nueva_carac = CaracteristicasEstudianteORM(
                 piar_id=piar.id,
                 descripcion_gustos_intereses=data.caracteristicas.descripcion_gustos_intereses,
-                descripcion_habilidades=data.caracteristicas.descripcion_habilidades
+                descripcion_habilidades=data.caracteristicas.descripcion_habilidades,
+                caracterizacion_pedagogica=data.caracteristicas.caracterizacion_pedagogica,
+                expectativas_estudiante=data.caracteristicas.expectativas_estudiante,
+                expectativas_familia=data.caracteristicas.expectativas_familia,
+                redes_apoyo=data.caracteristicas.redes_apoyo,
+                entorno_familiar_social_economico=data.caracteristicas.entorno_familiar_social_economico,
+                otras_observaciones=data.caracteristicas.otras_observaciones,
             )
             db.add(nueva_carac)
             piar.caracteristicas = nueva_carac
 
-    await db.commit()
+    await db.flush()
 
     if data.estado is not None and data.estado != estado_anterior:
         await registrar_cambio(
@@ -567,9 +932,7 @@ async def update_piar(
             datos_nuevos=serializar_caracteristicas(piar.caracteristicas),
         )
 
-    # Recargar el PIAR con todas sus relaciones cargadas para la respuesta
-    result = await db.execute(query)
-    return result.scalars().first()
+    return await _cargar_piar_completo(db, piar_id)
 
 @router.put("/{piar_id}/ajustes/{ajuste_id}", response_model=AjusteRazonableResponse)
 async def update_ajuste_razonable(
@@ -580,24 +943,55 @@ async def update_ajuste_razonable(
     db: AsyncSession = Depends(get_db)
 ):
     """Modifica un ajuste razonable existente en la matriz."""
+    piar = await _cargar_piar_completo(db, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    _exigir_piar_editable(piar)
     ajuste = await db.get(AjusteRazonableORM, ajuste_id)
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
-    if ajuste.creado_por != current_user.id:
-        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
+    cobertura_anterior = _buscar_cobertura_asignatura(piar, ajuste.asignatura_id, ajuste.area)
+    if not cobertura_anterior:
+        raise HTTPException(status_code=422, detail="El ajuste debe vincularse a una asignatura del PIAR.")
+    _exigir_permiso_asignatura(cobertura_anterior, current_user)
+    cobertura = _buscar_cobertura_asignatura(
+        piar, data.asignatura_id or ajuste.asignatura_id, data.area
+    )
+    if not cobertura:
+        raise HTTPException(status_code=422, detail="La asignatura no pertenece al PIAR.")
+    _exigir_permiso_asignatura(cobertura, current_user)
 
     datos_antes = serializar_ajuste(ajuste)
 
-    ajuste.area = data.area
+    ajuste.asignatura_id = cobertura.asignatura_id
+    ajuste.area = cobertura.nombre_asignatura
     ajuste.titulo_tema = data.titulo_tema
     ajuste.objetivos_propositos = data.objetivos_propositos
     ajuste.barreras_evidenciadas = data.barreras_evidenciadas
     ajuste.ajustes_estrategias = data.ajustes_estrategias
     ajuste.evaluacion_ajustes = data.evaluacion_ajustes
+    ajuste.tipo_ajuste = data.tipo_ajuste
+    ajuste.apoyo_requerido = data.apoyo_requerido
+    ajuste.temporalidad = data.temporalidad
+    ajuste.responsable = data.responsable
+    ajuste.medios_verificacion = data.medios_verificacion
+    ajuste.dba_referencia = data.dba_referencia
 
-    await db.commit()
-    await db.refresh(ajuste)
+    cobertura.estado = "con_ajuste"
+    cobertura.justificacion = None
+    await db.flush()
+    if cobertura_anterior and cobertura_anterior.asignatura_id != cobertura.asignatura_id:
+        otros = await db.execute(
+            select(AjusteRazonableORM.id).where(
+                AjusteRazonableORM.piar_id == piar_id,
+                AjusteRazonableORM.asignatura_id == cobertura_anterior.asignatura_id,
+                AjusteRazonableORM.id != ajuste.id,
+            ).limit(1)
+        )
+        if otros.scalar_one_or_none() is None:
+            cobertura_anterior.estado = "pendiente"
+            cobertura_anterior.justificacion = None
 
     await registrar_cambio(
         db=db,
@@ -661,18 +1055,34 @@ async def delete_ajuste_razonable(
     db: AsyncSession = Depends(get_db)
 ):
     """Elimina un ajuste razonable de la matriz."""
+    piar = await _cargar_piar_completo(db, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    _exigir_piar_editable(piar)
     ajuste = await db.get(AjusteRazonableORM, ajuste_id)
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
-    if ajuste.creado_por != current_user.id:
-        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
+    cobertura = _buscar_cobertura_asignatura(piar, ajuste.asignatura_id, ajuste.area)
+    if cobertura:
+        _exigir_permiso_asignatura(cobertura, current_user)
 
     datos_antes = serializar_ajuste(ajuste)
     ajuste_id = ajuste.id
 
     await db.delete(ajuste)
-    await db.commit()
+    await db.flush()
+
+    if cobertura:
+        restantes = await db.execute(
+            select(AjusteRazonableORM.id).where(
+                AjusteRazonableORM.piar_id == piar_id,
+                AjusteRazonableORM.asignatura_id == cobertura.asignatura_id,
+            ).limit(1)
+        )
+        if restantes.scalar_one_or_none() is None:
+            cobertura.estado = "pendiente"
+            cobertura.justificacion = None
 
     await registrar_cambio(
         db=db,
@@ -785,6 +1195,185 @@ async def delete_recomendacion_pmi(
     return None
 
 
+@router.get("/{piar_id}/completitud", response_model=PiarCompletitudResponse)
+async def get_completitud_piar(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve el checklist oficial y la cobertura de la carga académica."""
+    piar = await _cargar_piar_completo(db, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    return _respuesta_completitud(piar)
+
+
+@router.patch(
+    "/{piar_id}/asignaturas/{asignatura_id}",
+    response_model=PiarAsignaturaResponse,
+)
+async def update_estado_asignatura(
+    piar_id: uuid.UUID,
+    asignatura_id: uuid.UUID,
+    data: PiarAsignaturaEstadoUpdate,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Resuelve una asignatura sin ajuste o la devuelve a estado pendiente."""
+    piar = await _cargar_piar_completo(db, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    _exigir_piar_editable(piar)
+    cobertura = _buscar_cobertura_asignatura(piar, asignatura_id, "")
+    if not cobertura:
+        raise HTTPException(status_code=404, detail="Asignatura no incluida en este PIAR.")
+    _exigir_permiso_asignatura(cobertura, current_user)
+
+    justificacion = (data.justificacion or "").strip()
+    if data.estado == "no_requiere" and len(justificacion) < 5:
+        raise HTTPException(
+            status_code=422,
+            detail="La opción 'no requiere' exige una justificación de al menos 5 caracteres.",
+        )
+    cobertura.estado = data.estado
+    cobertura.justificacion = justificacion if data.estado == "no_requiere" else None
+    await db.flush()
+    return cobertura
+
+
+@router.get("/{piar_id}/pdf")
+async def download_piar_pdf(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    modo: str = Query(default="borrador", pattern="^(borrador|final)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Descarga un borrador vivo o la última versión final inmutable."""
+    piar = await _cargar_piar_completo(db, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+    if modo == "final":
+        versiones = sorted(piar.versiones, key=lambda item: item.numero)
+        if not versiones:
+            completitud = _respuesta_completitud(piar)
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "mensaje": "El PIAR debe finalizarse antes de descargar el PDF final.",
+                    "completitud": completitud.model_dump(mode="json"),
+                },
+            )
+        version = versiones[-1]
+        contenido = version.pdf_archivo
+        sufijo = f"v{version.numero}"
+    else:
+        resultado = _evaluar_completitud(piar)
+        faltantes = [
+            f"{seccion.nombre}: {', '.join(seccion.faltantes)}"
+            for seccion in resultado.secciones if not seccion.completa
+        ]
+        contenido = await _generar_pdf_actual(db, piar, "borrador", faltantes)
+        sufijo = "BORRADOR"
+
+    filename = f"PIAR_{piar.estudiante.numero_documento}_{piar.anio_lectivo}_{sufijo}.pdf"
+    return Response(
+        content=contenido,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/{piar_id}/finalizar", response_model=PiarVersionResponse)
+async def finalizar_piar(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Valida el PIAR y conserva una versión final inmutable con su huella SHA-256."""
+    piar = await _cargar_piar_completo(db, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await _exigir_director_o_directivo(piar, current_user, db)
+    if piar.estado == "firmado":
+        raise HTTPException(status_code=409, detail="El PIAR ya está finalizado.")
+
+    completitud = _evaluar_completitud(piar)
+    try:
+        numero = FinalizarPiarUseCase().execute(completitud, piar.version_actual)
+    except PiarIncompletoError:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "mensaje": "El PIAR aún tiene información pendiente.",
+                "completitud": _respuesta_completitud(piar).model_dump(mode="json"),
+            },
+        )
+
+    pdf = await _generar_pdf_actual(db, piar, "final")
+    snapshot = _snapshot_piar(piar)
+    snapshot.update({"estado": "firmado", "version": numero})
+    version_data = VersionarPiarUseCase().execute(numero, snapshot, pdf)
+    version = PiarVersionORM(
+        piar_id=piar.id,
+        numero=version_data.numero,
+        snapshot=dict(version_data.snapshot),
+        pdf_archivo=version_data.pdf,
+        sha256=version_data.sha256,
+        creado_por=current_user.id,
+    )
+    db.add(version)
+    piar.version_actual = numero
+    piar.estado = "firmado"
+    await db.flush()
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="piar_version",
+        entidad_id=version.id,
+        piar_id=piar.id,
+        accion="crear",
+        usuario_id=current_user.id,
+        datos_nuevos={"numero": numero, "sha256": version.sha256},
+    )
+    return version
+
+
+@router.post("/{piar_id}/reabrir", response_model=PiarResponse)
+async def reabrir_piar(
+    piar_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Reabre el PIAR conservando intactas sus versiones y reinicia confirmaciones."""
+    piar = await _cargar_piar_completo(db, piar_id)
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await _exigir_director_o_directivo(piar, current_user, db)
+    if piar.estado != "firmado":
+        raise HTTPException(status_code=409, detail="Solo puede reabrirse un PIAR finalizado.")
+
+    piar.estado = ReabrirPiarUseCase().execute(piar.estado)
+    if piar.acta_acuerdo:
+        piar.acta_acuerdo.fecha_firma = None
+        piar.acta_acuerdo.firmado_estudiante = False
+        piar.acta_acuerdo.firmado_acudiente = False
+        piar.acta_acuerdo.firmado_docente_apoyo = False
+        piar.acta_acuerdo.firmado_docentes_aula = False
+        piar.acta_acuerdo.firmado_directivo = False
+    await db.flush()
+    await registrar_cambio(
+        db=db,
+        entidad_tipo="piar_estado",
+        entidad_id=piar.id,
+        piar_id=piar.id,
+        accion="modificar",
+        usuario_id=current_user.id,
+        datos_anteriores={"estado": "firmado", "version": piar.version_actual},
+        datos_nuevos={"estado": "borrador", "version": piar.version_actual},
+    )
+    return await _cargar_piar_completo(db, piar_id)
+
+
 @router.get("/{piar_id}/acta", response_model=Optional[ActaAcuerdoResponse])
 async def get_acta_acuerdo(
     piar_id: uuid.UUID,
@@ -810,10 +1399,11 @@ async def upsert_acta_acuerdo(
     db: AsyncSession = Depends(get_db)
 ):
     """Crea o actualiza el Acta de Acuerdo (Anexo 3) para un PIAR, y sincroniza las actividades de casa."""
-    # Verificar si el PIAR existe
-    piar = await db.get(PiarORM, piar_id)
+    piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await _exigir_director_o_directivo(piar, current_user, db)
+    _exigir_piar_editable(piar)
 
     # Buscar si ya existe acta para este PIAR
     query = (
@@ -865,7 +1455,7 @@ async def upsert_acta_acuerdo(
         )
         db.add(nuevo_comp)
 
-    await db.commit()
+    await db.flush()
 
     await registrar_cambio(
         db=db,
@@ -895,67 +1485,25 @@ async def upsert_acta_acuerdo(
 async def download_acta_pdf(
     piar_id: uuid.UUID,
     current_user: CurrentUser,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """Genera y descarga el PDF oficial del Acta de Acuerdo (Anexo 3) para un PIAR."""
-    # Buscar el PIAR con relaciones cargadas
-    query = (
-        select(PiarORM)
-        .where(PiarORM.id == piar_id)
-        .options(
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.grado),
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.sede),
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.director),
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo).selectinload(GrupoORM.carga).selectinload(CargaAcademicaORM.asignatura),
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_salud),
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.entorno_hogar),
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.trayectoria_educativa),
-            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.matricula_actual),
-            selectinload(PiarORM.caracteristicas),
-            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
-            selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias).selectinload(EvidenciaAjusteORM.creador),
-            selectinload(PiarORM.recomendaciones_pmi),
-            selectinload(PiarORM.acta_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa)
-        )
-    )
-    result = await db.execute(query)
-    piar = result.scalars().first()
+    """Alias compatible: entrega la versión final o un borrador si aún está abierto."""
+    piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-    
-    if not piar.acta_acuerdo:
-        raise HTTPException(
-            status_code=400,
-            detail="Debe completar y guardar el Acta de Acuerdo (Anexo 3) antes de generar el PDF."
-        )
-
-    # Cargar todos los periodos académicos y determinar los activos/pasados
-    from datetime import date
-    periodos_result = await db.execute(
-        select(PeriodoAcademicoORM).order_by(PeriodoAcademicoORM.fecha_inicio)
-    )
-    all_periodos = periodos_result.scalars().all()
-
-    # Identificar periodos con ajustes para este estudiante
-    periods_with_adjustments = {aj.periodo_id for aj in piar.ajustes_razonables if aj.periodo_id}
-
-    # Filtrar periodos que están/estuvieron activos o tienen información
-    selected_periods = []
-    today = date.today()
-    for p in all_periodos:
-        if p.activo or p.fecha_inicio <= today or p.id in periods_with_adjustments:
-            selected_periods.append(p)
-
-    # Cargar la configuración del sistema
-    config_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
-    config = config_result.scalars().first()
-
-    # Generar el PDF
-    from app.core.pdf_generator import generate_acta_pdf
-    pdf_bytes = generate_acta_pdf(piar, config, selected_periods)
-
-    # Retornar como archivo descargable
-    filename = f"Acta_Acuerdo_{piar.estudiante.numero_documento}.pdf"
+    versiones = sorted(piar.versiones, key=lambda item: item.numero)
+    if piar.estado == "firmado" and versiones:
+        pdf_bytes = versiones[-1].pdf_archivo
+        sufijo = f"v{versiones[-1].numero}"
+    else:
+        resultado = _evaluar_completitud(piar)
+        faltantes = [
+            f"{seccion.nombre}: {', '.join(seccion.faltantes)}"
+            for seccion in resultado.secciones if not seccion.completa
+        ]
+        pdf_bytes = await _generar_pdf_actual(db, piar, "borrador", faltantes)
+        sufijo = "BORRADOR"
+    filename = f"PIAR_{piar.estudiante.numero_documento}_{piar.anio_lectivo}_{sufijo}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -1365,4 +1913,3 @@ async def export_historial_pdf(
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
-

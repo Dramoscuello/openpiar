@@ -16,11 +16,12 @@ export interface StudentGeneral {
   lugar_nacimiento: string
   telefono: string
   correo: string
-  en_centro_proteccion: boolean
+  en_centro_proteccion: boolean | null
   centro_proteccion_donde: string
+  pertenece_grupo_etnico: boolean | null
   grupo_etnico: string
-  victima_conflicto: boolean
-  registro_victima: boolean
+  victima_conflicto: boolean | null
+  registro_victima: boolean | null
   grupo_id: string | null
 }
 
@@ -42,8 +43,10 @@ export interface StudentSalud {
   terapias_detalle: TerapiaDetalle[]
   tratamiento_medico: boolean
   tratamiento_medico_cual: string
+  atenciones_medicas: { cual: string, frecuencia: string }[]
   consume_medicamentos: boolean
   medicamentos_detalle: string
+  medicamentos_lista: { cual: string, frecuencia: string }[]
   productos_apoyo_movilidad: boolean
   productos_apoyo_cual: string
   soporte_medico_nombre?: string | null
@@ -78,10 +81,12 @@ export interface StudentHogar {
 }
 
 export interface StudentTrayectoria {
+  vinculado_sistema_anterior: boolean | null
   vinculado_educacion_inicial: boolean
   educacion_inicial_instituciones: string
   ultimo_grado_cursado: string
   aprobo_ultimo_grado: boolean
+  estado_ultimo_grado: 'aprobado' | 'reprobado' | 'sin_terminar' | ''
   observaciones_trayectoria: string
   recibe_informe_pedagogico: boolean
   institucion_procedencia_informe: string
@@ -145,11 +150,12 @@ const createDefaultDraft = (): StudentDraft => ({
     lugar_nacimiento: '',
     telefono: '',
     correo: '',
-    en_centro_proteccion: false,
+    en_centro_proteccion: null,
     centro_proteccion_donde: '',
+    pertenece_grupo_etnico: null,
     grupo_etnico: '',
-    victima_conflicto: false,
-    registro_victima: false,
+    victima_conflicto: null,
+    registro_victima: null,
     grupo_id: null,
   },
   salud: {
@@ -165,8 +171,10 @@ const createDefaultDraft = (): StudentDraft => ({
     terapias_detalle: [],
     tratamiento_medico: false,
     tratamiento_medico_cual: '',
+    atenciones_medicas: [] as Array<{ cual: string, frecuencia: string }>,
     consume_medicamentos: false,
     medicamentos_detalle: '',
+    medicamentos_lista: [] as Array<{ cual: string, frecuencia: string }>,
     productos_apoyo_movilidad: false,
     productos_apoyo_cual: '',
     soporte_medico_nombre: null,
@@ -199,10 +207,12 @@ const createDefaultDraft = (): StudentDraft => ({
     subsidio_cual: '',
   },
   trayectoria: {
+    vinculado_sistema_anterior: null,
     vinculado_educacion_inicial: false,
     educacion_inicial_instituciones: '',
     ultimo_grado_cursado: '',
     aprobo_ultimo_grado: true,
+    estado_ultimo_grado: '',
     observaciones_trayectoria: '',
     recibe_informe_pedagogico: false,
     institucion_procedencia_informe: '',
@@ -326,11 +336,12 @@ export const useStudentsStore = defineStore('students', {
           lugar_nacimiento: dataGeneral.lugar_nacimiento || '',
           telefono: dataGeneral.telefono || '',
           correo: dataGeneral.correo || '',
-          en_centro_proteccion: dataGeneral.en_centro_proteccion || false,
+          en_centro_proteccion: dataGeneral.en_centro_proteccion ?? null,
           centro_proteccion_donde: dataGeneral.centro_proteccion_donde || '',
+          pertenece_grupo_etnico: dataGeneral.pertenece_grupo_etnico ?? null,
           grupo_etnico: dataGeneral.grupo_etnico || '',
-          victima_conflicto: dataGeneral.victima_conflicto || false,
-          registro_victima: dataGeneral.registro_victima || false,
+          victima_conflicto: dataGeneral.victima_conflicto ?? null,
+          registro_victima: dataGeneral.registro_victima ?? null,
           grupo_id: dataGeneral.grupo_id || null,
         }
 
@@ -367,8 +378,10 @@ export const useStudentsStore = defineStore('students', {
             terapias_detalle: dataSalud.terapias_detalle || [],
             tratamiento_medico: dataSalud.tratamiento_medico || false,
             tratamiento_medico_cual: dataSalud.tratamiento_medico_cual || '',
+            atenciones_medicas: dataSalud.atenciones_medicas || [],
             consume_medicamentos: dataSalud.consume_medicamentos || false,
             medicamentos_detalle: dataSalud.medicamentos_detalle || '',
+            medicamentos_lista: dataSalud.medicamentos_lista || [],
             productos_apoyo_movilidad: dataSalud.productos_apoyo_movilidad || false,
             productos_apoyo_cual: dataSalud.productos_apoyo_cual || '',
             soporte_medico_nombre: dataSalud.soporte_medico_nombre || null,
@@ -407,10 +420,12 @@ export const useStudentsStore = defineStore('students', {
 
         if (dataTrayectoria) {
           this.draft.trayectoria = {
+            vinculado_sistema_anterior: dataTrayectoria.vinculado_sistema_anterior ?? null,
             vinculado_educacion_inicial: dataTrayectoria.vinculado_educacion_inicial || false,
             educacion_inicial_instituciones: dataTrayectoria.educacion_inicial_instituciones || '',
             ultimo_grado_cursado: dataTrayectoria.ultimo_grado_cursado || '',
             aprobo_ultimo_grado: dataTrayectoria.aprobo_ultimo_grado ?? true,
+            estado_ultimo_grado: dataTrayectoria.estado_ultimo_grado || '',
             observaciones_trayectoria: dataTrayectoria.observaciones_trayectoria || '',
             recibe_informe_pedagogico: dataTrayectoria.recibe_informe_pedagogico || false,
             institucion_procedencia_informe: dataTrayectoria.institucion_procedencia_informe || '',
@@ -457,6 +472,7 @@ export const useStudentsStore = defineStore('students', {
 
         // Limpiar strings vacíos de inputs opcionales y formatear nulos del formulario
         const payloadGeneral = { ...this.draft.general }
+        delete (payloadGeneral as any).edad
         if (!payloadGeneral.correo) delete (payloadGeneral as any).correo
         if (!payloadGeneral.telefono) delete (payloadGeneral as any).telefono
         if (!payloadGeneral.lugar_nacimiento) delete (payloadGeneral as any).lugar_nacimiento
@@ -465,13 +481,6 @@ export const useStudentsStore = defineStore('students', {
 
         // --- 1. Sincronizar Datos Generales ---
         if (id) {
-          // Edición (En estudiantes.py el endpoint es PATCH /api/v1/estudiantes/{id} ? Espera, let's verify if PATCH exists on backend)
-          // Wait, let's assume it does since it's common or we can inspect. Let's verify in students.py.
-          // Wait, we didn't check if PATCH /estudiantes/{id} exists. Let's look at students.py lines 150 to 220.
-          // Lines 172-181 in students.py is GET /{estudiante_id}.
-          // Let's check if there is a PATCH /estudiantes/{id}. Let's grep "PATCH /" in students.py.
-          // Ah, we ran a search for "entorno" but let's check what methods are in students.py.
-          // Let's search students.py for "router.patch" or "router.put".
           const res = await fetch(`/api/v1/estudiantes/${id}`, {
             method: 'PATCH',
             headers,
@@ -575,6 +584,43 @@ export const useStudentsStore = defineStore('students', {
       } catch (err: any) {
         this.error = err.message || 'Error al guardar el expediente del estudiante.'
         return false
+      } finally {
+        this.submitting = false
+      }
+    },
+
+    /** Registra únicamente identidad y asignación escolar; el Anexo 1 se completa al diseñar el PIAR. */
+    async registerStudent(): Promise<string | null> {
+      const authStore = useAuthStore()
+      this.submitting = true
+      this.error = null
+      try {
+        const general = this.draft.general
+        const response = await fetch('/api/v1/estudiantes/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authStore.token}`,
+          },
+          body: JSON.stringify({
+            nombres: general.nombres,
+            apellidos: general.apellidos,
+            tipo_documento: general.tipo_documento,
+            numero_documento: general.numero_documento,
+            fecha_nacimiento: general.fecha_nacimiento,
+            grupo_id: general.grupo_id,
+          }),
+        })
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}))
+          throw new Error(body.detail || 'Error al registrar el estudiante.')
+        }
+        const created = await response.json()
+        this.clearDraft()
+        return created.id as string
+      } catch (err: any) {
+        this.error = err.message || 'Error al registrar el estudiante.'
+        return null
       } finally {
         this.submitting = false
       }

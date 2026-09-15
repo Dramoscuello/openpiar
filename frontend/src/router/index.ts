@@ -76,7 +76,7 @@ const router = createRouter({
 })
 
 // Navigation Guard
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
   await authStore.initAuth()
@@ -85,25 +85,23 @@ router.beforeEach(async (to, from, next) => {
 
   // Regla de Setup Wizard: Si no está completado, obligar a ir a /setup
   if (!setupCompleted && to.name !== 'setup' && to.name !== 'familia') {
-    return next({ name: 'setup' })
+    return { name: 'setup' }
   }
 
   // Si está completado, no permitir ir al Setup Wizard
   if (setupCompleted && to.name === 'setup') {
-    return next(authStore.isAuthenticated ? { name: 'dashboard' } : { name: 'login' })
+    return authStore.isAuthenticated ? { name: 'dashboard' } : { name: 'login' }
   }
 
   // Rutas con requerimiento de autenticación
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return next({ name: 'login' })
+    return { name: 'login' }
   }
 
   // Rutas con requerimiento de huésped (solo sin autenticar, ej: Login)
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    return next({ name: 'dashboard' })
+    return { name: 'dashboard' }
   }
-
-  next()
 })
 
 export default router

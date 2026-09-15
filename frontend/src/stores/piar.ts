@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
+import type { PiarCompletitud } from '../types/piar'
 
 export const usePiarStore = defineStore('piar', () => {
   const activePiar = ref<any>(null)
@@ -88,7 +89,7 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
-  async function saveAjuste(data: { area: string, tituloTema: string, objetivos: string, barreras: string, ajustes: string }) {
+  async function saveAjuste(data: { asignaturaId?: string | null, area: string, tituloTema: string, objetivos: string, barreras: string, ajustes: string, tipoAjuste?: string | null, apoyoRequerido?: string | null, temporalidad?: string | null, responsable?: string | null, mediosVerificacion?: string | null, dbaReferencia?: string | null }) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
     const authStore = useAuthStore()
@@ -100,12 +101,19 @@ export const usePiarStore = defineStore('piar', () => {
           'Authorization': `Bearer ${authStore.token}`
         },
         body: JSON.stringify({
+          asignatura_id: data.asignaturaId || null,
           area: data.area,
           titulo_tema: data.tituloTema,
           objetivos_propositos: data.objetivos,
           barreras_evidenciadas: data.barreras,
           ajustes_estrategias: data.ajustes,
-          evaluacion_ajustes: ''
+          evaluacion_ajustes: '',
+          tipo_ajuste: data.tipoAjuste || null,
+          apoyo_requerido: data.apoyoRequerido || null,
+          temporalidad: data.temporalidad || null,
+          responsable: data.responsable || null,
+          medios_verificacion: data.mediosVerificacion || null,
+          dba_referencia: data.dbaReferencia || null,
         })
       })
       if (!response.ok) throw new Error('Error al guardar ajuste. Verifique que exista un periodo académico activo.')
@@ -118,7 +126,7 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
-  async function updateAjuste(data: { ajusteId: string, area: string, tituloTema: string, objetivos: string, barreras: string, ajustes: string, evaluacion: string }) {
+  async function updateAjuste(data: { ajusteId: string, asignaturaId?: string | null, area: string, tituloTema: string, objetivos: string, barreras: string, ajustes: string, evaluacion: string, tipoAjuste?: string | null, apoyoRequerido?: string | null, temporalidad?: string | null, responsable?: string | null, mediosVerificacion?: string | null, dbaReferencia?: string | null }) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
     const authStore = useAuthStore()
@@ -130,12 +138,19 @@ export const usePiarStore = defineStore('piar', () => {
           'Authorization': `Bearer ${authStore.token}`
         },
         body: JSON.stringify({
+          asignatura_id: data.asignaturaId || null,
           area: data.area,
           titulo_tema: data.tituloTema,
           objetivos_propositos: data.objetivos,
           barreras_evidenciadas: data.barreras,
           ajustes_estrategias: data.ajustes,
-          evaluacion_ajustes: data.evaluacion
+          evaluacion_ajustes: data.evaluacion,
+          tipo_ajuste: data.tipoAjuste || null,
+          apoyo_requerido: data.apoyoRequerido || null,
+          temporalidad: data.temporalidad || null,
+          responsable: data.responsable || null,
+          medios_verificacion: data.mediosVerificacion || null,
+          dba_referencia: data.dbaReferencia || null,
         })
       })
       if (!response.ok) throw new Error('Error al actualizar ajuste')
@@ -201,7 +216,7 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
-  async function updatePiar(docentesElaboran: string, caracteristicas?: { descripcion_gustos_intereses: string, descripcion_habilidades: string }) {
+  async function updatePiar(docentesElaboran: string, caracteristicas?: Record<string, any>, lugarDiligenciamiento?: string) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
     const authStore = useAuthStore()
@@ -214,6 +229,7 @@ export const usePiarStore = defineStore('piar', () => {
         },
         body: JSON.stringify({
           docentes_elaboran: docentesElaboran,
+          lugar_diligenciamiento: lugarDiligenciamiento || undefined,
           caracteristicas: caracteristicas
         })
       })
@@ -232,21 +248,21 @@ export const usePiarStore = defineStore('piar', () => {
 
     const authStore = useAuthStore()
     try {
-      const response = await fetch(`/api/v1/piars/${activePiar.value.id}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/v1/piars/${activePiar.value.id}/finalizar`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${authStore.token}`
-        },
-        body: JSON.stringify({ estado: 'firmado' })
+        }
       })
       if (!response.ok) {
         const err = await response.json()
-        throw new Error(err.detail || 'Error al finalizar el PIAR')
+        throw new Error(err.detail?.mensaje || err.detail || 'Error al finalizar el PIAR')
       }
-      const updatedPiar = await response.json()
-      activePiar.value = updatedPiar
-      return updatedPiar
+      const version = await response.json()
+      activePiar.value.estado = 'firmado'
+      activePiar.value.version_actual = version.numero
+      activePiar.value.versiones = [...(activePiar.value.versiones || []), version]
+      return version
     } catch (e: any) {
       error.value = e.message
       throw e
@@ -368,23 +384,23 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
-  function downloadActaPDF() {
+  function downloadPiarPDF(modo: 'borrador' | 'final' = 'borrador') {
     if (!activePiar.value) return
     const authStore = useAuthStore()
-    fetch(`/api/v1/piars/${activePiar.value!.id}/acta/pdf`, {
+    fetch(`/api/v1/piars/${activePiar.value!.id}/pdf?modo=${modo}`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
     })
     .then(response => {
-      if (!response.ok) throw new Error('Error al descargar el PDF')
+      if (!response.ok) return response.json().then(body => { throw new Error(body.detail?.mensaje || body.detail || 'Error al descargar el PDF') })
       return response.blob()
     })
     .then(blob => {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Acta_Acuerdo_${activePiar.value?.id}.pdf`
+      a.download = `PIAR_${activePiar.value?.id}_${modo}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -394,6 +410,52 @@ export const usePiarStore = defineStore('piar', () => {
       error.value = e.message
       alert(e.message || 'No se pudo descargar el PDF.')
     })
+  }
+
+  async function fetchCompletitud(): Promise<PiarCompletitud | null> {
+    if (!activePiar.value) return null
+    const authStore = useAuthStore()
+    const response = await fetch(`/api/v1/piars/${activePiar.value.id}/completitud`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` },
+    })
+    if (!response.ok) throw new Error('No fue posible consultar el progreso del PIAR.')
+    return await response.json() as PiarCompletitud
+  }
+
+  async function updateAsignaturaEstado(asignaturaId: string, estado: 'pendiente' | 'no_requiere', justificacion: string) {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    const authStore = useAuthStore()
+    const response = await fetch(`/api/v1/piars/${activePiar.value.id}/asignaturas/${asignaturaId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({ estado, justificacion }),
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(body.detail || 'No fue posible actualizar la asignatura.')
+    }
+    const updated = await response.json()
+    const index = (activePiar.value.asignaturas_estado || []).findIndex((item: any) => item.asignatura_id === asignaturaId)
+    if (index >= 0) activePiar.value.asignaturas_estado[index] = updated
+    return updated
+  }
+
+  async function reabrirPiar() {
+    if (!activePiar.value) throw new Error('No hay PIAR activo')
+    const authStore = useAuthStore()
+    const response = await fetch(`/api/v1/piars/${activePiar.value.id}/reabrir`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${authStore.token}` },
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(body.detail || 'No fue posible reabrir el PIAR.')
+    }
+    activePiar.value = await response.json()
+    return activePiar.value
   }
 
   return {
@@ -414,6 +476,9 @@ export const usePiarStore = defineStore('piar', () => {
     updateRecomendacionPMI,
     deleteRecomendacionPMI,
     saveActaAcuerdo,
-    downloadActaPDF
+    downloadPiarPDF,
+    fetchCompletitud,
+    updateAsignaturaEstado,
+    reabrirPiar,
   }
 })

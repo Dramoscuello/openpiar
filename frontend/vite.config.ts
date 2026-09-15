@@ -1,3 +1,5 @@
+// Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
+/// <reference types="vitest/config" />
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
@@ -24,5 +26,11 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    environment: 'jsdom',
+    clearMocks: true,
+    restoreMocks: true,
+    include: ['src/**/*.spec.ts'],
   },
 })

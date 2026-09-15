@@ -124,19 +124,20 @@ class Estudiante:
     numero_documento: str
     fecha_nacimiento: date
     edad: int
-    departamento_residencia: str
-    municipio_residencia: str
-    direccion: str
-    barrio_vereda: str
+    departamento_residencia: Optional[str] = None
+    municipio_residencia: Optional[str] = None
+    direccion: Optional[str] = None
+    barrio_vereda: Optional[str] = None
     # Opcionales
     lugar_nacimiento: Optional[str] = None
     telefono: Optional[str] = None
     correo: Optional[str] = None
-    en_centro_proteccion: bool = False
+    en_centro_proteccion: Optional[bool] = None
     centro_proteccion_donde: Optional[str] = None
+    pertenece_grupo_etnico: Optional[bool] = None
     grupo_etnico: Optional[str] = None
-    victima_conflicto: bool = False
-    registro_victima: bool = False
+    victima_conflicto: Optional[bool] = None
+    registro_victima: Optional[bool] = None
     creado_por: Optional[uuid.UUID] = None
     grupo_id: Optional[uuid.UUID] = None
     codigo_acceso_familia: Optional[str] = None
@@ -152,10 +153,10 @@ class Estudiante:
         numero_documento: str,
         fecha_nacimiento: date,
         edad: int,
-        departamento_residencia: str,
-        municipio_residencia: str,
-        direccion: str,
-        barrio_vereda: str,
+        departamento_residencia: Optional[str] = None,
+        municipio_residencia: Optional[str] = None,
+        direccion: Optional[str] = None,
+        barrio_vereda: Optional[str] = None,
         creado_por: Optional[uuid.UUID] = None,
         grupo_id: Optional[uuid.UUID] = None,
         **kwargs,
@@ -213,6 +214,8 @@ class Piar:
     fecha_creacion: date
     creado_por: Optional[uuid.UUID] = None
     docentes_elaboran: Optional[str] = None
+    lugar_diligenciamiento: Optional[str] = None
+    version_actual: int = 0
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -254,7 +257,7 @@ class Piar:
         self.estado = "en_revision"
 
     def firmar(self) -> None:
-        """El PIAR fue firmado por todos los actores. Los ajustes razonables pueden seguir editándose."""
+        """Cierra la versión de trabajo después de la validación de aplicación."""
         if self.estado not in {"en_revision", "borrador"}:
             raise ValueError("Solo un PIAR en revisión o borrador puede firmarse.")
         self.estado = "firmado"
@@ -262,8 +265,14 @@ class Piar:
 
     @property
     def es_editable(self) -> bool:
-        """Un PIAR puede editarse en cualquier estado."""
-        return True
+        """Una versión finalizada debe reabrirse antes de aceptar cambios."""
+        return self.estado != "firmado"
+
+    def reabrir(self) -> None:
+        if self.estado != "firmado":
+            raise ValueError("Solo un PIAR firmado puede reabrirse.")
+        self.estado = "borrador"
+        self.updated_at = datetime.now(timezone.utc)
 
 
 # ---------------------------------------------------------------------------

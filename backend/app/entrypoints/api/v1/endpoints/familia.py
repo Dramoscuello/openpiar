@@ -209,8 +209,8 @@ async def get_acta_pdf_familia(
     config_result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
     config = config_result.scalars().first()
 
-    from app.core.pdf_generator import generate_acta_pdf
-    pdf_bytes = generate_acta_pdf(piar, config, selected_periods)
+    from app.core.pdf_generator import generate_piar_oficial_pdf
+    pdf_bytes = generate_piar_oficial_pdf(piar, config, selected_periods)
 
     filename = f"PIAR_{estudiante_orm.numero_documento}.pdf"
     return Response(

@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2026 OpenPiar Contributors — GPL-3.0 -->
 <template>
   <div class="flex-1 flex flex-col overflow-hidden font-body-md text-on-surface">
     <!-- PIAR Context Banner -->
@@ -65,6 +66,19 @@
 
     <!-- Main Workspace -->
     <div v-else class="flex-1 flex flex-col overflow-hidden">
+      <div v-if="completitud" class="flex-shrink-0 px-lg py-3 bg-surface-container-lowest border-b border-outline-variant/30 space-y-3">
+        <PiarCompletionPanel :value="completitud" :loading="workflowLoading" @open="abrirSeccionPiar" />
+        <PiarExportPanel
+          :estado="activePiar.estado"
+          :version-actual="activePiar.version_actual || 0"
+          :puede-finalizar="completitud.puede_exportar_final"
+          :busy="isFirmando"
+          @draft="descargarBorrador"
+          @final="descargarFinal"
+          @finish="finalizarPiar"
+          @reopen="reabrirPiar"
+        />
+      </div>
       <!-- Tabs Navigation -->
       <div class="bg-surface border-b border-outline-variant/30 flex-shrink-0 px-lg flex gap-md">
         <button 
@@ -122,6 +136,10 @@
 
             <div class="space-y-sm">
               <div class="flex flex-col gap-1">
+                <label class="font-label-md text-body-md text-on-surface-variant">Lugar de diligenciamiento *</label>
+                <input v-model="lugarDiligenciamiento" class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md" placeholder="Municipio o sede donde se diligencia" />
+              </div>
+              <div class="flex flex-col gap-1">
                 <label class="font-label-md text-body-md text-on-surface-variant flex items-center gap-2">
                   <span class="material-symbols-outlined text-[18px]">co_present</span>
                   Docentes que elaboran el PIAR
@@ -137,7 +155,7 @@
                   <span class="material-symbols-outlined text-[18px]">favorite</span>
                   Gustos, intereses y expectativas del estudiante y su familia
                 </label>
-                <textarea 
+                <textarea
                   v-model="gustos"
                   class="bg-surface border border-outline-variant rounded-xl p-md text-body-md focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none outline-none h-32"
                   placeholder="Ej: Le interesan los dinosaurios, el dibujo y las actividades grupales al aire libre. La familia espera que logre integrarse socialmente y aprender lectoescritura básica."
@@ -149,10 +167,71 @@
                   <span class="material-symbols-outlined text-[18px]">psychology</span>
                   Habilidades, cualidades, fortalezas y apoyos requeridos
                 </label>
-                <textarea 
+                <textarea
                   v-model="habilidades"
                   class="bg-surface border border-outline-variant rounded-xl p-md text-body-md focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none outline-none h-32"
                   placeholder="Ej: Posee gran habilidad visual y espacial, excelente memoria a corto plazo. Requiere apoyos visuales (pictogramas), simplificación de mallas y acompañamiento del docente de apoyo."
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="font-label-md text-body-md text-on-surface-variant">Entorno familiar, social y económico</label>
+                <textarea v-model="entornoFamiliarSocialEconomico" class="bg-surface border border-outline-variant rounded-xl p-md text-body-md resize-none outline-none h-24" placeholder="Contexto familiar, dinámicas sociales, recursos y factores del entorno que inciden en el aprendizaje."></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="font-label-md text-body-md text-on-surface-variant">Otras observaciones</label>
+                <textarea v-model="otrasObservaciones" class="bg-surface border border-outline-variant rounded-xl p-md text-body-md resize-none outline-none h-20" placeholder="Información adicional pertinente para el PIAR."></textarea>
+              </div>
+            </div>
+
+            <!-- Nuevos campos PIAR oficial MEN V15 08/2020 -->
+            <div class="space-y-sm">
+              <div class="flex flex-col gap-1">
+                <label class="font-label-md text-body-md text-on-surface-variant flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">description</span>
+                  Caracterización pedagógica / Diagnóstico
+                </label>
+                <textarea
+                  v-model="caracterizacionPedagogica"
+                  class="bg-surface border border-outline-variant rounded-xl p-md text-body-md focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none outline-none h-24"
+                  placeholder="Descripción pedagógica del estudiante, diagnóstico, barreras principales de aprendizaje..."
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="font-label-md text-body-md text-on-surface-variant flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">emoji_objects</span>
+                  Expectativas del Estudiante
+                </label>
+                <textarea
+                  v-model="expectativasEstudiante"
+                  class="bg-surface border border-outline-variant rounded-xl p-md text-body-md focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none outline-none h-20"
+                  placeholder="Ej: Culminar el año escolar de manera positiva y estudiar gastronomía."
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="font-label-md text-body-md text-on-surface-variant flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">family_restroom</span>
+                  Expectativas de la Familia
+                </label>
+                <textarea
+                  v-model="expectativasFamilia"
+                  class="bg-surface border border-outline-variant rounded-xl p-md text-body-md focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none outline-none h-20"
+                  placeholder="Ej: Apoyar para que culmine el año escolar e impulsarla en sus estudios."
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="font-label-md text-body-md text-on-surface-variant flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">diversity_3</span>
+                  Redes de Apoyo
+                </label>
+                <textarea
+                  v-model="redesApoyo"
+                  class="bg-surface border border-outline-variant rounded-xl p-md text-body-md focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none outline-none h-20"
+                  placeholder="Ej: Papá, mamá y hermano."
                 ></textarea>
               </div>
             </div>
@@ -174,8 +253,16 @@
 
         <!-- TAB 2: MATRIZ DE AJUSTES -->
         <div v-if="activeTab === 'ajustes'" class="grid grid-cols-12 gap-lg items-start">
+          <SubjectCoveragePanel
+            v-if="coberturaVisible.length"
+            class="col-span-12"
+            :asignaturas="coberturaVisible"
+            :current-user-id="authStore.user?.id"
+            :readonly="activePiar.estado === 'firmado'"
+            @resolve="resolverAsignatura"
+          />
           <!-- Formulario de Ingreso/Edición de Ajuste (5 columnas) -->
-          <div class="col-span-12 lg:col-span-5 space-y-md">
+          <div v-if="asignaturasParaAjuste.length" class="col-span-12 lg:col-span-5 space-y-md">
             <section :class="['glass-card p-md border transition-all', isEditingAjuste ? 'border-secondary-container shadow-md shadow-secondary/5' : 'border-outline-variant/30']">
               <div class="flex justify-between items-center border-b border-outline-variant/30 pb-xs mb-sm">
                 <h3 class="font-headline-md font-bold flex items-center gap-2 text-wrap" :class="isEditingAjuste ? 'text-secondary-container' : 'text-primary'">
@@ -214,8 +301,8 @@
                     v-model="ajusteForm.area" 
                     class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all font-semibold"
                   >
-                    <option v-if="dbAsignaturas.length === 0" v-for="areaOpt in AREAS_VALIDAS" :key="areaOpt" :value="areaOpt">{{ areaOpt }}</option>
-                    <option v-else v-for="asig in dbAsignaturas" :key="asig.id" :value="asig.nombre">{{ asig.nombre }}</option>
+                    <option v-if="asignaturasParaAjuste.length === 0" v-for="areaOpt in AREAS_VALIDAS" :key="areaOpt" :value="areaOpt">{{ areaOpt }}</option>
+                    <option v-else v-for="asig in asignaturasParaAjuste" :key="asig.asignatura_id" :value="asig.nombre_asignatura">{{ asig.nombre_asignatura }}</option>
                   </select>
                 </div>
 
@@ -235,6 +322,7 @@
                   <div class="flex justify-between items-center">
                     <label class="font-label-md text-label-sm text-on-surface-variant">Objetivos / Propósitos de Aprendizaje</label>
                     <button 
+                      v-if="curriculumSearchEnabled"
                       @click="toggleCurriculumSearch"
                       class="text-label-sm text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
                     >
@@ -244,7 +332,7 @@
                   </div>
 
                   <!-- Buscador Curricular Desplegable -->
-                  <div v-if="showCurriculumSearch" class="bg-surface-container border border-outline-variant rounded-xl p-md space-y-sm shadow-md mt-1 mb-xs animate-fade-in z-10">
+                  <div v-if="curriculumSearchEnabled && showCurriculumSearch" class="bg-surface-container border border-outline-variant rounded-xl p-md space-y-sm shadow-md mt-1 mb-xs animate-fade-in z-10">
                     <div class="flex items-center justify-between border-b border-outline-variant/30 pb-xs mb-xs">
                       <span class="font-label-md text-body-md text-primary flex items-center gap-1">
                         <span class="material-symbols-outlined text-[18px]">search</span>
@@ -311,17 +399,17 @@
                     </div>
                   </div>
 
-                  <textarea 
+                  <textarea
                     v-model="ajusteForm.objetivos"
                     class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-24"
-                    placeholder="Estándares o Derechos Básicos de Aprendizaje (DBA) a adaptar para el grado en curso."
+                    placeholder="Describe qué se espera que aprenda el estudiante en esta asignatura."
                   ></textarea>
                 </div>
 
                 <!-- Barreras -->
                 <div class="flex flex-col gap-1">
                   <label class="font-label-md text-label-sm text-on-surface-variant">Barreras identificadas en el contexto</label>
-                  <textarea 
+                  <textarea
                     v-model="ajusteForm.barreras"
                     class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-20"
                     placeholder="Barreras físicas, cognitivas o metodológicas del aula."
@@ -332,23 +420,51 @@
                 <div class="flex flex-col gap-1">
                   <label class="font-label-md text-label-sm text-on-surface-variant flex items-center justify-between">
                     Ajustes razonables / Estrategias (DUA)
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white">IA</span>
                   </label>
-                  <textarea 
+                  <textarea
                     v-model="ajusteForm.ajustes"
                     class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-28"
                     placeholder="Apoyos didácticos, metodologías de trabajo o cambios curriculares."
                   ></textarea>
                 </div>
 
-                <!-- Evaluacion (Solo si es editable) -->
+                <!-- Tipo de ajuste razonable -->
                 <div class="flex flex-col gap-1">
-                  <label class="font-label-md text-label-sm text-on-surface-variant">Evaluación de los Ajustes (Opcional - Seguimiento)</label>
+                  <label class="font-label-md text-label-sm text-on-surface-variant flex items-center justify-between">
+                    Tipo de ajuste razonable (facilitador)
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white">IA</span>
+                  </label>
+                  <textarea
+                    v-model="ajusteForm.tipo_ajuste"
+                    class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-16"
+                    placeholder="Didácticas (metodología), Recursos o materiales, Evaluación diferenciada..."
+                  ></textarea>
+                </div>
+
+                <!-- Apoyo requerido -->
+                <div class="flex flex-col gap-1">
+                  <label class="font-label-md text-label-sm text-on-surface-variant flex items-center justify-between">
+                    Apoyo requerido (TH, técnico, tecnológico, comunicativo)
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white">IA</span>
+                  </label>
+                  <textarea
+                    v-model="ajusteForm.apoyo_requerido"
+                    class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-16"
+                    placeholder="Talento humano: docente de aula, orientador. Técnico: guías paso a paso, calculadora. Tecnológico: software de simulación. Comunicativo: lenguaje sencillo, imágenes de apoyo."
+                  ></textarea>
+                </div>
+
+                <!-- Evaluación de los ajustes -->
+                <div class="flex flex-col gap-1">
+                  <label class="font-label-md text-label-sm text-on-surface-variant">Seguimiento de los ajustes (opcional)</label>
                   <textarea 
                     v-model="ajusteForm.evaluacion"
                     class="bg-surface border border-outline-variant rounded-xl p-3 text-body-md outline-none focus:border-primary transition-all h-16"
-                    placeholder="Valoración del impacto de los ajustes al cierre del trimestre escolar."
+                    placeholder="Describe cómo se revisarán los avances y la efectividad de los ajustes."
                   ></textarea>
                 </div>
+
               </div>
 
               <!-- Action buttons -->
@@ -389,16 +505,16 @@
           </div>
 
           <!-- Matriz de Ajustes Cargados (7 columnas) -->
-          <div class="col-span-12 lg:col-span-7 space-y-sm">
+          <div class="col-span-12 space-y-sm" :class="{ 'lg:col-span-7': asignaturasParaAjuste.length > 0 }">
             <h3 class="text-headline-md font-bold text-on-surface flex items-center gap-2 mb-xs">
               <span class="material-symbols-outlined text-primary">view_quilt</span>
-              Malla escolar inclusiva ({{ activePiar.ajustes_razonables?.length || 0 }} registros)
+              Malla escolar inclusiva ({{ ajustesVisibles.length }} registros)
             </h3>
 
-            <div v-if="!activePiar.ajustes_razonables || activePiar.ajustes_razonables.length === 0" class="bg-surface-container p-xl rounded-2xl text-center text-outline border border-dashed border-outline-variant/50">
+            <div v-if="ajustesVisibles.length === 0" class="bg-surface-container p-xl rounded-2xl text-center text-outline border border-dashed border-outline-variant/50">
               <span class="material-symbols-outlined text-5xl text-outline-variant mb-2">grid_off</span>
               <p class="font-semibold text-body-lg">La matriz de ajustes está vacía.</p>
-              <p class="text-label-sm max-w-[24rem] mx-auto">Utiliza el formulario de la izquierda para agregar objetivos de aprendizaje y estrategias adaptadas para el estudiante.</p>
+              <p v-if="asignaturasParaAjuste.length" class="text-label-sm max-w-[24rem] mx-auto">Utiliza el formulario de la izquierda para agregar objetivos de aprendizaje y estrategias adaptadas para el estudiante.</p>
             </div>
 
             <div v-else class="space-y-sm max-h-[70vh] overflow-y-auto pr-xs">
@@ -440,7 +556,7 @@
                           Tema: {{ ajuste.titulo_tema }}
                         </span>
                       </div>
-                      <div class="flex items-center gap-xs lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div v-if="activePiar.estado !== 'firmado' && asignaturasParaAjuste.some(item => item.asignatura_id === ajuste.asignatura_id || (!ajuste.asignatura_id && item.nombre_asignatura === ajuste.area))" class="flex items-center gap-xs lg:opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           @click="cargarAjusteParaEdicion(ajuste)"
                           class="p-1.5 hover:bg-surface-container-high rounded-lg text-outline-variant hover:text-primary transition-all active:scale-90 cursor-pointer"
@@ -449,7 +565,7 @@
                           <span class="material-symbols-outlined text-[20px]">edit</span>
                         </button>
                         <button 
-                          @click="eliminarAjuste(ajuste.id)"
+                          @click="promptDeleteAjuste(ajuste)"
                           class="p-1.5 hover:bg-error/10 rounded-lg text-outline-variant hover:text-error transition-all active:scale-90 cursor-pointer"
                           title="Eliminar ajuste"
                         >
@@ -1000,12 +1116,11 @@
                 </div>
 
                 <button 
-                  @click="descargarPDFActa"
-                  :disabled="!activePiar?.acta_acuerdo"
-                  class="bg-secondary-container text-on-secondary-container font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 transition-all disabled:opacity-50 shadow-sm border border-outline-variant/30"
+                  @click="descargarPiarPDF"
+                  class="bg-primary-container text-on-primary-container font-bold text-label-lg w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 transition-all shadow-sm border border-outline-variant/30"
                 >
-                  <span class="material-symbols-outlined text-[20px]">download</span>
-                  Descargar PDF oficial
+                  <span class="material-symbols-outlined text-[20px]">description</span>
+                  Descargar PDF del PIAR
                 </button>
 
                 <button 
@@ -1321,7 +1436,7 @@
             </div>
 
             <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;" class="dark:text-gray-300">
-              ¿Estás seguro de finalizar este PIAR? Podrás seguir editando los ajustes razonables durante todo el año lectivo. Asegúrate de haber impreso el acta y recogido las firmas físicas de todos los actores.
+              ¿Estás seguro de finalizar este PIAR? Se guardará una versión inmutable del PDF. Para hacer cambios posteriores deberás reabrirlo y completar una nueva versión. Asegúrate de haber recogido las firmas físicas de todos los actores.
             </p>
 
             <div style="display:flex; justify-content:flex-end; gap:12px;">
@@ -1346,22 +1461,96 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Modal de confirmación para eliminar ajuste -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="confirmDeleteAjuste"
+          class="fixed inset-0 z-[9999] flex items-center justify-center p-6"
+          style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
+          @click.self="cancelDeleteAjuste"
+        >
+          <div
+            style="background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.25); width:100%; max-width:440px; padding:28px; box-sizing:border-box;"
+          >
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+              <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+                <span class="material-symbols-outlined" style="color:#ef4444; font-size:22px;">warning</span>
+              </div>
+              <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;">Eliminar ajuste razonable</h3>
+            </div>
+
+            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 8px 0;">
+              ¿Estás seguro de que deseas eliminar
+              <strong style="color:#111827;">{{ confirmDeleteAjuste?.label }}</strong>?
+            </p>
+            <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;">
+              <strong style="color:#ef4444;">Esta acción no se puede deshacer.</strong>
+            </p>
+
+            <div
+              v-if="deleteErrorAjuste"
+              style="background:#fee2e2; color:#dc2626; border-radius:10px; padding:12px 16px; font-size:13px; margin-bottom:16px;"
+            >
+              {{ deleteErrorAjuste }}
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+              <button
+                @click="cancelDeleteAjuste"
+                :disabled="deletingAjuste"
+                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:500; color:#374151; background:transparent; border:1px solid #e5e7eb; cursor:pointer; transition:background .15s;"
+                @mouseenter="($event.target as HTMLElement).style.background='#f9fafb'"
+                @mouseleave="($event.target as HTMLElement).style.background='transparent'"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="confirmDeleteAjusteFn"
+                :disabled="deletingAjuste"
+                style="padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; color:#fff; background:#ef4444; border:none; cursor:pointer; display:flex; align-items:center; gap:8px; transition:background .15s;"
+                @mouseenter="($event.target as HTMLElement).style.background='#dc2626'"
+                @mouseleave="($event.target as HTMLElement).style.background='#ef4444'"
+              >
+                <span v-if="deletingAjuste" class="material-symbols-outlined" style="font-size:18px; animation:spin 1s linear infinite;">progress_activity</span>
+                <span v-else class="material-symbols-outlined" style="font-size:18px;">delete</span>
+                {{ deletingAjuste ? 'Eliminando...' : 'Sí, eliminar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { usePiarStore } from '../stores/piar'
 import { useAuthStore } from '../stores/auth'
 import { useStudentsStore } from '../stores/students'
 import { storeToRefs } from 'pinia'
+import PiarCompletionPanel from '../components/piar/PiarCompletionPanel.vue'
+import PiarExportPanel from '../components/piar/PiarExportPanel.vue'
+import SubjectCoveragePanel from '../components/piar/SubjectCoveragePanel.vue'
+import { usePiarVisibility } from '../composables/usePiarVisibility'
+import { usePiarWorkflow } from '../composables/usePiarWorkflow'
 
 const route = useRoute()
+const router = useRouter()
 const piarStore = usePiarStore()
 const authStore = useAuthStore()
 const studentsStore = useStudentsStore()
 const { activePiar, isLoading, error } = storeToRefs(piarStore)
+const piarId = computed(() => activePiar.value?.id || null)
+const {
+  completitud,
+  loading: workflowLoading,
+  refresh: refreshCompletitud,
+  descargar: descargarWorkflow,
+} = usePiarWorkflow(piarId)
 
 const estudianteId = route.params.id as string
 const estudiante = ref<any>(null)
@@ -1474,6 +1663,15 @@ const isDirectorOrAdmin = computed(() => {
   if (estudiante.value && estudiante.value.grupo_director_id === authStore.user.id) return true
   return false
 })
+
+const { coberturaVisible, ajustesVisibles } = usePiarVisibility<any>({
+  usuario: () => authStore.user,
+  directorId: () => estudiante.value?.grupo_director_id,
+  asignaturas: () => completitud.value?.asignaturas || [],
+  ajustes: () => activePiar.value?.ajustes_razonables || [],
+})
+
+const asignaturasParaAjuste = coberturaVisible
 
 interface EvidenciaFormState {
   file: File | null
@@ -1682,8 +1880,15 @@ async function descargarPDFHistorial() {
 
 // TAB 1: Características
 const docentesElaboran = ref('')
+const lugarDiligenciamiento = ref('')
 const gustos = ref('')
 const habilidades = ref('')
+const expectativasEstudiante = ref('')
+const expectativasFamilia = ref('')
+const redesApoyo = ref('')
+const caracterizacionPedagogica = ref('')
+const entornoFamiliarSocialEconomico = ref('')
+const otrasObservaciones = ref('')
 const isSavingCarac = ref(false)
 
 // TAB 4: Acta de Acuerdo (Anexo 3)
@@ -1766,6 +1971,7 @@ const guardarActaAcuerdo = async () => {
         frecuencia: c.frecuencia
       }))
     })
+    await refreshCompletitud()
     showToast('Acta de Acuerdo (Anexo 3) guardada con éxito.')
   } catch (e: any) {
     showToast(e.message || 'Error al guardar el acta.', true)
@@ -1775,8 +1981,62 @@ const guardarActaAcuerdo = async () => {
   }
 }
 
-const descargarPDFActa = () => {
-  piarStore.downloadActaPDF()
+const descargarPiarPDF = () => {
+  piarStore.downloadPiarPDF(activePiar.value?.estado === 'firmado' ? 'final' : 'borrador')
+}
+
+async function descargarBorrador() {
+  try {
+    await descargarWorkflow('borrador')
+  } catch (e: any) {
+    showToast(e.message || 'No fue posible descargar el borrador.', true)
+  }
+}
+
+async function descargarFinal() {
+  try {
+    await descargarWorkflow('final')
+  } catch (e: any) {
+    showToast(e.message || 'No fue posible descargar la versión final.', true)
+  }
+}
+
+async function reabrirPiar() {
+  if (!confirm('Se conservará la versión final anterior y se reiniciarán las confirmaciones de firmas. ¿Deseas continuar?')) return
+  try {
+    await piarStore.reabrirPiar()
+    cargarActaDesdePiar()
+    await refreshCompletitud()
+    showToast('PIAR reabierto. La próxima finalización creará una versión nueva.')
+  } catch (e: any) {
+    showToast(e.message || 'No fue posible reabrir el PIAR.', true)
+  }
+}
+
+function abrirSeccionPiar(codigo: string) {
+  const pasos: Record<string, number> = { general: 1, salud: 2, hogar: 3, trayectoria: 4 }
+  if (pasos[codigo]) {
+    router.push({
+      path: `/estudiantes/formulario/${estudianteId}`,
+      query: { contexto: 'piar', paso: String(pasos[codigo]) },
+    })
+    return
+  }
+  activeTab.value = codigo === 'caracterizacion' ? 'caracteristicas' : codigo === 'acta' ? 'acta' : 'ajustes'
+}
+
+async function resolverAsignatura(
+  asignaturaId: string,
+  estado: 'pendiente' | 'no_requiere',
+  justificacion: string,
+) {
+  try {
+    await piarStore.updateAsignaturaEstado(asignaturaId, estado, justificacion)
+    await refreshCompletitud()
+    showToast('Cobertura de asignatura actualizada.')
+  } catch (e: any) {
+    showToast(e.message || 'No fue posible actualizar la asignatura.', true)
+  }
 }
 
 const firmasCompletas = computed(() => {
@@ -1789,7 +2049,10 @@ const firmasCompletas = computed(() => {
 const piarPuedeFirmarse = computed(() => {
   if (!activePiar.value) return false
   const estado = activePiar.value.estado
-  return (estado === 'borrador' || estado === 'en_revision') && firmasCompletas.value && !!activePiar.value.acta_acuerdo
+  return (estado === 'borrador' || estado === 'en_revision') &&
+    firmasCompletas.value &&
+    !!activePiar.value.acta_acuerdo &&
+    !!completitud.value?.puede_exportar_final
 })
 
 const isFirmando = ref(false)
@@ -1808,7 +2071,8 @@ const confirmarFirmar = async () => {
   isFirmando.value = true
   try {
     await piarStore.firmarPiar()
-    showToast('PIAR finalizado y firmado. Puedes seguir añadiendo ajustes durante el periodo activo.')
+    await refreshCompletitud()
+    showToast(`PIAR finalizado. Se creó la versión inmutable ${activePiar.value.version_actual}.`)
   } catch (e: any) {
     showToast(e.message || 'Error al finalizar el PIAR.', true)
   } finally {
@@ -1865,9 +2129,8 @@ function togglePeriodo(periodoId: number) {
 }
 
 const ajustesPorPeriodo = computed(() => {
-  if (!activePiar.value || !activePiar.value.ajustes_razonables) return {}
   const grouped: Record<number, any[]> = {}
-  activePiar.value.ajustes_razonables.forEach((ajuste: any) => {
+  ajustesVisibles.value.forEach((ajuste: any) => {
     const pid = ajuste.periodo_id
     if (!grouped[pid]) {
       grouped[pid] = []
@@ -1920,13 +2183,26 @@ const ajusteForm = ref({
   objetivos: '',
   barreras: '',
   ajustes: '',
-  evaluacion: ''
+  evaluacion: '',
+  tipo_ajuste: '',
+  apoyo_requerido: '',
+  temporalidad: '',
+  responsable: '',
+  medios_verificacion: '',
+  dba_referencia: ''
 })
 const isEditingAjuste = computed(() => !!ajusteForm.value.id)
 const isSavingAjuste = ref(false)
 const isGeneratingIA = ref(false)
 
+// Delete ajuste modal state
+const confirmDeleteAjuste = ref<{ id: string, label: string } | null>(null)
+const deletingAjuste = ref(false)
+const deleteErrorAjuste = ref<string | null>(null)
+
 // Helper buscador de currículo
+// Cambiar a true para reactivar el buscador y su contexto curricular automático.
+const curriculumSearchEnabled = false
 const showCurriculumSearch = ref(false)
 const searchType = ref<'dba' | 'ebc'>('dba')
 const searchGrade = computed(() => {
@@ -2070,6 +2346,7 @@ async function cargarAsignaturas() {
 async function cargarPiar() {
   await piarStore.fetchPiarForStudent(estudianteId)
   inicializarFormularios()
+  if (activePiar.value) await refreshCompletitud()
   if (activePiar.value?.ajustes_razonables) {
     activePiar.value.ajustes_razonables.forEach((a: any) => {
       if (a._comentarioPuntuacion === undefined) {
@@ -2084,8 +2361,15 @@ async function cargarPiar() {
 function inicializarFormularios() {
   if (activePiar.value) {
     docentesElaboran.value = authStore.user ? `${authStore.user.nombre} ${authStore.user.apellido}` : ''
+    lugarDiligenciamiento.value = activePiar.value.lugar_diligenciamiento || ''
     gustos.value = activePiar.value.caracteristicas?.descripcion_gustos_intereses || ''
     habilidades.value = activePiar.value.caracteristicas?.descripcion_habilidades || ''
+    expectativasEstudiante.value = activePiar.value.caracteristicas?.expectativas_estudiante || ''
+    expectativasFamilia.value = activePiar.value.caracteristicas?.expectativas_familia || ''
+    redesApoyo.value = activePiar.value.caracteristicas?.redes_apoyo || ''
+    caracterizacionPedagogica.value = activePiar.value.caracteristicas?.caracterizacion_pedagogica || ''
+    entornoFamiliarSocialEconomico.value = activePiar.value.caracteristicas?.entorno_familiar_social_economico || ''
+    otrasObservaciones.value = activePiar.value.caracteristicas?.otras_observaciones || ''
     cargarActaDesdePiar()
   } else {
     docentesElaboran.value = authStore.user ? `${authStore.user.nombre} ${authStore.user.apellido}` : ''
@@ -2107,7 +2391,7 @@ watch(() => authStore.user, (newUser) => {
 })
 
 watch([searchType, searchArea], () => {
-  if (showCurriculumSearch.value) {
+  if (curriculumSearchEnabled && showCurriculumSearch.value) {
     buscarCurriculo()
   }
 })
@@ -2120,7 +2404,12 @@ async function reintentarCarga() {
 async function iniciarPiar() {
   try {
     await piarStore.createPiar(estudianteId)
+    await refreshCompletitud()
     showToast("PIAR iniciado correctamente en modo borrador.")
+    router.push({
+      path: `/estudiantes/formulario/${estudianteId}`,
+      query: { contexto: 'piar', paso: '1' },
+    })
   } catch (e: any) {
     showToast("Error al iniciar el documento PIAR.", true)
   }
@@ -2132,8 +2421,15 @@ async function guardarCaracteristicas() {
   try {
     await piarStore.updatePiar(docentesElaboran.value, {
       descripcion_gustos_intereses: gustos.value,
-      descripcion_habilidades: habilidades.value
-    })
+      descripcion_habilidades: habilidades.value,
+      expectativas_estudiante: expectativasEstudiante.value || null,
+      expectativas_familia: expectativasFamilia.value || null,
+      redes_apoyo: redesApoyo.value || null,
+      caracterizacion_pedagogica: caracterizacionPedagogica.value || null,
+      entorno_familiar_social_economico: entornoFamiliarSocialEconomico.value || null,
+      otras_observaciones: otrasObservaciones.value || null,
+    }, lugarDiligenciamiento.value)
+    await refreshCompletitud()
     showToast("Características del estudiante guardadas correctamente.")
   } catch (e: any) {
     showToast(e.message || "Error al guardar las características.", true)
@@ -2146,27 +2442,45 @@ async function guardarCaracteristicas() {
 async function guardarAjuste() {
   isSavingAjuste.value = true
   try {
+    const asignaturaId = activePiar.value?.asignaturas_estado?.find(
+      (item: any) => item.nombre_asignatura === ajusteForm.value.area
+    )?.asignatura_id || null
     if (isEditingAjuste.value) {
       await piarStore.updateAjuste({
         ajusteId: ajusteForm.value.id,
+        asignaturaId,
         area: ajusteForm.value.area,
         tituloTema: ajusteForm.value.titulo_tema,
         objetivos: ajusteForm.value.objetivos,
         barreras: ajusteForm.value.barreras,
         ajustes: ajusteForm.value.ajustes,
-        evaluacion: ajusteForm.value.evaluacion
+        evaluacion: ajusteForm.value.evaluacion,
+        tipoAjuste: ajusteForm.value.tipo_ajuste || null,
+        apoyoRequerido: ajusteForm.value.apoyo_requerido || null,
+        temporalidad: ajusteForm.value.temporalidad || null,
+        responsable: ajusteForm.value.responsable || null,
+        mediosVerificacion: ajusteForm.value.medios_verificacion || null,
+        dbaReferencia: ajusteForm.value.dba_referencia || null,
       })
       showToast("Ajuste razonable actualizado con éxito en la malla.")
     } else {
       await piarStore.saveAjuste({
+        asignaturaId,
         area: ajusteForm.value.area,
         tituloTema: ajusteForm.value.titulo_tema,
         objetivos: ajusteForm.value.objetivos,
         barreras: ajusteForm.value.barreras,
-        ajustes: ajusteForm.value.ajustes
+        ajustes: ajusteForm.value.ajustes,
+        tipoAjuste: ajusteForm.value.tipo_ajuste || null,
+        apoyoRequerido: ajusteForm.value.apoyo_requerido || null,
+        temporalidad: ajusteForm.value.temporalidad || null,
+        responsable: ajusteForm.value.responsable || null,
+        mediosVerificacion: ajusteForm.value.medios_verificacion || null,
+        dbaReferencia: ajusteForm.value.dba_referencia || null,
       })
       showToast("Ajuste razonable agregado a la malla escolar.")
     }
+    await refreshCompletitud()
     cancelarEdicionAjuste()
   } catch (e: any) {
     showToast(e.message || "No se pudo guardar el ajuste. Verifica la conexión.", true)
@@ -2183,7 +2497,13 @@ function cargarAjusteParaEdicion(ajuste: any) {
     objetivos: ajuste.objetivos_propositos,
     barreras: ajuste.barreras_evidenciadas,
     ajustes: ajuste.ajustes_estrategias,
-    evaluacion: ajuste.evaluacion_ajustes || ''
+    evaluacion: ajuste.evaluacion_ajustes || '',
+    tipo_ajuste: ajuste.tipo_ajuste || '',
+    apoyo_requerido: ajuste.apoyo_requerido || '',
+    temporalidad: ajuste.temporalidad || '',
+    responsable: ajuste.responsable || '',
+    medios_verificacion: ajuste.medios_verificacion || '',
+    dba_referencia: ajuste.dba_referencia || ''
   }
 }
 
@@ -2195,22 +2515,50 @@ function cancelarEdicionAjuste() {
     objetivos: '',
     barreras: '',
     ajustes: '',
-    evaluacion: ''
+    evaluacion: '',
+    tipo_ajuste: '',
+    apoyo_requerido: '',
+    temporalidad: '',
+    responsable: '',
+    medios_verificacion: '',
+    dba_referencia: ''
+  }
+}
+
+function promptDeleteAjuste(ajuste: any) {
+  deleteErrorAjuste.value = null
+  confirmDeleteAjuste.value = {
+    id: ajuste.id,
+    label: `${ajuste.area} — ${ajuste.titulo_tema || ajuste.objetivos_propositos?.substring(0, 60) || 'Sin título'}`,
+  }
+}
+
+function cancelDeleteAjuste() {
+  confirmDeleteAjuste.value = null
+  deleteErrorAjuste.value = null
+}
+
+async function confirmDeleteAjusteFn() {
+  if (!confirmDeleteAjuste.value) return
+  deletingAjuste.value = true
+  deleteErrorAjuste.value = null
+  try {
+    await piarStore.deleteAjuste(confirmDeleteAjuste.value.id)
+    await refreshCompletitud()
+    showToast("Ajuste razonable removido de la malla.")
+    if (ajusteForm.value.id === confirmDeleteAjuste.value.id) {
+      cancelarEdicionAjuste()
+    }
+    confirmDeleteAjuste.value = null
+  } catch (e: any) {
+    deleteErrorAjuste.value = e.message || 'No se pudo eliminar el ajuste razonable.'
+  } finally {
+    deletingAjuste.value = false
   }
 }
 
 async function eliminarAjuste(ajusteId: string) {
-  if (confirm("¿Estás seguro de que deseas eliminar este ajuste razonable de la matriz?")) {
-    try {
-      await piarStore.deleteAjuste(ajusteId)
-      showToast("Ajuste razonable removido de la malla.")
-      if (ajusteForm.value.id === ajusteId) {
-        cancelarEdicionAjuste()
-      }
-    } catch (e: any) {
-      showToast("Error al eliminar el ajuste razonable.", true)
-    }
-  }
+  promptDeleteAjuste({ id: ajusteId, area: '', titulo_tema: '', objetivos_propositos: '' })
 }
 
 async function puntuarAjuste(ajuste: any, star: number) {
@@ -2269,8 +2617,10 @@ async function generarConIA() {
   isGeneratingIA.value = true
   try {
     // Si no hay resultados de búsqueda cargados, buscar DBA automáticamente para el área y grado
-    let dbaContexto = searchResults.value.filter((r: any) => searchType.value === 'dba')
-    if (dbaContexto.length === 0 && searchGrade.value) {
+    let dbaContexto = curriculumSearchEnabled
+      ? searchResults.value.filter((r: any) => searchType.value === 'dba')
+      : []
+    if (curriculumSearchEnabled && dbaContexto.length === 0 && searchGrade.value) {
       try {
         const dbaUrl = `/api/v1/curriculum/dba?grado=${searchGrade.value}&area=${searchArea.value}&limit=10`
         const dbaRes = await fetch(dbaUrl, { headers: { 'Authorization': `Bearer ${authStore.token}` } })
@@ -2284,7 +2634,7 @@ async function generarConIA() {
     const dbaTexto = dbaContexto.length > 0
       ? dbaContexto.map((d: any) => `DBA #${d.numero}: ${d.enunciado}`).join('\n')
       : null
-    const ebcTexto = searchResults.value.length > 0 && searchType.value === 'ebc'
+    const ebcTexto = curriculumSearchEnabled && searchResults.value.length > 0 && searchType.value === 'ebc'
       ? searchResults.value.map((e: any) => `${e.factor}: ${e.enunciado}`).join('\n')
       : null
 
@@ -2300,6 +2650,7 @@ async function generarConIA() {
       diagnostico_medico: diagnostico,
       gustos_intereses: activePiar.value.caracteristicas?.descripcion_gustos_intereses || null,
       habilidades_fortalezas: activePiar.value.caracteristicas?.descripcion_habilidades || null,
+      caracterizacion_pedagogica: activePiar.value.caracteristicas?.caracterizacion_pedagogica || null,
       dba_referencia: dbaTexto,
       ebc_referencia: ebcTexto,
       barreras_evidenciadas: ajusteForm.value.barreras,
@@ -2324,10 +2675,11 @@ async function generarConIA() {
     }
 
     const data = await res.json()
-    // Solo llenar ajustes sugeridos — las barreras y objetivos son definidos por el docente
     ajusteForm.value.ajustes = data.ajustes_estrategias
+    ajusteForm.value.tipo_ajuste = data.tipo_ajuste || ''
+    ajusteForm.value.apoyo_requerido = data.apoyo_requerido || ''
 
-    showToast('✨ Ajustes razonables y estrategias DUA sugeridos por IA. Revisa y edita antes de guardar.')
+    showToast('✨ Ajustes razonables, tipo de ajuste y apoyos requeridos generados por IA. Revisa y edita antes de guardar.')
   } catch (e: any) {
     showToast(e.message || 'Error al generar el plan con IA. Verifica la configuración de Gemini.', true)
   } finally {
@@ -2337,6 +2689,7 @@ async function generarConIA() {
 
 // Buscador Curricular
 function toggleCurriculumSearch() {
+  if (!curriculumSearchEnabled) return
   showCurriculumSearch.value = !showCurriculumSearch.value
   if (showCurriculumSearch.value && searchResults.value.length === 0) {
     buscarCurriculo()
@@ -2344,6 +2697,7 @@ function toggleCurriculumSearch() {
 }
 
 async function buscarCurriculo() {
+  if (!curriculumSearchEnabled) return
   isSearchingCurriculum.value = true
   searchResults.value = []
   try {
@@ -2382,6 +2736,7 @@ function formatGrado(grado: string | undefined | null): string {
 }
 
 function seleccionarCurriculo(enunciado: string) {
+  if (!curriculumSearchEnabled) return
   // Anteponer la fuente de datos
   const prefijo = searchType.value === 'dba' ? `DBA (${formatGrado(searchGrade.value)}): ` : 'EBC: '
   ajusteForm.value.objetivos = prefijo + enunciado
@@ -2470,5 +2825,25 @@ function getPMIForActor(actor: string) {
 }
 .animate-fade-in {
   animation: fade-in 0.25s ease-out forwards;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.18s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-active > div,
+.modal-leave-active > div {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+.modal-enter-from > div {
+  transform: scale(0.95);
+  opacity: 0;
 }
 </style>

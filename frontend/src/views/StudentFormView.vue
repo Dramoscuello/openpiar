@@ -14,6 +14,8 @@ const authStore = useAuthStore()
 // State
 const currentStep = ref(1)
 const isEditMode = ref(false)
+const isRegistrationMode = computed(() => !isEditMode.value)
+const isPiarContext = computed(() => route.query.contexto === 'piar')
 const validationError = ref<string | null>(null)
 
 // Catalog lists
@@ -213,6 +215,8 @@ onMounted(async () => {
   if (studentId) {
     isEditMode.value = true
     await studentsStore.fetchStudentForEdit(studentId)
+    const requestedStep = Number(route.query.paso || 1)
+    currentStep.value = requestedStep >= 1 && requestedStep <= 4 ? requestedStep : 1
   } else {
     isEditMode.value = false
     studentsStore.loadDraft()
@@ -309,6 +313,10 @@ watch(() => studentsStore.draft.general.fecha_nacimiento, (newDate) => {
   }
 })
 
+watch(() => studentsStore.draft.trayectoria.estado_ultimo_grado, (estado) => {
+  if (estado) studentsStore.draft.trayectoria.aprobo_ultimo_grado = estado === 'aprobado'
+})
+
 // Add/Remove therapies details dynamically
 const addTerapia = () => {
   studentsStore.draft.salud.terapias_detalle.push({ tipo: '', frecuencia: '' })
@@ -316,6 +324,42 @@ const addTerapia = () => {
 
 const removeTerapia = (index: number) => {
   studentsStore.draft.salud.terapias_detalle.splice(index, 1)
+}
+
+const addAtencionMedica = () => {
+  studentsStore.draft.salud.atenciones_medicas.push({ cual: '', frecuencia: '' })
+}
+
+const removeAtencionMedica = (index: number) => {
+  studentsStore.draft.salud.atenciones_medicas.splice(index, 1)
+}
+
+const addMedicamento = () => {
+  studentsStore.draft.salud.medicamentos_lista.push({ cual: '', frecuencia: '' })
+}
+
+const removeMedicamento = (index: number) => {
+  studentsStore.draft.salud.medicamentos_lista.splice(index, 1)
+}
+
+const hasText = (value: string | null | undefined) => Boolean(value?.trim())
+
+const syncMatriculaActualDesdeSeleccion = () => {
+  const mat = studentsStore.draft.matricula
+
+  if (!hasText(mat.institucion_educativa) && hasText(authStore.nombreInstitucion)) {
+    mat.institucion_educativa = authStore.nombreInstitucion
+  }
+
+  const sedeObj = sedes.value.find(s => s.id === selectedSedeId.value)
+  if (sedeObj) {
+    mat.sede = sedeObj.nombre
+  }
+
+  const grupoObj = grupos.value.find(g => g.id === studentsStore.draft.general.grupo_id)
+  if (grupoObj) {
+    mat.grado_ingreso = `${grupoObj.grado} - ${grupoObj.nombre}`
+  }
 }
 
 // Stepper Validation
@@ -336,12 +380,21 @@ const validateStep = (step: number): boolean => {
       validationError.value = 'Ingresa una fecha de nacimiento válida (edad máx: 30 años).'
       return false
     }
+    if (!gen.grupo_id) {
+      validationError.value = 'Selecciona la sede y el grupo del estudiante.'
+      return false
+    }
+    if (isRegistrationMode.value) return true
     if (!gen.departamento_residencia || !gen.municipio_residencia) {
       validationError.value = 'El departamento y el municipio son obligatorios.'
       return false
     }
     if (!gen.direccion || !gen.barrio_vereda) {
       validationError.value = 'Ingresa la dirección y barrio o vereda de residencia.'
+      return false
+    }
+    if (gen.en_centro_proteccion === null || gen.pertenece_grupo_etnico === null || gen.victima_conflicto === null) {
+      validationError.value = 'Responde las preguntas de protección, pertenencia étnica y conflicto armado.'
       return false
     }
   }
@@ -372,9 +425,22 @@ const validateStep = (step: number): boolean => {
       validationError.value = 'Ingresa los detalles del tratamiento médico.'
       return false
     }
-    if (salud.consume_medicamentos && !salud.medicamentos_detalle) {
-      validationError.value = 'Ingresa los detalles del consumo de medicamentos (frecuencia/horarios).'
-      return false
+    if (salud.consume_medicamentos) {
+      const medicamentosCompletos = salud.medicamentos_lista.filter(
+        (item) => hasText(item.cual) && hasText(item.frecuencia)
+      )
+      const medicamentosIncompletos = salud.medicamentos_lista.some(
+        (item) => hasText(item.cual) !== hasText(item.frecuencia)
+      )
+
+      if (medicamentosIncompletos) {
+        validationError.value = 'Completa nombre/dosis y frecuencia/horario de cada medicamento añadido.'
+        return false
+      }
+      if (medicamentosCompletos.length === 0 && !hasText(salud.medicamentos_detalle)) {
+        validationError.value = 'Añade al menos un medicamento con su frecuencia u horario.'
+        return false
+      }
     }
     if (salud.productos_apoyo_movilidad && !salud.productos_apoyo_cual) {
       validationError.value = 'Detalla los productos de apoyo (silla de ruedas, audífonos, etc.).'
@@ -399,9 +465,21 @@ const validateStep = (step: number): boolean => {
   }
 
   if (step === 4) {
+    syncMatriculaActualDesdeSeleccion()
     const mat = studentsStore.draft.matricula
-    if (!mat.institucion_educativa || !mat.sede || !mat.grado_ingreso || !mat.jornada) {
-      validationError.value = 'Completa todos los campos obligatorios de la matrícula actual (IE, Sede, Grado y Jornada).'
+    const trayectoria = studentsStore.draft.trayectoria
+    if (trayectoria.vinculado_sistema_anterior === null || !trayectoria.ultimo_grado_cursado || !trayectoria.estado_ultimo_grado) {
+      validationError.value = 'Completa la vinculación del año anterior y el estado del último grado.'
+      return false
+    }
+    const camposFaltantes: string[] = []
+    if (!hasText(mat.institucion_educativa)) camposFaltantes.push('IE')
+    if (sedes.value.length > 0 ? !selectedSedeId.value : !hasText(mat.sede)) camposFaltantes.push('Sede')
+    if (grupos.value.length > 0 ? !studentsStore.draft.general.grupo_id : !hasText(mat.grado_ingreso)) camposFaltantes.push('Grado')
+    if (!hasText(mat.jornada)) camposFaltantes.push('Jornada')
+
+    if (camposFaltantes.length > 0) {
+      validationError.value = `Completa estos campos de matrícula actual: ${camposFaltantes.join(', ')}.`
       return false
     }
   }
@@ -441,10 +519,17 @@ const cancel = () => {
 }
 
 const save = async () => {
-  // Auto-asignar la institucion educativa asociada al usuario que crea el estudiante
-  if (authStore.nombreInstitucion) {
-    studentsStore.draft.matricula.institucion_educativa = authStore.nombreInstitucion
+  if (isRegistrationMode.value) {
+    if (!validateStep(1)) return
+    const createdId = await studentsStore.registerStudent()
+    if (createdId) {
+      router.push('/estudiantes')
+    } else {
+      validationError.value = studentsStore.error || 'Error al registrar el estudiante.'
+    }
+    return
   }
+  syncMatriculaActualDesdeSeleccion()
   if (!validateStep(4)) return
 
   validationError.value = null
@@ -452,7 +537,7 @@ const save = async () => {
   const success = await studentsStore.saveStudent(studentId, medicalSupportFile.value)
 
   if (success) {
-    router.push('/estudiantes')
+    router.push(isPiarContext.value ? `/estudiantes/${studentId}/piar` : '/estudiantes')
   } else {
     validationError.value = studentsStore.error || 'Error al guardar el estudiante.'
   }
@@ -463,7 +548,7 @@ const save = async () => {
   <!-- Content -->
       <div class="p-gutter max-w-4xl mx-auto w-full space-y-gutter flex-grow">
         <!-- Visual Stepper Progress Bar -->
-        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl p-md shadow-sm flex justify-between items-center select-none transition-colors duration-300">
+        <div v-if="isEditMode" class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl p-md shadow-sm flex justify-between items-center select-none transition-colors duration-300">
           <div
             v-for="step in 4"
             :key="step"
@@ -504,7 +589,9 @@ const save = async () => {
           
           <!-- STEP 1: INFORMACIÓN GENERAL -->
           <div v-if="currentStep === 1" class="space-y-md">
-            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">1. Información general del estudiante</h3>
+            <h3 class="font-headline-md text-[18px] text-primary border-b border-outline-variant/30 pb-sm">
+              {{ isRegistrationMode ? 'Registro breve del estudiante' : '1. Información general del estudiante' }}
+            </h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
               <div class="space-y-xs">
@@ -603,6 +690,33 @@ const save = async () => {
               </div>
             </div>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Sede escolar *</label>
+                <select
+                  v-model="selectedSedeId"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
+                >
+                  <option value="" disabled>Selecciona sede...</option>
+                  <option v-for="sede in sedes" :key="sede.id" :value="sede.id">{{ sede.nombre }}</option>
+                </select>
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Grupo *</label>
+                <select
+                  v-model="studentsStore.draft.general.grupo_id"
+                  :disabled="!selectedSedeId"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none disabled:opacity-50 dark:text-white"
+                >
+                  <option :value="null" disabled>Selecciona grupo...</option>
+                  <option v-for="grupo in filteredGrupos" :key="grupo.id" :value="grupo.id">
+                    {{ grupo.grado }} - {{ grupo.nombre }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <template v-if="isEditMode">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Edad calculada</label>
@@ -704,34 +818,31 @@ const save = async () => {
 
             <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">Condiciones particulares</h4>
             <div class="space-y-sm bg-surface-container-low p-md rounded-xl border border-outline-variant/20">
-              <div class="flex items-center gap-xs">
-                <input
-                  id="conflicto"
-                  v-model="studentsStore.draft.general.victima_conflicto"
-                  type="checkbox"
-                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
-                />
-                <label for="conflicto" class="font-label-md text-label-md text-on-surface select-none">¿Es víctima del conflicto armado?</label>
+              <div class="space-y-xs">
+                <label for="conflicto" class="font-label-md text-label-md text-on-surface select-none">¿Es víctima del conflicto armado? *</label>
+                <select id="conflicto" v-model="studentsStore.draft.general.victima_conflicto" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input dark:text-white">
+                  <option :value="null" disabled>Selecciona una respuesta</option>
+                  <option :value="true">Sí</option>
+                  <option :value="false">No</option>
+                </select>
               </div>
 
               <div v-if="studentsStore.draft.general.victima_conflicto" class="flex items-center gap-xs pl-6">
-                <input
-                  id="registro-victima"
-                  v-model="studentsStore.draft.general.registro_victima"
-                  type="checkbox"
-                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
-                />
-                <label for="registro-victima" class="font-label-md text-label-md text-on-surface select-none">¿Cuenta con Registro Único de Víctimas (RUV)?</label>
+                <label for="registro-victima" class="font-label-md text-label-md text-on-surface select-none">¿Cuenta con Registro Único de Víctimas (RUV)? *</label>
+                <select id="registro-victima" v-model="studentsStore.draft.general.registro_victima" class="px-4 py-2.5 bg-surface border border-outline-variant rounded-input dark:text-white">
+                  <option :value="null" disabled>Selecciona</option>
+                  <option :value="true">Sí</option>
+                  <option :value="false">No</option>
+                </select>
               </div>
 
-              <div class="flex items-center gap-xs">
-                <input
-                  id="proteccion"
-                  v-model="studentsStore.draft.general.en_centro_proteccion"
-                  type="checkbox"
-                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
-                />
-                <label for="proteccion" class="font-label-md text-label-md text-on-surface select-none">¿Está bajo un centro de protección (ICBF/Fundación)?</label>
+              <div class="space-y-xs">
+                <label for="proteccion" class="font-label-md text-label-md text-on-surface select-none">¿Está bajo un centro de protección (ICBF/Fundación)? *</label>
+                <select id="proteccion" v-model="studentsStore.draft.general.en_centro_proteccion" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input dark:text-white">
+                  <option :value="null" disabled>Selecciona una respuesta</option>
+                  <option :value="true">Sí</option>
+                  <option :value="false">No</option>
+                </select>
               </div>
 
               <div v-if="studentsStore.draft.general.en_centro_proteccion" class="space-y-xs pl-6">
@@ -745,7 +856,15 @@ const save = async () => {
               </div>
 
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Pertenencia a Grupo Étnico</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">¿Pertenece a un grupo étnico? *</label>
+                <select v-model="studentsStore.draft.general.pertenece_grupo_etnico" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input dark:text-white">
+                  <option :value="null" disabled>Selecciona una respuesta</option>
+                  <option :value="true">Sí</option>
+                  <option :value="false">No</option>
+                </select>
+              </div>
+              <div v-if="studentsStore.draft.general.pertenece_grupo_etnico" class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">¿Cuál grupo étnico?</label>
                 <input
                   v-model="studentsStore.draft.general.grupo_etnico"
                   class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
@@ -754,6 +873,7 @@ const save = async () => {
                 />
               </div>
             </div>
+            </template>
           </div>
 
           <!-- STEP 2: ENTORNO SALUD -->
@@ -817,17 +937,47 @@ const save = async () => {
                   type="checkbox"
                   class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
                 />
-                <label for="atendido-salud" class="font-label-md text-label-md text-on-surface select-none">¿Es atendido periódicamente por salud especial?</label>
+                <label for="atendido-salud" class="font-label-md text-label-md text-on-surface select-none">Cuenta con atención médica</label>
               </div>
 
-              <div v-if="studentsStore.draft.salud.atendido_sector_salud" class="space-y-xs pl-6">
-                <label class="font-label-md text-label-md text-on-surface-variant">Frecuencia de atención</label>
-                <input
-                  v-model="studentsStore.draft.salud.frecuencia_atencion_salud"
-                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  type="text"
-                  placeholder="Ej: Mensual, Trimestral"
-                />
+              <div v-if="studentsStore.draft.salud.atendido_sector_salud" class="space-y-sm pl-6">
+                <div class="flex justify-between items-center">
+                  <h4 class="font-bold text-label-sm text-outline">Atenciones médicas</h4>
+                  <button
+                    type="button"
+                    @click="addAtencionMedica"
+                    class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-label-sm font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">add</span>
+                    Añadir atención
+                  </button>
+                </div>
+
+                <div v-if="studentsStore.draft.salud.atenciones_medicas.length === 0" class="text-label-sm text-outline italic py-2">
+                  No hay atenciones registradas. Añade una para empezar.
+                </div>
+
+                <div v-for="(item, idx) in studentsStore.draft.salud.atenciones_medicas" :key="idx" class="flex items-center gap-sm bg-surface p-sm border border-outline-variant/30 rounded-input">
+                  <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-sm">
+                    <input
+                      v-model="item.cual"
+                      class="px-3 py-2 bg-surface-container border border-outline-variant rounded-input font-body-md text-label-sm focus:border-primary focus:outline-none dark:text-white"
+                      placeholder="¿Cuál? (Pediatría, Neurología...)"
+                    />
+                    <input
+                      v-model="item.frecuencia"
+                      class="px-3 py-2 bg-surface-container border border-outline-variant rounded-input font-body-md text-label-sm focus:border-primary focus:outline-none dark:text-white"
+                      placeholder="Frecuencia (Mensual, Anual)"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    @click="removeAtencionMedica(idx)"
+                    class="text-error hover:bg-error/10 p-1.5 rounded-full cursor-pointer transition-all"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -937,7 +1087,7 @@ const save = async () => {
                   type="checkbox"
                   class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
                 />
-                <label for="asiste-terapias" class="font-label-md text-label-md text-on-surface select-none">¿Asiste a terapias extracurriculares? *</label>
+                <label for="asiste-terapias" class="font-label-md text-label-md text-on-surface select-none">Cuenta con intervención o tratamiento terapéutico integral</label>
               </div>
 
               <div v-if="studentsStore.draft.salud.asiste_terapias" class="space-y-sm pl-6">
@@ -980,41 +1130,52 @@ const save = async () => {
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
               <div class="flex items-center gap-xs">
                 <input
-                  id="tratamiento-medico"
-                  v-model="studentsStore.draft.salud.tratamiento_medico"
-                  type="checkbox"
-                  class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
-                />
-                <label for="tratamiento-medico" class="font-label-md text-label-md text-on-surface select-none">¿Recibe algún otro tratamiento médico particular? *</label>
-              </div>
-
-              <div v-if="studentsStore.draft.salud.tratamiento_medico" class="space-y-xs pl-6">
-                <label class="font-label-md text-label-md text-on-surface-variant">¿Cuál? *</label>
-                <input
-                  v-model="studentsStore.draft.salud.tratamiento_medico_cual"
-                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  type="text"
-                />
-              </div>
-
-              <div class="flex items-center gap-xs">
-                <input
                   id="medicamentos"
                   v-model="studentsStore.draft.salud.consume_medicamentos"
                   type="checkbox"
                   class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
                 />
-                <label for="medicamentos" class="font-label-md text-label-md text-on-surface select-none">¿Consume medicamentos de control en horario escolar? *</label>
+                <label for="medicamentos" class="font-label-md text-label-md text-on-surface select-none">¿Consume medicamentos?</label>
               </div>
 
-              <div v-if="studentsStore.draft.salud.consume_medicamentos" class="space-y-xs pl-6">
-                <label class="font-label-md text-label-md text-on-surface-variant">Medicamentos (Nombre, dosis, horario escolar) *</label>
-                <textarea
-                  v-model="studentsStore.draft.salud.medicamentos_detalle"
-                  class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  rows="2"
-                  placeholder="Dosis e instrucciones para el docente"
-                ></textarea>
+              <div v-if="studentsStore.draft.salud.consume_medicamentos" class="space-y-sm pl-6">
+                <div class="flex justify-between items-center">
+                  <h4 class="font-bold text-label-sm text-outline">Medicamentos</h4>
+                  <button
+                    type="button"
+                    @click="addMedicamento"
+                    class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-label-sm font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">add</span>
+                    Añadir medicamento
+                  </button>
+                </div>
+
+                <div v-if="studentsStore.draft.salud.medicamentos_lista.length === 0" class="text-label-sm text-outline italic py-2">
+                  No hay medicamentos registrados. Añade uno para empezar.
+                </div>
+
+                <div v-for="(item, idx) in studentsStore.draft.salud.medicamentos_lista" :key="idx" class="flex items-center gap-sm bg-surface p-sm border border-outline-variant/30 rounded-input">
+                  <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-sm">
+                    <input
+                      v-model="item.cual"
+                      class="px-3 py-2 bg-surface-container border border-outline-variant rounded-input font-body-md text-label-sm focus:border-primary focus:outline-none dark:text-white"
+                      placeholder="¿Cuáles? (Nombre y dosis)"
+                    />
+                    <input
+                      v-model="item.frecuencia"
+                      class="px-3 py-2 bg-surface-container border border-outline-variant rounded-input font-body-md text-label-sm focus:border-primary focus:outline-none dark:text-white"
+                      placeholder="Frecuencia y horario"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    @click="removeMedicamento(idx)"
+                    class="text-error hover:bg-error/10 p-1.5 rounded-full cursor-pointer transition-all"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                  </button>
+                </div>
               </div>
 
               <div class="flex items-center gap-xs">
@@ -1306,6 +1467,14 @@ const save = async () => {
 
             <h4 class="font-bold text-label-sm text-outline tracking-wide">Trayectoria educativa previa</h4>
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface">¿Estuvo vinculado al sistema educativo el año anterior? *</label>
+                <select v-model="studentsStore.draft.trayectoria.vinculado_sistema_anterior" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input dark:text-white">
+                  <option :value="null" disabled>Selecciona una respuesta</option>
+                  <option :value="true">Sí</option>
+                  <option :value="false">No</option>
+                </select>
+              </div>
               <div class="flex items-center gap-xs">
                 <input
                   id="inicial"
@@ -1336,14 +1505,14 @@ const save = async () => {
                     placeholder="Ej: Transición, Primero"
                   />
                 </div>
-                <div class="flex items-center gap-xs pt-8">
-                  <input
-                    id="aprobo"
-                    v-model="studentsStore.draft.trayectoria.aprobo_ultimo_grado"
-                    type="checkbox"
-                    class="w-4 h-4 text-primary bg-background border-outline-variant rounded focus:ring-primary"
-                  />
-                  <label for="aprobo" class="font-label-md text-label-md text-on-surface select-none">¿Aprobó el último grado cursado?</label>
+                <div class="space-y-xs">
+                  <label for="estado-ultimo" class="font-label-md text-label-md text-on-surface select-none">Estado del último grado *</label>
+                  <select id="estado-ultimo" v-model="studentsStore.draft.trayectoria.estado_ultimo_grado" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded-input dark:text-white">
+                    <option value="" disabled>Selecciona...</option>
+                    <option value="aprobado">Aprobado</option>
+                    <option value="reprobado">Reprobado</option>
+                    <option value="sin_terminar">Sin terminar</option>
+                  </select>
                 </div>
               </div>
 
@@ -1397,6 +1566,16 @@ const save = async () => {
 
             <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">Matrícula institucional actual *</h4>
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Institución educativa *</label>
+                <input
+                  v-model="studentsStore.draft.matricula.institucion_educativa"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  type="text"
+                  placeholder="Nombre de la institución educativa"
+                />
+              </div>
+
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                 <div class="space-y-xs">
                   <label class="font-label-md text-label-md text-on-surface-variant">Sede escolar *</label>
@@ -1508,7 +1687,7 @@ const save = async () => {
 
             <div class="flex items-center gap-sm">
               <button
-                v-if="currentStep < 4"
+                v-if="isEditMode && currentStep < 4"
                 @click="nextStep"
                 class="px-lg py-3 bg-primary hover:bg-primary-container text-white font-label-md text-label-md rounded-input shadow-md flex items-center gap-xs cursor-pointer transition-all active:scale-95"
                 type="button"
@@ -1525,10 +1704,10 @@ const save = async () => {
               >
                 <template v-if="studentsStore.submitting">
                   <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                  Guardando Expediente...
+                  {{ isRegistrationMode ? 'Registrando...' : 'Guardando expediente...' }}
                 </template>
                 <template v-else>
-                  Guardar Registro
+                  {{ isRegistrationMode ? 'Registrar estudiante' : 'Guardar expediente' }}
                   <span class="material-symbols-outlined text-[20px]">cloud_upload</span>
                 </template>
               </button>
