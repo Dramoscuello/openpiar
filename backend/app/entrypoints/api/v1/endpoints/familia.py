@@ -200,6 +200,8 @@ async def get_acta_pdf_familia(
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.trayectoria_educativa),
             selectinload(PiarORM.estudiante).selectinload(EstudianteORM.matricula_actual),
             selectinload(PiarORM.caracteristicas),
+            selectinload(PiarORM.participantes),
+            selectinload(PiarORM.asignaturas_estado),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.periodo),
             selectinload(PiarORM.ajustes_razonables).selectinload(AjusteRazonableORM.evidencias).selectinload(EvidenciaAjusteORM.creador),
             selectinload(PiarORM.actas_acuerdo).selectinload(ActaAcuerdoORM.compromisos_casa),

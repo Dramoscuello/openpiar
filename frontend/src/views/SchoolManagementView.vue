@@ -984,13 +984,26 @@ const submitPeriodo = async () => {
   }
 }
 
-const togglePeriodoActivo = async (periodo: any) => {
+const periodoPorActivar = ref<any>(null)
+const activandoPeriodo = ref(false)
+
+const togglePeriodoActivo = (periodo: any) => {
   if (periodo.activo) return // No hacer nada si ya está activo (siempre debe haber uno)
+  errorMsg.value = null
+  successMsg.value = null
+  periodoPorActivar.value = periodo
+}
 
-  if (!confirm(
-    `¿Activar "${periodo.nombre}"? Los docentes empezarán a diligenciar los ajustes del nuevo periodo y el anterior quedará en modo consulta.`
-  )) return
+const cancelarActivacionPeriodo = () => {
+  if (activandoPeriodo.value) return
+  periodoPorActivar.value = null
+}
 
+const confirmarActivacionPeriodo = async () => {
+  const periodo = periodoPorActivar.value
+  if (!periodo) return
+
+  activandoPeriodo.value = true
   errorMsg.value = null
   successMsg.value = null
   try {
@@ -1008,8 +1021,11 @@ const togglePeriodoActivo = async (periodo: any) => {
     if (idx !== -1) periodos.value[idx] = data
     
     successMsg.value = 'Periodo activado correctamente.'
+    periodoPorActivar.value = null
   } catch (err: any) {
     errorMsg.value = err.message
+  } finally {
+    activandoPeriodo.value = false
   }
 }
 
@@ -2314,6 +2330,61 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               <span v-if="deletingEntity" class="material-symbols-outlined" style="font-size:18px; animation:spin 1s linear infinite;">progress_activity</span>
               <span v-else class="material-symbols-outlined" style="font-size:18px;">delete</span>
               {{ deletingEntity ? 'Eliminando...' : 'Sí, eliminar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Modal de confirmación para activar periodo -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div
+        v-if="periodoPorActivar"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-6"
+        style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
+        @click.self="cancelarActivacionPeriodo"
+      >
+        <div class="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[440px] p-7">
+          <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+            <div class="flex-shrink-0 w-11 h-11 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+              <span class="material-symbols-outlined" style="color:#d97706; font-size:22px;">calendar_today</span>
+            </div>
+            <h3 style="font-size:17px; font-weight:700; color:#111827; margin:0;" class="dark:text-gray-100">
+              Activar periodo académico
+            </h3>
+          </div>
+
+          <p style="font-size:14px; color:#6b7280; line-height:1.6; margin:0 0 20px 0;" class="dark:text-gray-300">
+            ¿Activar <strong style="color:#111827;" class="dark:text-gray-100">{{ periodoPorActivar.nombre }}</strong>?
+            Los docentes empezarán a diligenciar los ajustes del nuevo periodo y el anterior quedará en modo consulta.
+            Podrás volver a activar otro periodo cuando lo necesites.
+          </p>
+
+          <div
+            v-if="errorMsg"
+            style="background:#fee2e2; color:#dc2626; border-radius:10px; padding:12px 16px; font-size:13px; margin-bottom:16px;"
+          >
+            {{ errorMsg }}
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:12px;">
+            <button
+              @click="cancelarActivacionPeriodo"
+              :disabled="activandoPeriodo"
+              class="px-5 py-2.5 rounded-xl text-[14px] font-medium text-on-surface-variant dark:text-gray-300 bg-transparent border border-outline-variant dark:border-outline cursor-pointer transition-colors hover:bg-surface-container-low dark:hover:bg-zinc-800 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              @click="confirmarActivacionPeriodo"
+              :disabled="activandoPeriodo"
+              class="px-5 py-2.5 rounded-xl text-[14px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 border-none cursor-pointer flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <span v-if="activandoPeriodo" class="material-symbols-outlined" style="font-size:18px; animation:spin 1s linear infinite;">progress_activity</span>
+              <span v-else class="material-symbols-outlined" style="font-size:18px;">check_circle</span>
+              {{ activandoPeriodo ? 'Activando...' : 'Sí, activar' }}
             </button>
           </div>
         </div>
