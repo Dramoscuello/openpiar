@@ -495,12 +495,11 @@ async def get_gemini_key(db: AsyncSession) -> str:
        (util para desarrollo local).
     3. Si ninguna está disponible, lanza HTTPException 400.
     """
-    result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
-    config = result.scalars().first()
-    if config and config.gemini_api_key:
-        return config.gemini_api_key
-    if settings.GEMINI_API_KEY:
-        return settings.GEMINI_API_KEY
+    from app.core.gemini_key import resolver_gemini_key
+
+    llave = await resolver_gemini_key(db)
+    if llave:
+        return llave
     raise HTTPException(
         status_code=400,
         detail=(

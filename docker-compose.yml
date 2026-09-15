@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-openpiar_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
       POSTGRES_DB: ${DB_NAME:-openpiar_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -24,11 +24,19 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - ./backend/.env
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      DB_USER: ${DB_USER:-openpiar_user}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+      DB_NAME: ${DB_NAME:-openpiar_db}
+      SECRET_KEY: ${SECRET_KEY:?Define SECRET_KEY en el archivo .env}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      APP_ENV: ${APP_ENV:-production}
+      SHOW_DOCS: ${SHOW_DOCS:-False}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
     volumes:
       - backend_uploads:/app/uploads
     networks:

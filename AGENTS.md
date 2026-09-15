@@ -22,7 +22,7 @@ backend/app/
 │   ├── dependencies.py   # Inyección de repos, auth, roles
 │   ├── middleware.py     # Setup Guard
 │   └── schemas.py
-├── core/                 # config, security (JWT+bcrypt), exceptions, pdf_generator, notification_service, portable_exporter
+├── core/                 # config, security (JWT+bcrypt), exceptions, pdf_generator, notification_service, portable_exporter, gemini_key
 └── fixtures/             # JSON estático (DBA, EBC, areas_asignaturas)
 ```
 
@@ -51,6 +51,10 @@ backend/app/
 
 # Sembrar currículum (DBA + EBC en PostgreSQL) — una vez, offline
 .venv/bin/python scripts/seed_curriculum.py
+
+# Preparar esquema de BD (lo usa el entrypoint Docker): BD nueva → modelos + stamp;
+# BD existente → alembic upgrade head; BD con tablas sin alembic_version → error guiado
+.venv/bin/python scripts/init_db.py
 
 # Ingesta de PDFs oficiales MEN → fixtures JSON (requiere OPENAI_API_KEY y `openai`, no incluido en requirements.txt)
 .venv/bin/python scripts/ingest_curriculum.py
@@ -95,7 +99,7 @@ El backend auto-crea las tablas al arrancar vía `lifespan` (`Base.metadata.crea
 
 ## Flujo de Arranque
 
-1. Backend inicia → `lifespan` crea tablas e **inicia un loop de notificaciones cada 6 h** (`core/notification_service.py::ejecutar_notificaciones_periodicas`, con advisory lock de PostgreSQL anti-duplicados). Ver `main.py:66-75`.
+1. Backend inicia → el entrypoint Docker (`docker-entrypoint.sh`) espera PostgreSQL, ejecuta `scripts/init_db.py` (esquema/migraciones), siembra el currículum y arranca Uvicorn. En local, `lifespan` crea tablas con `create_all` e **inicia un loop de notificaciones cada 6 h** (`core/notification_service.py::ejecutar_notificaciones_periodicas`, con advisory lock de PostgreSQL anti-duplicados). Ver `main.py:66-75`.
 2. **Middleware Setup Guard** (`entrypoints/api/middleware.py:33`): retorna **412** en todas las rutas `/api/*` hasta que `configuracion_sistema.setup_completado = TRUE`.
    - Rutas exentas: `/api/v1/setup/*`, `/api/v1/familia`, `/api/v1/health`, `/docs`, `/redoc`, `/openapi.json`, `/favicon.ico`.
 3. Guard del router frontend (`frontend/src/router/index.ts:79`) redirige a `/setup` hasta completar la configuración.
@@ -139,7 +143,7 @@ Todos bajo el prefijo `/api/v1` (registrado en `main.py:242`).
 - Los datos curriculares (DBA/EBC) se precargan como fixtures JSON; **nunca** se descargan de internet en runtime.
 - El panel de **familia** es de acceso público por código (`codigo_acceso_familia`), sin autenticación JWT.
 - El export/import portable `.openpiar` usa cifrado **AES-256-GCM** con PBKDF2-HMAC-SHA256 (`core/portable_exporter.py`).
-- La IA usa Gemini (dos SDKs); no hay adaptador Ollama implementado.
+- La IA usa Gemini (dos SDKs); no hay adaptador Ollama implementado. La clave se resuelve con prioridad **BD → `.env`** (`core/gemini_key.py`).
 
 ## Deployment
 
@@ -169,7 +173,7 @@ Cambiar a `true` para reactivarlas. Detalle local en `caracteristicas_ocultas.md
 
 El desarrollo de features sigue especificaciones versionadas en el repo:
 - `spec/constitution/roadmap.md` — principios y roadmap de producto.
-- `spec/features/feature 001/`, `spec/features/feature 002/`, `spec/features/feature 003/`, `spec/features/feature 004/` y `spec/features/feature 005/` — `plan.md` y `tasks.md` (planificación por feature).
+- `spec/features/feature 001/`, `spec/features/feature 002/`, `spec/features/feature 003/`, `spec/features/feature 004/`, `spec/features/feature 005/` y `spec/features/feature 006/` — `plan.md` y `tasks.md` (planificación por feature).
 
 ## Referencias
 

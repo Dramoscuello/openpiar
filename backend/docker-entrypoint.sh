@@ -24,6 +24,9 @@ done
 
 echo "==> PostgreSQL listo."
 
+echo "==> Preparando esquema de base de datos..."
+python scripts/init_db.py
+
 echo "==> Sembrando curriculo nacional (DBA y EBC)..."
 python scripts/seed_curriculum.py || echo "   (el seed ya estaba aplicado o no era necesario)"
 

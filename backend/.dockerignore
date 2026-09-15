@@ -1,0 +1,23 @@
+# Contexto de build del backend — excluir artefactos y secretos
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Variables de entorno (el contenedor las recibe de docker-compose)
+.env
+*.env
+!.env.example
+
+# Datos locales que no deben hornearse en la imagen
+uploads/
+tests/
+scratch_*.pdf
+*.pdf
+.DS_Store
+.DS_Store?

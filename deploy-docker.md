@@ -32,42 +32,35 @@ cd /opt/openpiar
 
 ## 2. Configurar las variables de entorno
 
-OpenPiar usa dos archivos de entorno:
+Docker solo necesita **un archivo `.env` en la raíz**:
 
 ```bash
-# 1. Backend (todas las variables de la aplicacion)
-cp backend/.env.example backend/.env
-nano backend/.env
-
-# 2. Docker Compose (solo credenciales de PostgreSQL para el contenedor de BD)
 cp .env.example .env
 nano .env
 ```
 
-### En `backend/.env` completa:
+### En `.env` (raíz) completa:
 
 | Variable | Descripcion |
 |----------|-------------|
-| `SECRET_KEY` | Generala con `openssl rand -hex 32` |
 | `DB_USER` | Usuario de PostgreSQL (ej: `openpiar_user`) |
 | `DB_PASSWORD` | Contrasena de PostgreSQL |
 | `DB_NAME` | Nombre de la base de datos (ej: `openpiar_db`) |
-| `GEMINI_API_KEY` | Tu API key de Google Gemini |
-| `CORS_ORIGINS` | Dominio o IP desde donde se accede (ej: `https://openpiar.mi-colegio.edu.co` o `http://190.12.34.56`). Para pruebas rapidas podes usar `*` (no recomendado en produccion) |
+| `SECRET_KEY` | Firma JWT, generala con `openssl rand -hex 32` |
+| `GEMINI_API_KEY` | **Opcional.** Tu API key de Google Gemini |
+| `CORS_ORIGINS` | Dominio o IP desde donde se accede (ej: `https://openpiar.mi-colegio.edu.co`). Con Nginx sirviendo la interfaz y la API en el mismo origen no suele ser necesario cambiarlo |
 
-El resto de variables (`APP_ENV`, `SHOW_DOCS`, `GEMINI_MODEL`, etc.) tienen valores por defecto razonables.
+`DB_HOST` y `DB_PORT` no se configuran: `docker-compose.yml` los fija automaticamente a `db` y `5432` (nombres internos de la red Docker). El resto de variables (`APP_ENV`, `SHOW_DOCS`, `GEMINI_MODEL`, `FRONTEND_PORT`) tienen valores por defecto razonables.
 
-### En `.env` (raiz) completa:
+> **Para desarrollo local sin Docker** (ejecutando `uvicorn` directamente) el archivo es `backend/.env`; puedes copiarlo de `backend/.env.example`. El contenedor **no** usa `backend/.env`.
 
-Las mismas credenciales de PostgreSQL que pusiste en `backend/.env`:
+### Sobre la API key de Gemini
 
-```bash
-DB_USER=openpiar_user
-DB_PASSWORD=la_misma_contrasena
-DB_NAME=openpiar_db
-```
+No es obligatorio definirla en `.env`:
 
-Esto es necesario para que el contenedor de PostgreSQL se cree con las mismas credenciales que espera el backend. El `DB_HOST` y `DB_PORT` no se configuran: el `docker-compose.yml` los fija automaticamente a `db` y `5432` (nombres internos de la red Docker).
+1. Puedes ingresarla durante el **asistente de configuración inicial** (se guarda en la base de datos).
+2. O después, como directivo, en **Gestion Escolar → Configuracion**.
+3. La clave guardada en la base de datos tiene **prioridad** sobre `GEMINI_API_KEY` del `.env` (que es solo un respaldo para desarrollo).
 
 ---
 
@@ -77,7 +70,12 @@ Esto es necesario para que el contenedor de PostgreSQL se cree con las mismas cr
 docker compose up -d
 ```
 
-La primera vez tomara unos minutos porque construye las imagenes del backend y frontend. El backend espera automaticamente a que PostgreSQL este listo y siembra el curriculo nacional (DBA y EBC) en la base de datos.
+La primera vez tomara unos minutos porque construye las imagenes del backend y frontend. Al arrancar, el backend:
+
+1. Espera a que PostgreSQL este listo.
+2. Prepara el esquema de la base de datos: en una instalacion nueva lo crea desde los modelos y marca Alembic; si la base ya existe, aplica las migraciones pendientes (`alembic upgrade head`).
+3. Siembra el curriculo nacional (DBA y EBC) si aun no esta.
+4. Inicia Uvicorn en el puerto 8000.
 
 Para ver los logs mientras arranca:
 
@@ -176,12 +174,16 @@ docker compose up -d --build
 
 Esto reconstruye las imagenes del backend y frontend con el codigo nuevo y recrea los contenedores. Los datos de PostgreSQL se conservan en el volumen `postgres_data`.
 
-Si la actualizacion incluye migraciones de Alembic, ejecutalas manualmente:
+Las **migraciones de Alembic se aplican automaticamente** al arrancar el backend, asi que no hay pasos manuales.
 
-```bash
-docker compose exec backend python -m alembic upgrade head
-docker compose restart backend
-```
+> Si venis de una instalacion muy antigua cuya base de datos se creo sin Alembic (sin tabla `alembic_version`), el arranque fallara al aplicar migraciones. En ese caso marca la base como al dia una sola vez:
+>
+> ```bash
+> docker compose exec backend python -m alembic stamp head
+> docker compose restart backend
+> ```
+>
+> Haz un respaldo antes (ver seccion 8).
 
 ---
 
@@ -222,11 +224,24 @@ docker compose logs backend --tail 50
 
 ### Error de conexion a PostgreSQL
 
-El backend espera hasta 10 intentos del healthcheck de PostgreSQL antes de arrancar. Si falla, verifica:
+El backend espera a que PostgreSQL responda antes de arrancar (reintenta cada 2 segundos). Si falla, verifica:
 
 ```bash
 docker compose logs db
 docker compose ps db
+```
+
+### Falla la preparacion del esquema
+
+El backend ejecuta `scripts/init_db.py` en cada arranque:
+
+- Base **nueva** (sin tablas): la crea desde los modelos y la marca en la ultima revision de Alembic.
+- Base **existente y versionada**: aplica `alembic upgrade head`.
+- Base **con tablas pero sin `alembic_version`** (instalacion antigua): el contenedor se detiene e indica el paso a seguir. Tras respaldar, marca la revision que corresponda:
+
+```bash
+docker compose exec backend python -m alembic stamp head
+docker compose restart backend
 ```
 
 ### El seed del curriculo falla
@@ -243,7 +258,8 @@ El asistente de configuracion inicial no se ha completado. Accede a la raiz del 
 
 ### La IA no genera sugerencias
 
-- Verifica que `GEMINI_API_KEY` este configurada en `backend/.env`.
+- Verifica que la clave de Gemini este configurada en **Gestion Escolar → Configuracion** (se guarda en la base de datos y tiene prioridad).
+- Como respaldo de desarrollo, tambien puede estar en `GEMINI_API_KEY` del `.env` raiz.
 - Asegurate de que sea una clave valida con creditos disponibles.
 - Reinicia el backend: `docker compose restart backend`.
 
@@ -263,7 +279,28 @@ docker compose up -d
 
 ---
 
-## 10. Personalizacion avanzada
+## 10. Probar en otro equipo (checklist)
+
+1. Instala Docker Engine 24+ con Compose v2.
+2. Clona el repositorio: `git clone <repo> openpiar && cd openpiar`.
+3. Crea el archivo de entorno: `cp .env.example .env`.
+   - Define `DB_PASSWORD` y `SECRET_KEY` (obligatorias). `openssl rand -hex 32` para la segunda.
+   - `GEMINI_API_KEY` puede quedar vacia: se configura en el asistente.
+4. Valida la configuracion de Compose: `docker compose config`.
+5. Levanta todo: `docker compose up -d --build`.
+6. Sigue los logs: `docker compose logs -f backend`. Debes ver las migraciones, el seed y `Uvicorn running`.
+7. Abre `http://<ip-o-dominio>` y completa el wizard (datos de la institucion, PEI y la API key de Gemini).
+8. Verifica: login, `GET /api/v1/health`, dashboard y generacion de PDF.
+
+Notas:
+
+- Los datos viven en los volumenes `postgres_data` (base de datos) y `backend_uploads` (evidencias). No los borres si quieres conservar informacion.
+- Si cambias `FRONTEND_PORT`, usa ese puerto en el paso 7.
+- Las imagenes del backend/frontend se construyen sin `.venv`, `node_modules`, `.env` ni uploads locales (ver `.dockerignore`).
+
+---
+
+## 11. Personalizacion avanzada
 
 ### Aumentar workers del backend
 

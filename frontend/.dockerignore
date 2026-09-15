@@ -1,0 +1,13 @@
+# Contexto de build del frontend — excluir dependencias y artefactos locales
+node_modules/
+dist/
+dist-ssr/
+.vite/
+coverage/
+
+.env
+.env.*
+*.local
+
+.DS_Store
+.DS_Store?

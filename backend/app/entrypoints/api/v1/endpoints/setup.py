@@ -185,16 +185,28 @@ async def configurar_sistema(
 )
 async def upload_pei(
     file: UploadFile,
-    gemini_api_key: str = Form(...),
+    gemini_api_key: str = Form(""),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     import io
     import pdfplumber
     from app.adapters.ai.gemini_adapter import GeminiAgentAdapter
+    from app.core.gemini_key import resolver_gemini_key
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="El archivo debe ser un PDF (.pdf).",
+        )
+
+    llave_gemini = gemini_api_key.strip() or await resolver_gemini_key(db)
+    if not llave_gemini:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No se encontró la clave de API de Gemini. "
+                "Configúrala en el asistente de configuración o en el archivo .env."
+            ),
         )
 
     # Leer el PDF en memoria
@@ -218,8 +230,8 @@ async def upload_pei(
                 detail="No se pudo extraer texto del PEI. Asegúrate de que no sea una imagen escaneada.",
             )
 
-        # Llamar al agente Gemini con la API Key proporcionada
-        agente = GeminiAgentAdapter(api_key=gemini_api_key)
+        # Llamar al agente Gemini con la API Key del formulario, la BD o el entorno
+        agente = GeminiAgentAdapter(api_key=llave_gemini)
         perfil = await agente.extraer_perfil_pei(texto)
 
         return {
