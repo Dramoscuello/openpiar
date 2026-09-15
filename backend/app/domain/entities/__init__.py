@@ -26,6 +26,7 @@ ENTIDADES_AUDITABLES = {
     "caracteristicas_estudiante",
     "compromiso_casa",
     "piar_estado",
+    "piar_version",
     "evidencia_ajuste",
 }
 

@@ -39,6 +39,12 @@ TIPOS = {
     "resumen_semanal": "resumen_semanal",
 }
 
+# ---------------------------------------------------------------------------
+# Interruptor temporal de notificaciones (feature oculta).
+# Cambiar a True para reactivar el ciclo periódico y las notificaciones de evento.
+# ---------------------------------------------------------------------------
+NOTIFICACIONES_HABILITADAS = False
+
 
 async def _crear_notificacion(
     db: AsyncSession,
@@ -295,6 +301,8 @@ _NOTIF_LOCK_ID = 8294561127
 
 
 async def ejecutar_notificaciones_periodicas() -> None:
+    if not NOTIFICACIONES_HABILITADAS:
+        return
     try:
         async with AsyncSessionLocal() as db:
             lock_result = await db.execute(
@@ -327,6 +335,8 @@ async def inicio_notificaciones_periodicas() -> None:
 async def notificar_firma_pendiente_evento(
     db: AsyncSession, piar_id: uuid.UUID, estudiante_id: uuid.UUID
 ) -> None:
+    if not NOTIFICACIONES_HABILITADAS:
+        return
     piar = await db.get(PiarORM, piar_id)
     estudiante = await db.get(EstudianteORM, estudiante_id)
     if not piar or not estudiante:
@@ -346,6 +356,8 @@ async def notificar_firma_pendiente_evento(
 
 
 async def notificar_periodo_inicio(db: AsyncSession, periodo_nombre: str) -> None:
+    if not NOTIFICACIONES_HABILITADAS:
+        return
     usuarios = await db.execute(select(UsuarioORM))
     url = "/dashboard"
     for u in usuarios.scalars().all():

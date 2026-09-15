@@ -99,7 +99,7 @@ El backend auto-crea las tablas al arrancar vía `lifespan` (`Base.metadata.crea
 
 ## Flujo de Arranque
 
-1. Backend inicia → el entrypoint Docker (`docker-entrypoint.sh`) espera PostgreSQL, ejecuta `scripts/init_db.py` (esquema/migraciones), siembra el currículum y arranca Uvicorn. En local, `lifespan` crea tablas con `create_all` e **inicia un loop de notificaciones cada 6 h** (`core/notification_service.py::ejecutar_notificaciones_periodicas`, con advisory lock de PostgreSQL anti-duplicados). Ver `main.py:66-75`.
+1. Backend inicia → el entrypoint Docker (`docker-entrypoint.sh`) espera PostgreSQL, ejecuta `scripts/init_db.py` (esquema/migraciones), siembra el currículum y arranca Uvicorn. En local, `lifespan` crea tablas con `create_all` e **inicia un loop de notificaciones cada 6 h** (hoy desactivado con `NOTIFICACIONES_HABILITADAS=False`; ver `caracteristicas_ocultas.md`). El servicio vive en `core/notification_service.py::ejecutar_notificaciones_periodicas` y usa advisory lock de PostgreSQL anti-duplicados. Ver `main.py:66-90`.
 2. **Middleware Setup Guard** (`entrypoints/api/middleware.py:33`): retorna **412** en todas las rutas `/api/*` hasta que `configuracion_sistema.setup_completado = TRUE`.
    - Rutas exentas: `/api/v1/setup/*`, `/api/v1/familia`, `/api/v1/health`, `/docs`, `/redoc`, `/openapi.json`, `/favicon.ico`.
 3. Guard del router frontend (`frontend/src/router/index.ts:79`) redirige a `/setup` hasta completar la configuración.

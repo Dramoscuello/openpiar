@@ -1268,6 +1268,8 @@ def generate_auditoria_pdf(
         "caracteristicas_estudiante": "Características del Estudiante",
         "compromiso_casa": "Compromiso Casa",
         "piar_estado": "Estado del PIAR",
+        "piar_version": "Versión del PIAR",
+        "evidencia_ajuste": "Evidencia del Ajuste",
     }
     acciones_labels = {"crear": "CREACIÓN", "modificar": "MODIFICACIÓN", "eliminar": "ELIMINACIÓN"}
 

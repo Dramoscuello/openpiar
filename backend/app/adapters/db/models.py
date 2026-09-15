@@ -869,7 +869,8 @@ class AuditoriaCambioORM(Base):
         CheckConstraint(
             "entidad_tipo IN ("
             "'ajuste_razonable', 'acta_acuerdo', "
-            "'caracteristicas_estudiante', 'compromiso_casa', 'piar_estado', 'evidencia_ajuste'"
+            "'caracteristicas_estudiante', 'compromiso_casa', 'piar_estado', "
+            "'piar_version', 'evidencia_ajuste'"
             ")",
             name="ck_auditoria_entidad_tipo",
         ),

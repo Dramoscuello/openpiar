@@ -9,6 +9,9 @@ import NotificacionPanel from './NotificacionPanel.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
+// Notificaciones (feature oculta): cambiar a true para reactivar la campana y su panel.
+const notificacionesEnabled = false
+
 const showNotifPanel = ref(false)
 const bellRef = ref<InstanceType<typeof NotificacionBell> | null>(null)
 
@@ -141,11 +144,11 @@ const handleChangePassword = async () => {
       </div>
 
       <!-- Notifications -->
-      <div class="flex items-center gap-3 relative">
+      <div v-if="notificacionesEnabled" class="flex items-center gap-3 relative">
         <NotificacionBell ref="bellRef" @toggle="toggleNotifPanel" />
       </div>
 
-      <div class="h-8 w-px bg-outline-variant/50 mx-1"></div>
+      <div v-if="notificacionesEnabled" class="h-8 w-px bg-outline-variant/50 mx-1"></div>
 
       <!-- User Details / Hover Dropdown -->
       <div class="relative group flex items-center gap-3 select-none py-2">
@@ -189,7 +192,7 @@ const handleChangePassword = async () => {
   <!-- Notification Panel -->
   <Transition name="slide">
     <div
-      v-if="showNotifPanel"
+      v-if="notificacionesEnabled && showNotifPanel"
       class="fixed top-0 right-0 z-40 h-full w-[380px] max-w-[90vw] bg-surface border-l border-outline-variant/30 shadow-2xl flex flex-col"
     >
       <NotificacionPanel @close="closePanel" @count-update="onCountUpdate" />
@@ -198,7 +201,7 @@ const handleChangePassword = async () => {
 
   <!-- Backdrop -->
   <div
-    v-if="showNotifPanel"
+    v-if="notificacionesEnabled && showNotifPanel"
     class="fixed inset-0 z-30 bg-black/20"
     @click="closePanel"
   ></div>

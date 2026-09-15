@@ -38,7 +38,7 @@ function buildTour() {
   tour.addStep({
     id: 'topbar',
     title: 'Barra superior',
-    text: 'Aquí puedes cambiar entre <strong>modo claro y oscuro</strong>, ver notificaciones, acceder a tu perfil y <strong>cerrar sesión</strong>.',
+    text: 'Aquí puedes cambiar entre <strong>modo claro y oscuro</strong>, acceder a tu perfil y <strong>cerrar sesión</strong>.',
     attachTo: { element: 'header', on: 'bottom' },
     buttons: [
       {

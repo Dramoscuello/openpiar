@@ -8,7 +8,7 @@ Esta guia explica como levantar OpenPiar usando Docker Compose en cualquier VPS 
 
 - Docker Engine 24+ y Docker Compose v2 instalados en el servidor.
 - Un dominio apuntando al servidor (opcional, para produccion con HTTPS).
-- Una API key de Google Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)).
+- Una API key de Google Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)), opcional: tambien puede ingresarse desde el asistente de configuracion.
 
 Si tu VPS no tiene Docker, instalalo con:
 
@@ -59,7 +59,7 @@ nano .env
 No es obligatorio definirla en `.env`:
 
 1. Puedes ingresarla durante el **asistente de configuración inicial** (se guarda en la base de datos).
-2. O después, como directivo, en **Gestion Escolar → Configuracion**.
+2. O después, como directivo, en **Gestion Escolar -> Configuracion**.
 3. La clave guardada en la base de datos tiene **prioridad** sobre `GEMINI_API_KEY` del `.env` (que es solo un respaldo para desarrollo).
 
 ---
@@ -92,8 +92,9 @@ Cuando veas `Uvicorn running on http://0.0.0.0:8000`, el sistema esta listo.
 Abre `http://<ip-o-dominio-del-servidor>` en tu navegador. El asistente de configuracion inicial te guiara para:
 
 1. Registrar los datos de tu institucion.
-2. Subir el PDF del PEI.
-3. Crear la cuenta de administrador.
+2. Ingresar la API key de Gemini (opcional; tambien puedes configurarla despues).
+3. Subir el PDF del PEI; la IA extrae el modelo pedagogico.
+4. Crear la cuenta de administrador.
 
 Una vez completado, OpenPiar queda operativo.
 
@@ -118,6 +119,9 @@ server {
     listen 80;
     server_name openpiar.mi-colegio.edu.co;
 
+    # Subidas (PEI, evidencias, importacion .openpiar)
+    client_max_body_size 60m;
+
     location / {
         proxy_pass http://127.0.0.1:80;
         proxy_http_version 1.1;
@@ -125,6 +129,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
     }
 }
 ```
@@ -258,7 +263,7 @@ El asistente de configuracion inicial no se ha completado. Accede a la raiz del 
 
 ### La IA no genera sugerencias
 
-- Verifica que la clave de Gemini este configurada en **Gestion Escolar → Configuracion** (se guarda en la base de datos y tiene prioridad).
+- Verifica que la clave de Gemini este configurada en **Gestion Escolar -> Configuracion** (se guarda en la base de datos y tiene prioridad).
 - Como respaldo de desarrollo, tambien puede estar en `GEMINI_API_KEY` del `.env` raiz.
 - Asegurate de que sea una clave valida con creditos disponibles.
 - Reinicia el backend: `docker compose restart backend`.

@@ -1,96 +1,128 @@
-# OpenPiar: Gestor de PIAR comunitario abierto
+# OpenPiar: gestor de PIAR comunitario abierto
 
-¡Bienvenido a **OpenPiar**! Una plataforma de código abierto (*open-source*) diseñada específicamente para los colegios y docentes de Colombia. 
+OpenPiar es una plataforma de código abierto para colegios y docentes de Colombia. Su objetivo es **sistematizar, simplificar y humanizar** la creación, el seguimiento y la transferencia del **Plan Individual de Ajustes Razonables (PIAR)** de los estudiantes con discapacidad o con Trastornos Específicos del Aprendizaje (TEAp), junto con su historia escolar.
 
-El objetivo de esta herramienta es **sistematizar, simplificar y humanizar** la creación, seguimiento y transferencia del **Plan Individual de Ajustes Razonables (PIAR)** y la **Historia Escolar** de los estudiantes con discapacidad o Trastornos Específicos del Aprendizaje (TEAp).
-
----
-
-## ¿De qué trata el proyecto?
-
-Crear un PIAR suele convertirse en una tarea administrativa abrumadora que consume valioso tiempo que los docentes prefieren pasar enseñando. **OpenPiar** transforma este papeleo en un proceso interactivo acompañado por un **Asistente Pedagógico de Inteligencia Artificial**. 
-
-Al ser una aplicación comunitaria:
-1.  **Se adapta a tu colegio:** Al iniciar la plataforma, puedes cargar el **PEI (Proyecto Educativo Institucional)** de tu colegio para que las sugerencias de la IA sigan el modelo pedagógico y la identidad de tu institución.
-2.  **Es gratuito y colaborativo:** Sin costos de licencias privadas. Además, cuenta con un banco de estrategias donde los docentes de todo el país pueden compartir (de forma anónima) las adaptaciones que mejor funcionan en sus aulas.
+La plataforma transforma la gestión documental del PIAR en un proceso guiado, acompañado por un asistente pedagógico de inteligencia artificial, y produce los documentos oficiales exigidos por la normativa colombiana.
 
 ---
 
-## ¿En qué normas y pedagogías se basa?
+## Marco normativo y pedagógico
 
-El diseño de OpenPiar cumple rigurosamente con los lineamientos del Ministerio de Educación Nacional (MEN) y el marco legal colombiano:
+El diseño de OpenPiar sigue los lineamientos del Ministerio de Educación Nacional (MEN) y el marco legal colombiano:
 
-*   **Decreto 1421 de 2017:** Regula la atención educativa a personas con discapacidad y establece el PIAR como la herramienta obligatoria para planear los apoyos escolares y el Plan de Mejoramiento Institucional (PMI).
-*   **Ley 2216 de 2022:** Promueve la educación inclusiva para estudiantes con Trastornos Específicos del Aprendizaje (TEAp) como la dislexia, el TDAH o la discalculia, garantizando sus ajustes curriculares sin necesidad de certificados clínicos de discapacidad.
-*   **Decreto 1860 de 1994:** Garantiza que las planeaciones y manuales de convivencia respeten la autonomía y la identidad del PEI de cada institución.
-*   **Diseño Universal para el Aprendizaje (DUA):** La base pedagógica del sistema. Busca flexibilizar las clases para que todos aprendan mediante múltiples formas de:
-    *   **Representación (El qué):** Cómo se presenta la información.
-    *   **Acción y Expresión (El cómo):** Cómo los estudiantes demuestran lo aprendido.
-    *   **Implicación (El porqué):** Cómo se motiva y compromete a los estudiantes.
+- **Decreto 1421 de 2017:** regula la atención educativa a personas con discapacidad y establece el PIAR como herramienta obligatoria para planear los apoyos escolares.
+- **Ley 2216 de 2022:** promueve la educación inclusiva para estudiantes con Trastornos Específicos del Aprendizaje (dislexia, TDAH, discalculia, entre otros), garantizando sus ajustes curriculares.
+- **Decreto 1860 de 1994:** garantiza que las planeaciones y los manuales de convivencia respeten la autonomía y la identidad del PEI de cada institución.
+- **Diseño Universal para el Aprendizaje (DUA):** base pedagógica del sistema. Flexibiliza la enseñanza mediante múltiples formas de representación (el qué), de acción y expresión (el cómo) y de implicación (el porqué).
 
 ---
 
-## ¿Cómo funciona? (Nuestros módulos)
+## Funcionalidades
 
-### Asistente de configuración e identidad (instalador)
-La primera vez que abres OpenPiar, un asistente te pedirá:
-*   Datos básicos de tu colegio (Nombre, NIT, Código DANE, rector, dirección).
-*   Subir el archivo PDF del **PEI** de tu institución. La IA lo analizará para aprender tu modelo educativo (ej: constructivista, tradicional, etc.) y personalizar todas las planeaciones futuras.
+### Asistente de configuración inicial
+La primera vez que se abre la plataforma, un asistente solicita los datos de la institución (nombre, NIT, código DANE, rector, dirección), la API key de Gemini (opcional, se guarda en la base de datos), el PEI en PDF para que la IA extraiga el modelo pedagógico y los valores institucionales, y crea la cuenta de administrador. La configuración queda bloqueada hasta completar este paso.
 
-### Valoración pedagógica del estudiante (Anexo 1)
-Un formulario amigable paso a paso para recopilar la mirada integral del estudiante:
-*   **Entornos de salud y hogar:** Terapias, diagnósticos, apoyos requeridos (silla de ruedas, audífonos, etc.) y dinámica familiar.
-*   **Dimensiones del desarrollo:** Fortalezas y necesidades cognitivas, comunicativas, socioafectivas y corporales.
+### Gestión escolar
+Módulo administrativo para registrar sedes, docentes, directivos, áreas, asignaturas, grados, grupos y carga académica. Incluye la gestión de **periodos académicos** con año lectivo, fechas y un único periodo activo a la vez; al activar un periodo se prepara automáticamente la cobertura de asignaturas de los PIAR correspondientes.
 
-### Generador inteligente de ajustes (Anexo 2)
-*   **Búsqueda del Currículo:** Selecciona el grado y área (Matemáticas, Lenguaje, Ciencias, etc.). El sistema tiene cargados en su base de datos los **Derechos Básicos de Aprendizaje (DBA)** y **Estándares Básicos de Competencias (EBC)** oficiales del país.
-*   **Asistencia con IA DUA:** El asistente de IA toma el perfil del estudiante (Anexo 1) y el DBA seleccionado para generar una propuesta de ajustes didácticos y evaluativos basados en la Taxonomía de Bloom (por ejemplo, sugiriendo simplificar el nivel del verbo de una meta si el estudiante tiene dificultades cognitivas).
-*   **Human-in-the-loop:** La IA propone, pero tú decides. Puedes editar, borrar o complementar cualquier sugerencia para adaptarla a los recursos de tu salón de clases.
+### Registro y valoración del estudiante (Anexo 1)
+Formulario guiado con la información general, el entorno de salud, el entorno de hogar, la trayectoria educativa y la matrícula actual. Admite el soporte médico en PDF y guarda borradores locales.
 
-### Banco de estrategias comunitarias
-Cuando un maestro modifica una sugerencia de la IA para adaptarla a su realidad, esa estrategia "validada en el aula" alimenta de forma anónima una base de conocimientos. La IA aprenderá de las soluciones reales de otros maestros en Colombia.
+### Gestión del PIAR por periodos (Anexo 2)
+- **Matriz de ajustes razonables por área y periodo**, con objetivos, barreras, tipo de ajuste, apoyos, estrategias, temporalidad, responsable y medios de verificación.
+- **Asistencia con IA:** el asistente usa el perfil del estudiante, el PEI de la institución, el área, el tema y las barreras definidas por el docente para proponer ajustes DUA. La propuesta siempre es editable.
+- **Cobertura de asignaturas:** cada asignatura de la carga académica se resuelve como "con ajuste" o "sin ajuste" (con justificación).
+- **Evidencias:** se adjuntan imágenes de la implementación de los ajustes y se incluyen en el PDF oficial.
+- **Historial de cambios:** registro de auditoría de cada modificación, con exportación a PDF.
+- **Finalización y versionado:** al finalizar un periodo se genera una versión inmutable del PDF oficial con su huella SHA-256. El periodo puede reabrirse para crear una versión nueva conservando las anteriores.
 
-### Acta de corresponsabilidad familiar (Anexo 3)
-Genera de forma automática el documento oficial en formato PDF. Incluye una tabla interactiva para planificar las actividades y compromisos semanales que la familia realizará en casa durante los recesos escolares.
+### Acta de acuerdo y corresponsabilidad familiar (Anexo 3)
+Compromisos del establecimiento (aula) y de la familia (casa), fecha de firma y firmas de los actores. Se genera el acta oficial en PDF.
+
+### Panel de familia
+Acceso público mediante un código por estudiante, sin autenticación. La familia consulta los ajustes y compromisos del periodo activo, registra su firma y descarga el acta en PDF.
+
+### Directorio de acudientes y panel institucional
+Directorio de contactos de acudientes para la gestión institucional y un panel con estadísticas agregadas (estudiantes, PIAR, ajustes, periodos y actividad reciente).
 
 ### Historia escolar portable
-Si un estudiante es trasladado de colegio o promovido de grado, puedes exportar su expediente en un archivo seguro y encriptado (`.openpiar`). El nuevo colegio solo tendrá que importar el archivo para continuar con sus apoyos sin empezar de cero.
+Exportación e importación del expediente en un archivo cifrado `.openpiar` (AES-256-GCM con PBKDF2-HMAC-SHA256), útil cuando un estudiante cambia de institución.
+
+### Roles y permisos
+- **Directivo:** administración general, configuración institucional y gestión escolar.
+- **Docente de aula, docente de apoyo y orientador:** diligenciamiento del PIAR según su asignación.
+- **Director de grupo:** gestiona el PIAR de los estudiantes de su grupo, independientemente de su rol.
+
+### Tour de bienvenida
+En el primer inicio de sesión, una guía interactiva presenta la navegación general, la gestión de estudiantes y la creación del PIAR.
 
 ---
 
-## Guía de uso paso a paso (para docentes)
+## Guía de uso
 
-### Paso 1: Configurar el colegio
-Al abrir la aplicación por primera vez, rellena los datos de tu institución, sube tu documento del PEI y crea el usuario del administrador de la escuela.
-
-### Paso 2: Seguir el tour de bienvenida
-En tu primer inicio de sesión, una guía interactiva en pantalla te mostrará la ubicación del menú de estudiantes, la base de datos de DBA y el generador de PIAR.
-
-### Paso 3: Registrar al estudiante (Anexo 1)
-Ve a **"Estudiantes"**, presiona **"Nuevo Estudiante"** y rellena el formulario de valoración pedagógica. El sistema guardará borradores automáticos a medida que escribes por si pierdes la conexión.
-
-### Paso 4: Diseñar los ajustes (Anexo 2)
-Entra al perfil del estudiante, selecciona **"Crear PIAR"**, elige la materia y el objetivo de aprendizaje (DBA). Haz clic en **"Generar con IA"**. Revisa las sugerencias de DUA adaptadas a tu PEI y edítalas según los materiales de tu aula.
-
-### Paso 5: Firmar el acta (Anexo 3)
-Añade las actividades de apoyo en casa para la familia, genera el PDF institucional y descárgalo para la firma física o digital del directivo, docentes y acudientes.
+1. **Configurar la institución.** Completa el asistente inicial con los datos del colegio, la clave de Gemini (opcional), el PEI y la cuenta de administrador.
+2. **Preparar la gestión escolar.** Registra sedes, grados, grupos, asignaturas, carga académica y crea el periodo académico activo.
+3. **Registrar estudiantes.** Ingresa la valoración del Anexo 1 y el soporte médico cuando aplique.
+4. **Crear el PIAR del periodo.** Define los ajustes por asignatura; puedes apoyarte en la IA y editar libremente la propuesta.
+5. **Adjuntar evidencias.** Sube imágenes de la implementación de los ajustes.
+6. **Diligenciar el acta.** Registra los compromisos de aula y de casa, la fecha de firma y los firmantes.
+7. **Finalizar el periodo.** Genera la versión inmutable, descarga el PDF oficial y comparte el código de acceso con la familia.
+8. **Transferir el expediente.** Exporta el archivo `.openpiar` si el estudiante cambia de institución.
 
 ---
 
-## Carga del currículo nacional (DBA y EBC)
+## Instalación
 
-El proyecto viene con los listados de Derechos Básicos de Aprendizaje y Estándares precargados en archivos locales para consulta inmediata.
+### Docker Compose (recomendado)
+Consulta [deploy-docker.md](deploy-docker.md). Solo requiere Docker y un archivo `.env` en la raíz con las credenciales de PostgreSQL y la clave de firma JWT.
 
-Si estás instalando la aplicación, debes pasar estos datos a la base de datos del programa. Para hacerlo, abre una terminal y ejecuta el siguiente comando:
+### Instalación tradicional en VPS
+Consulta [deploy.md](deploy.md) para el despliegue con Nginx, Uvicorn y PostgreSQL.
+
+### Desarrollo local
+Backend (workdir `backend/`):
 
 ```bash
-python backend/scripts/seed_curriculum.py
+python3.13 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp .env.example .env
+.venv/bin/python scripts/init_db.py
+.venv/bin/python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Para instrucciones detalladas de instalacion en un servidor propio (VPS), consulta:
-- [deploy-docker.md](deploy-docker.md) — despliegue con Docker Compose (recomendado).
-- [deploy.md](deploy.md) — instalacion tradicional sin Docker.
+Frontend (workdir `frontend/`):
 
-> [!NOTE]
-> Este paso **no consume créditos ni tokens** de Inteligencia Artificial. Una vez ejecutado, el buscador de asignaturas y competencias estará disponible inmediatamente para todos los docentes.
+```bash
+npm install
+npm run dev
+```
 
+Pruebas:
+
+```bash
+# Backend
+.venv/bin/python -m pytest tests/ -v
+
+# Frontend
+npm test
+npm run type-check
+```
+
+---
+
+## Configuración de la IA
+
+OpenPiar usa Google Gemini para el análisis del PEI y la generación de ajustes. La clave se resuelve con prioridad **base de datos, luego variable de entorno**:
+
+1. Se puede ingresar durante el asistente de configuración inicial o, después, como directivo, en **Gestión Escolar, Configuración**.
+2. `GEMINI_API_KEY` en el archivo `.env` funciona como respaldo para desarrollo.
+
+---
+
+## Licencia y contribución
+
+OpenPiar se distribuye bajo la licencia **GNU General Public License v3.0 (GPL-3.0)**.
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): guía de contribución.
+- [SECURITY.md](SECURITY.md): política de seguridad.
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): código de conducta.

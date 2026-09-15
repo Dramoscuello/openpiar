@@ -6,19 +6,23 @@ Demuestra la testabilidad de la arquitectura hexagonal:
 los casos de uso se testean con repositorios en memoria.
 """
 
+import re
 import uuid
 from datetime import date
+from pathlib import Path
 from typing import Optional
 
 import pytest
 
 from app.core.exceptions import EstudianteYaRegistradoError
 from app.core.security import get_password_hash, verify_password
-from app.domain.entities import Estudiante, Piar, Usuario
+from app.domain.entities import ENTIDADES_AUDITABLES, Estudiante, Piar, Usuario
 from app.domain.ports import IEstudianteRepository, IUsuarioRepository
 from app.domain.value_objects import Email, Rol
 from app.use_cases.auth.login import LoginInput, LoginUseCase, RegistrarAdminInput, RegistrarAdminUseCase
 from app.use_cases.estudiantes.crear_estudiante import CrearEstudianteInput, CrearEstudianteUseCase
+
+RAIZ_BACKEND = Path(__file__).parent.parent
 
 
 # ---------------------------------------------------------------------------
@@ -288,3 +292,24 @@ class TestLogin:
                     cargo="Superadmin",
                 )
             )
+
+
+# ---------------------------------------------------------------------------
+# Auditoría: los tipos usados deben estar registrados en dominio y BD
+# ---------------------------------------------------------------------------
+
+def test_todos_los_tipos_de_auditoria_usados_estan_registrados():
+    usados: set[str] = set()
+    for archivo in (RAIZ_BACKEND / "app" / "entrypoints").rglob("*.py"):
+        usados.update(re.findall(r'entidad_tipo="([a-z_]+)"', archivo.read_text(encoding="utf-8")))
+
+    faltantes = usados - ENTIDADES_AUDITABLES
+    assert not faltantes, f"Tipos de auditoría sin registrar en ENTIDADES_AUDITABLES: {faltantes}"
+
+
+def test_constraint_de_auditoria_coincide_con_el_dominio():
+    texto = (RAIZ_BACKEND / "app" / "adapters" / "db" / "models.py").read_text(encoding="utf-8")
+    bloque = texto.split("entidad_tipo IN (", 1)[1].split(")", 1)[0]
+    entidades_db = set(re.findall(r"'([a-z_]+)'", bloque))
+
+    assert entidades_db == ENTIDADES_AUDITABLES

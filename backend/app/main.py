@@ -64,23 +64,31 @@ async def lifespan(app: FastAPI):
         logger.error("Error intentando crear/sembrar tablas en el inicio: %s", exc)
 
     # Iniciar tarea periódica de notificaciones (cada 6 horas)
-    from app.core.notification_service import ejecutar_notificaciones_periodicas
+    # Desactivada temporalmente mediante NOTIFICACIONES_HABILITADAS
+    # (ver caracteristicas_ocultas.md).
+    from app.core.notification_service import (
+        NOTIFICACIONES_HABILITADAS,
+        ejecutar_notificaciones_periodicas,
+    )
 
-    async def _notif_loop():
-        await ejecutar_notificaciones_periodicas()
-        while True:
-            await asyncio.sleep(6 * 3600)
+    notif_task: asyncio.Task | None = None
+    if NOTIFICACIONES_HABILITADAS:
+        async def _notif_loop():
             await ejecutar_notificaciones_periodicas()
+            while True:
+                await asyncio.sleep(6 * 3600)
+                await ejecutar_notificaciones_periodicas()
 
-    notif_task = asyncio.create_task(_notif_loop())
+        notif_task = asyncio.create_task(_notif_loop())
 
     yield
 
-    notif_task.cancel()
-    try:
-        await notif_task
-    except asyncio.CancelledError:
-        pass
+    if notif_task is not None:
+        notif_task.cancel()
+        try:
+            await notif_task
+        except asyncio.CancelledError:
+            pass
     logger.info("🛑 OpenPiar cerrando.")
 
 

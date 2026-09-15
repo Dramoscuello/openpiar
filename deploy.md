@@ -9,9 +9,9 @@ Esta guia describe paso a paso como instalar y poner en produccion OpenPiar en u
 ## Arquitectura objetivo
 
 ```
-Usuario → Nginx (puerto 80/443)
-            ├── /api/*       → proxy → Uvicorn (127.0.0.1:8000)
-            └── resto        → archivos estaticos (frontend/dist/)
+Usuario -> Nginx (puerto 80/443)
+            |-- /api/*       -> proxy -> Uvicorn (127.0.0.1:8000)
+            |-- resto        -> archivos estaticos (frontend/dist/)
 ```
 
 - **Nginx** sirve el frontend compilado y redirige las peticiones de la API al backend.
@@ -41,10 +41,12 @@ node --version         # Si no esta instalado, sigue abajo
 
 ### Instalar Node.js 22
 
+El frontend requiere Node.js 22.18 o superior (o Node 24.12+):
+
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
-node --version         # Debe mostrar v22.x
+node --version         # Debe mostrar v22.18 o superior
 ```
 
 ---
@@ -118,20 +120,29 @@ DB_USER=openpiar_user
 DB_PASSWORD=TU_CONTRASENA_SEGURA
 DB_NAME=openpiar_db
 
-GEMINI_API_KEY=tu-api-key-de-google-ai-studio
+# Opcional: puedes configurarla después en el asistente o en
+# Gestion Escolar -> Configuracion. La clave guardada en la base de datos
+# tiene prioridad sobre esta variable.
+GEMINI_API_KEY=
 ```
 
 **Importante:** no compartas el archivo `.env` ni lo subas a git. Si usas `SHOW_DOCS=True` en produccion, cualquier persona podra ver la documentacion de la API en `/docs`.
 
-### 4.3 Cargar el curriculo nacional
+### 4.3 Preparar el esquema y cargar el curriculo nacional
 
-Ejecuta el script que inserta los DBA y EBC en la base de datos:
+Primero prepara el esquema de la base de datos (lo crea si es nueva o aplica migraciones si ya existe):
+
+```bash
+.venv/bin/python scripts/init_db.py
+```
+
+Luego inserta los DBA y EBC:
 
 ```bash
 .venv/bin/python scripts/seed_curriculum.py
 ```
 
-Este paso se hace una sola vez. No consume creditos de IA.
+Estos pasos se hacen una sola vez. No consumen creditos de IA.
 
 ### 4.4 Verificar que arranca
 
@@ -249,6 +260,9 @@ server {
     root /var/www/openpiar;
     index index.html;
 
+    # Subidas (PEI, evidencias, importacion .openpiar)
+    client_max_body_size 60m;
+
     # SPA: redirige todas las rutas del frontend a index.html
     location / {
         try_files $uri $uri/ /index.html;
@@ -320,8 +334,9 @@ El puerto 8000 del backend **no** debe abrirse al exterior. Solo Nginx (puertos 
 Abre tu navegador en `https://openpiar.mi-colegio.edu.co`. El sistema detectara que no esta configurado y te mostrara el asistente de configuracion inicial, donde podras:
 
 1. Ingresar los datos de tu institucion (nombre, NIT, codigo DANE, rector, direccion).
-2. Subir el PDF del PEI de tu colegio.
-3. Crear la cuenta de administrador.
+2. Ingresar la API key de Gemini (opcional; tambien puedes configurarla despues).
+3. Subir el PDF del PEI de tu colegio; la IA extrae el modelo pedagogico.
+4. Crear la cuenta de administrador.
 
 Al terminar, el guardia de configuracion (middleware) se desactivara y la aplicacion quedara lista para usarse.
 
@@ -350,13 +365,15 @@ sudo cp -r dist/* /var/www/openpiar/
 
 ### Aplicar migraciones de base de datos
 
-Si una actualizacion incluye nuevas migraciones de Alembic:
+Si una actualizacion incluye nuevas migraciones de Alembic, ejecuta:
 
 ```bash
 cd /opt/openpiar/backend
-.venv/bin/python -m alembic upgrade head
+.venv/bin/python scripts/init_db.py
 sudo systemctl restart openpiar
 ```
+
+El script aplica `alembic upgrade head` cuando la base ya esta versionada y crea el esquema desde los modelos en instalaciones nuevas.
 
 ### Respaldar la base de datos
 
@@ -444,7 +461,7 @@ El asistente de configuracion inicial no se ha completado. Ve a la raiz del siti
 
 ### La IA no funciona
 
-- Verifica que `GEMINI_API_KEY` este configurado en `.env` y que la clave sea valida.
+- Verifica que la clave de Gemini este configurada en **Gestion Escolar -> Configuracion** (se guarda en la base de datos y tiene prioridad) o, como respaldo, en `GEMINI_API_KEY` del `.env`.
 - Asegurate de que el backend se haya reiniciado despues de cambiar `.env`: `sudo systemctl restart openpiar`.
 
 ### Permisos denegados al servir archivos estaticos
