@@ -3,6 +3,8 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
+COPY package*.json ./
+
 # Se usa npm install en lugar de npm ci para resolver dependencias opcionales
 # multiplataforma (como bindings nativos/WASM de Tailwind v4 y @emnapi/runtime)
 RUN npm install
