@@ -52,30 +52,10 @@ def get_estudiante_repo(
 # Setup Wizard — bootstrap token
 # ---------------------------------------------------------------------------
 
-async def require_bootstrap_token(
-    x_bootstrap_token: Annotated[Optional[str], Header(alias="X-Bootstrap-Token")] = None,
-    db: AsyncSession = Depends(get_db),
-    settings: Settings = Depends(get_settings),
+def _validar_token_bootstrap(
+    x_bootstrap_token: Optional[str], settings: Settings
 ) -> None:
-    """
-    Exige el token de instalación en los endpoints del Setup Wizard.
-
-    - Si el sistema ya fue configurado, los endpoints de bootstrap dejan de
-      existir (404) y el token queda invalidado permanentemente.
-    - Si el servidor no tiene BOOTSTRAP_TOKEN configurado, rechaza con 503.
-    - Si el token falta o no coincide, rechaza con 401.
-    """
-    result = await db.execute(
-        select(ConfiguracionSistemaORM)
-        .where(ConfiguracionSistemaORM.setup_completado == True)  # noqa: E712
-        .limit(1)
-    )
-    if result.scalars().first() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No encontrado.",
-        )
-
+    """Valida el BOOTSTRAP_TOKEN del servidor y el presentado por el cliente."""
     if not settings.BOOTSTRAP_TOKEN:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -99,6 +79,84 @@ async def require_bootstrap_token(
                 "Token de instalación inválido. Verifica que coincida exactamente "
                 "con BOOTSTRAP_TOKEN de tu .env y reinicia el backend si lo editaste."
             ),
+        )
+
+
+async def _setup_completado(db: AsyncSession) -> bool:
+    result = await db.execute(
+        select(ConfiguracionSistemaORM)
+        .where(ConfiguracionSistemaORM.setup_completado == True)  # noqa: E712
+        .limit(1)
+    )
+    return result.scalars().first() is not None
+
+
+async def require_bootstrap_token(
+    x_bootstrap_token: Annotated[Optional[str], Header(alias="X-Bootstrap-Token")] = None,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """
+    Exige el token de instalación en los endpoints que modifican el setup.
+
+    - Si el sistema ya fue configurado, los endpoints de bootstrap dejan de
+      existir (404) y el token queda invalidado permanentemente.
+    - Si el estado no puede verificarse (BD caída), rechaza con 503 genérico.
+    - Si el servidor no tiene BOOTSTRAP_TOKEN configurado, rechaza con 503.
+    - Si el token falta o no coincide, rechaza con 401.
+    """
+    try:
+        completado = await _setup_completado(db)
+    except Exception as exc:
+        logger.error(
+            "No se pudo verificar el estado del setup (%s)", type(exc).__name__
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "No se pudo verificar el estado del sistema. "
+                "Revisa los logs del servidor."
+            ),
+        )
+
+    if completado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No encontrado.",
+        )
+
+    _validar_token_bootstrap(x_bootstrap_token, settings)
+
+
+async def require_bootstrap_token_diagnostico(
+    x_bootstrap_token: Annotated[Optional[str], Header(alias="X-Bootstrap-Token")] = None,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """
+    Variante para `POST /setup/test-db`.
+
+    Valida el token siempre, pero si el estado del setup no puede verificarse
+    porque la BD está caída, permite el diagnóstico (que es justamente su
+    propósito). Si el estado es verificable y el setup ya se completó,
+    responde 404 igual que el resto de endpoints de bootstrap.
+    """
+    _validar_token_bootstrap(x_bootstrap_token, settings)
+
+    try:
+        completado = await _setup_completado(db)
+    except Exception as exc:
+        logger.warning(
+            "Estado del setup no verificable (%s); se permite el diagnóstico "
+            "con token válido.",
+            type(exc).__name__,
+        )
+        return
+
+    if completado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No encontrado.",
         )
 
 

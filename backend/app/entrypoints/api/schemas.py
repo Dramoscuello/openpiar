@@ -137,15 +137,6 @@ class ConfigurarSistemaRequest(BaseModel):
         return v
 
 
-class TestDBRequest(BaseModel):
-    """Credenciales de PostgreSQL para probar la conexión durante el setup."""
-    host: str = Field(default="localhost")
-    port: int = Field(default=5432, ge=1, le=65535)
-    user: str
-    password: str
-    database: str
-
-
 class TestDBResponse(BaseResponse):
     success: bool
     message: str

@@ -18,7 +18,10 @@ from fastapi.testclient import TestClient
 from app.adapters.db.session import get_db
 from app.core.config import get_settings
 from app.entrypoints.api import middleware
-from app.entrypoints.api.dependencies import require_bootstrap_token
+from app.entrypoints.api.dependencies import (
+    require_bootstrap_token,
+    require_bootstrap_token_diagnostico,
+)
 from app.entrypoints.api.v1.endpoints import setup as setup_endpoints
 from app.main import app
 
@@ -216,6 +219,23 @@ async def test_dependencia_invalida_token_al_completarse_setup():
     assert exc.value.status_code == 404
 
 
+class _DBRota:
+    async def execute(self, *args, **kwargs):
+        raise RuntimeError("bd caída")
+
+
+async def test_dependencia_estado_no_verificable_devuelve_503():
+    with pytest.raises(HTTPException) as exc:
+        await require_bootstrap_token(
+            x_bootstrap_token=TOKEN,
+            db=_DBRota(),
+            settings=SimpleNamespace(BOOTSTRAP_TOKEN=TOKEN),
+        )
+
+    assert exc.value.status_code == 503
+    assert "logs del servidor" in exc.value.detail
+
+
 # ---------------------------------------------------------------------------
 # Wiring: solo GET /setup/status queda sin token
 # ---------------------------------------------------------------------------
@@ -226,9 +246,13 @@ def _dependencias_de(ruta: str):
 
 
 def test_endpoints_de_bootstrap_exigen_dependencia():
+    permitidas = (require_bootstrap_token, require_bootstrap_token_diagnostico)
     for ruta in ("/setup/test-db", "/setup/configure", "/setup/upload-pei"):
-        assert require_bootstrap_token in _dependencias_de(ruta), ruta
+        deps = _dependencias_de(ruta)
+        assert any(dep in deps for dep in permitidas), ruta
 
 
 def test_status_no_exige_dependencia_de_bootstrap():
-    assert require_bootstrap_token not in _dependencias_de("/setup/status")
+    deps = _dependencias_de("/setup/status")
+    assert require_bootstrap_token not in deps
+    assert require_bootstrap_token_diagnostico not in deps

@@ -115,7 +115,7 @@ Todos bajo el prefijo `/api/v1` (registrado en `main.py:242`).
 
 | Prefijo | Archivo | Propósito / Acceso |
 |---------|---------|--------------------|
-| `/api/v1/setup` | `setup.py` | Wizard: `status`, `test-db`, `configure` (crea directivo admin), `upload-pei`. Público |
+| `/api/v1/setup` | `setup.py` | Wizard: `status` (público), `test-db`, `configure` (crea directivo admin), `upload-pei`. Los tres POST exigen header `X-Bootstrap-Token`; `test-db` prueba solo el PostgreSQL configurado |
 | `/api/v1/auth` | `auth.py` | `login`, `me`, `change-password`, `tour-completado`. Público / autenticado |
 | `/api/v1/estudiantes` | `estudiantes.py` | CRUD Anexo 1 + subrecursos `salud`, `hogar`, `trayectoria`, `matricula` + export/import `.openpiar`. Escritura: directivo o director de grupo |
 | `/api/v1/curriculum` | `curriculum.py` | Búsqueda DBA (`/dba`) y EBC (`/ebc`). Autenticado |

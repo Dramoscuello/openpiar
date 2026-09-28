@@ -8,26 +8,33 @@ El middleware de setup bloquea TODA la API si setup_completado = False,
 excepto las rutas de este router.
 """
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile, status
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.adapters.db.models import ConfiguracionSistemaORM
 from app.adapters.db.session import get_db
+from app.core.config import settings
 from app.core.exceptions import SetupYaCompletadoError
-from app.entrypoints.api.dependencies import get_usuario_repo, require_bootstrap_token
+from app.entrypoints.api.dependencies import (
+    get_usuario_repo,
+    require_bootstrap_token,
+    require_bootstrap_token_diagnostico,
+)
 from app.entrypoints.api.schemas import (
     ConfigurarSistemaRequest,
     SetupStatusResponse,
-    TestDBRequest,
     TestDBResponse,
 )
 from app.use_cases.auth.login import RegistrarAdminInput, RegistrarAdminUseCase
 
 router = APIRouter(prefix="/setup", tags=["Setup Wizard"])
 logger = logging.getLogger(__name__)
+
+TIMEOUT_CONEXION_SEGUNDOS = 5
 
 
 # ---------------------------------------------------------------------------
@@ -67,31 +74,57 @@ async def get_setup_status(db: AsyncSession = Depends(get_db)) -> SetupStatusRes
     response_model=TestDBResponse,
     summary="Probar conexión a PostgreSQL",
     description=(
-        "Verifica que las credenciales de PostgreSQL son correctas "
-        "antes de guardarlas en la configuración. Requiere el header "
-        "X-Bootstrap-Token."
+        "Verifica la conexión con el PostgreSQL configurado para OpenPiar "
+        "(DB_HOST, DB_PORT, DB_NAME del servidor). No acepta hosts ni "
+        "credenciales desde el cliente. Requiere el header X-Bootstrap-Token."
     ),
-    dependencies=[Depends(require_bootstrap_token)],
+    dependencies=[Depends(require_bootstrap_token_diagnostico)],
 )
-async def test_database_connection(body: TestDBRequest) -> TestDBResponse:
-    from sqlalchemy.ext.asyncio import create_async_engine
-
-    test_url = (
-        f"postgresql+asyncpg://{body.user}:{body.password}"
-        f"@{body.host}:{body.port}/{body.database}"
+async def test_database_connection() -> TestDBResponse:
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        connect_args={"timeout": TIMEOUT_CONEXION_SEGUNDOS},
     )
-    try:
-        test_engine = create_async_engine(test_url, echo=False)
-        async with test_engine.connect() as conn:
+
+    async def _probar() -> None:
+        async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        await test_engine.dispose()
+
+    try:
+        await asyncio.wait_for(_probar(), timeout=TIMEOUT_CONEXION_SEGUNDOS)
         return TestDBResponse(success=True, message="Conexión exitosa a PostgreSQL.")
-    except Exception as exc:
-        logger.warning("Test DB fallido: %s", exc)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "Test DB agotó el tiempo de espera (%ss): host=%s port=%s db=%s",
+            TIMEOUT_CONEXION_SEGUNDOS,
+            settings.DB_HOST,
+            settings.DB_PORT,
+            settings.DB_NAME,
+        )
         return TestDBResponse(
             success=False,
-            message=f"No se pudo conectar: {exc}",
+            message=(
+                "Tiempo de espera agotado al conectar con PostgreSQL. "
+                "Revisa los logs del servidor."
+            ),
         )
+    except Exception as exc:
+        logger.warning(
+            "Test DB falló (%s): host=%s port=%s db=%s",
+            type(exc).__name__,
+            settings.DB_HOST,
+            settings.DB_PORT,
+            settings.DB_NAME,
+        )
+        return TestDBResponse(
+            success=False,
+            message=(
+                "No se pudo conectar con el PostgreSQL configurado. "
+                "Revisa los logs del servidor."
+            ),
+        )
+    finally:
+        await engine.dispose()
 
 
 # ---------------------------------------------------------------------------
