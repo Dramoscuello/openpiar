@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
     ALGORITHM: str = "HS256"
 
+    # Token obligatorio para ejecutar el Setup Wizard en instalaciones nuevas.
+    # Generar con: openssl rand -hex 32
+    BOOTSTRAP_TOKEN: str = ""
+
     # ------------------------------------------------------------------
     # CORS
     # ------------------------------------------------------------------

@@ -31,6 +31,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
       DB_NAME: ${DB_NAME:-openpiar_db}
       SECRET_KEY: ${SECRET_KEY:?Define SECRET_KEY en el archivo .env}
+      BOOTSTRAP_TOKEN: ${BOOTSTRAP_TOKEN:-}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}

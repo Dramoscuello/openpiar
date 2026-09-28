@@ -63,6 +63,32 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error("Error intentando crear/sembrar tablas en el inicio: %s", exc)
 
+    # Advertir si una instalación nueva no tiene BOOTSTRAP_TOKEN configurado.
+    if not settings.BOOTSTRAP_TOKEN:
+        try:
+            from sqlalchemy import select
+
+            from app.adapters.db.models import ConfiguracionSistemaORM
+            from app.adapters.db.session import AsyncSessionLocal
+
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(ConfiguracionSistemaORM)
+                    .where(ConfiguracionSistemaORM.setup_completado == True)  # noqa: E712
+                    .limit(1)
+                )
+                configurado = result.scalars().first() is not None
+
+            if not configurado:
+                logger.warning(
+                    "BOOTSTRAP_TOKEN no configurado: el Setup Wizard rechazará "
+                    "las solicitudes de configuración hasta que definas el token."
+                )
+        except Exception as exc:
+            logger.warning("No se pudo verificar el estado del setup al iniciar: %s", exc)
+    else:
+        logger.info("BOOTSTRAP_TOKEN configurado para el Setup Wizard.")
+
     # Iniciar tarea periódica de notificaciones (cada 6 horas)
     # Desactivada temporalmente mediante NOTIFICACIONES_HABILITADAS
     # (ver caracteristicas_ocultas.md).

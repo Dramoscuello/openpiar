@@ -52,6 +52,10 @@ backend/app/
 # Sembrar currículum (DBA + EBC en PostgreSQL) — una vez, offline
 .venv/bin/python scripts/seed_curriculum.py
 
+# Vaciar datos para pruebas locales (conserva alembic_version y el currículum DBA/EBC)
+# --include-curriculum borra también el currículum; --yes omite la confirmación
+.venv/bin/python scripts/truncate_db.py --yes
+
 # Preparar esquema de BD (lo usa el entrypoint Docker): BD nueva → modelos + stamp;
 # BD existente → alembic upgrade head; BD con tablas sin alembic_version → error guiado
 .venv/bin/python scripts/init_db.py

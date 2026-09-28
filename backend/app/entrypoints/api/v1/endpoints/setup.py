@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.adapters.db.models import ConfiguracionSistemaORM
 from app.adapters.db.session import get_db
 from app.core.exceptions import SetupYaCompletadoError
-from app.entrypoints.api.dependencies import get_usuario_repo
+from app.entrypoints.api.dependencies import get_usuario_repo, require_bootstrap_token
 from app.entrypoints.api.schemas import (
     ConfigurarSistemaRequest,
     SetupStatusResponse,
@@ -68,8 +68,10 @@ async def get_setup_status(db: AsyncSession = Depends(get_db)) -> SetupStatusRes
     summary="Probar conexión a PostgreSQL",
     description=(
         "Verifica que las credenciales de PostgreSQL son correctas "
-        "antes de guardarlas en la configuración."
+        "antes de guardarlas en la configuración. Requiere el header "
+        "X-Bootstrap-Token."
     ),
+    dependencies=[Depends(require_bootstrap_token)],
 )
 async def test_database_connection(body: TestDBRequest) -> TestDBResponse:
     from sqlalchemy.ext.asyncio import create_async_engine
@@ -103,8 +105,9 @@ async def test_database_connection(body: TestDBRequest) -> TestDBResponse:
     description=(
         "Paso final del Setup Wizard. Registra los datos del colegio, "
         "la API Key de Gemini, y crea el usuario administrador (directivo). "
-        "Solo puede ejecutarse una vez."
+        "Solo puede ejecutarse una vez y requiere el header X-Bootstrap-Token."
     ),
+    dependencies=[Depends(require_bootstrap_token)],
 )
 async def configurar_sistema(
     body: ConfigurarSistemaRequest,
@@ -180,8 +183,10 @@ async def configurar_sistema(
     description=(
         "Sube el Proyecto Educativo Institucional en PDF. "
         "Gemini extrae sincrónicamente el modelo pedagógico y los valores "
-        "institucionales y los devuelve al frontend."
+        "institucionales y los devuelve al frontend. Requiere el header "
+        "X-Bootstrap-Token."
     ),
+    dependencies=[Depends(require_bootstrap_token)],
 )
 async def upload_pei(
     file: UploadFile,

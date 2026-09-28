@@ -47,6 +47,7 @@ nano .env
 | `DB_PASSWORD` | Contrasena de PostgreSQL |
 | `DB_NAME` | Nombre de la base de datos (ej: `openpiar_db`) |
 | `SECRET_KEY` | Firma JWT, generala con `openssl rand -hex 32` |
+| `BOOTSTRAP_TOKEN` | **Obligatoria en instalaciones nuevas.** Protege el asistente inicial; generala con `openssl rand -hex 32` |
 | `GEMINI_API_KEY` | **Opcional.** Tu API key de Google Gemini |
 | `CORS_ORIGINS` | Dominio o IP desde donde se accede (ej: `https://openpiar.mi-colegio.edu.co`). Con Nginx sirviendo la interfaz y la API en el mismo origen no suele ser necesario cambiarlo |
 
@@ -91,12 +92,33 @@ Cuando veas `Uvicorn running on http://0.0.0.0:8000`, el sistema esta listo.
 
 Abre `http://<ip-o-dominio-del-servidor>` en tu navegador. El asistente de configuracion inicial te guiara para:
 
-1. Registrar los datos de tu institucion.
+1. Registrar los datos de tu institucion (y el **token de instalacion**).
 2. Ingresar la API key de Gemini (opcional; tambien puedes configurarla despues).
 3. Subir el PDF del PEI; la IA extrae el modelo pedagogico.
 4. Crear la cuenta de administrador.
 
 Una vez completado, OpenPiar queda operativo.
+
+### Primer setup seguro (BOOTSTRAP_TOKEN)
+
+El asistente inicial solo acepta solicitudes que incluyan el token definido en `BOOTSTRAP_TOKEN`. El procedimiento recomendado es:
+
+1. Genera el token en el servidor (nunca en el navegador):
+   ```bash
+   openssl rand -hex 32
+   ```
+2. Pegalo en el `.env` de la raiz como `BOOTSTRAP_TOKEN=...` y recrea el backend:
+   ```bash
+   docker compose up -d --force-recreate backend
+   ```
+3. Abre la aplicacion e introduce el token en el primer paso del asistente (campo **Token de instalacion**).
+4. Completa el asistente. Al finalizar, el token queda **invalidado permanentemente**: los endpoints de setup dejan de existir y aunque alguien conserve el valor no podra volver a configurar el sistema.
+5. Elimina `BOOTSTRAP_TOKEN` del `.env` y vuelve a recrear el backend como buena practica de limpieza:
+   ```bash
+   docker compose up -d --force-recreate backend
+   ```
+
+Si una instalacion nueva no define `BOOTSTRAP_TOKEN`, el asistente respondera `503` y los logs del backend mostraran la advertencia correspondiente. En instalaciones ya configuradas la variable es ignorada.
 
 ---
 
@@ -289,12 +311,12 @@ docker compose up -d
 1. Instala Docker Engine 24+ con Compose v2.
 2. Clona el repositorio: `git clone <repo> openpiar && cd openpiar`.
 3. Crea el archivo de entorno: `cp .env.example .env`.
-   - Define `DB_PASSWORD` y `SECRET_KEY` (obligatorias). `openssl rand -hex 32` para la segunda.
+   - Define `DB_PASSWORD`, `SECRET_KEY` y `BOOTSTRAP_TOKEN` (obligatorias). `openssl rand -hex 32` para las dos ultimas.
    - `GEMINI_API_KEY` puede quedar vacia: se configura en el asistente.
 4. Valida la configuracion de Compose: `docker compose config`.
 5. Levanta todo: `docker compose up -d --build`.
 6. Sigue los logs: `docker compose logs -f backend`. Debes ver las migraciones, el seed y `Uvicorn running`.
-7. Abre `http://<ip-o-dominio>` y completa el wizard (datos de la institucion, PEI y la API key de Gemini).
+7. Abre `http://<ip-o-dominio>` y completa el wizard (token de instalacion, datos de la institucion, PEI y la API key de Gemini). Luego elimina `BOOTSTRAP_TOKEN` del `.env`.
 8. Verifica: login, `GET /api/v1/health`, dashboard y generacion de PDF.
 
 Notas:

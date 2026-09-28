@@ -20,6 +20,9 @@ const correoContacto = ref('')
 const nombreRector = ref('')
 const contextoInstitucion = ref('')
 
+// Token de instalación (se define en el .env del servidor)
+const bootstrapToken = ref('')
+
 // Step 2: Gemini
 const geminiApiKey = ref('')
 
@@ -100,6 +103,10 @@ const contextoCharCount = computed(() => contextoInstitucion.value.length)
 // Navigation functions
 const nextStep = () => {
   if (currentStep.value === 1) {
+    if (!bootstrapToken.value.trim()) {
+      errorMessage.value = 'Ingresa el token de instalación definido en el archivo .env del servidor. Es obligatorio para proteger la configuración inicial.'
+      return
+    }
     if (!nombreInstitucion.value || !nit.value || !codigoDane.value || !direccion.value) {
       errorMessage.value = 'Por favor, completa todos los campos obligatorios del colegio.'
       return
@@ -178,6 +185,9 @@ const uploadPEI = async () => {
   try {
     const response = await fetch('/api/v1/setup/upload-pei', {
       method: 'POST',
+      headers: {
+        'X-Bootstrap-Token': bootstrapToken.value.trim(),
+      },
       body: formData
     })
     
@@ -243,6 +253,7 @@ const handleConfigure = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Bootstrap-Token': bootstrapToken.value.trim(),
       },
       body: JSON.stringify({
         nombre_institucion: nombreInstitucion.value,
@@ -345,6 +356,24 @@ const handleConfigure = async () => {
           <div>
             <h2 class="font-headline-md text-headline-md text-on-surface">Datos de la institución</h2>
             <p class="font-body-md text-body-md text-on-surface-variant">Ingresa los datos oficiales de tu establecimiento educativo.</p>
+          </div>
+
+          <div class="space-y-xs md:col-span-2 p-sm rounded-input bg-amber-50 border border-amber-300">
+            <label class="font-label-md text-label-md text-amber-900" for="bootstrap-token">
+              Token de instalación *
+            </label>
+            <input
+              id="bootstrap-token"
+              v-model="bootstrapToken"
+              autocomplete="off"
+              class="w-full px-4 py-3 bg-white border rounded-input font-body-md focus:outline-none focus:ring-4"
+              :class="bootstrapToken ? 'border-amber-400 focus:border-primary focus:ring-primary/10' : 'border-error ring-error/10 focus:ring-error/10'"
+              placeholder="Pega aquí el valor de BOOTSTRAP_TOKEN"
+              type="password"
+            />
+            <p class="font-label-sm text-label-sm text-amber-900/80">
+              El administrador del servidor debe generarlo con <code>openssl rand -hex 32</code> y definirlo como <code>BOOTSTRAP_TOKEN</code> en el archivo <code>.env</code> antes de iniciar OpenPiar. Es obligatorio para completar la configuración inicial.
+            </p>
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
