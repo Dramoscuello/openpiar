@@ -14,6 +14,7 @@ from google.genai import types as genai_types
 from app.core.config import get_settings
 from app.core.pdf_security import nombre_archivo_piar, proteger_pdf
 from app.adapters.db.session import get_db
+from app.entrypoints.api.authorization import authorize_student_access
 from app.adapters.db.models import (
     PiarORM,
     CaracteristicasEstudianteORM,
@@ -1396,6 +1397,11 @@ async def download_piar_pdf(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+
+    # Solo usuarios con acceso al estudiante (dirección o docentes con carga)
+    # pueden descargar el PDF completo; los ajustes ajenos se ven solo aquí.
+    await authorize_student_access(db, current_user, piar.estudiante_id, "read")
+
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if periodo_id is not None and periodo is None:
         raise HTTPException(status_code=404, detail="Periodo académico no encontrado.")

@@ -124,6 +124,7 @@ export interface StudentListItem {
   direccion: string
   barrio_vereda: string
   created_at: string
+  grupo_director_id?: string | null
 }
 
 export interface StudentsState {
@@ -133,6 +134,7 @@ export interface StudentsState {
   submitting: boolean
   error: string | null
   draft: StudentDraft
+  currentStudentDirectorId: string | null
 }
 
 const createDefaultDraft = (): StudentDraft => ({
@@ -237,6 +239,7 @@ export const useStudentsStore = defineStore('students', {
     submitting: false,
     error: null,
     draft: createDefaultDraft(),
+    currentStudentDirectorId: null,
   }),
 
   actions: {
@@ -268,6 +271,7 @@ export const useStudentsStore = defineStore('students', {
      */
     clearDraft() {
       this.draft = createDefaultDraft()
+      this.currentStudentDirectorId = null
       localStorage.removeItem('openpiar_student_draft')
     },
 
@@ -320,6 +324,7 @@ export const useStudentsStore = defineStore('students', {
           throw new Error('Estudiante no encontrado.')
         }
         const dataGeneral = await resGeneral.json()
+        this.currentStudentDirectorId = dataGeneral.grupo_director_id || null
 
         // Mapear datos generales
         this.draft.general = {

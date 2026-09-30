@@ -95,8 +95,19 @@ const goToAddStudent = () => {
   router.push('/estudiantes/formulario')
 }
 
+const goToViewStudent = (id: string) => {
+  router.push(`/estudiantes/formulario/${id}`)
+}
+
 const goToEditStudent = (id: string) => {
   router.push(`/estudiantes/formulario/${id}`)
+}
+
+// Edición/eliminación solo para directivos o el director de ese grupo
+const puedeGestionar = (student: { grupo_director_id?: string | null }) => {
+  if (!authStore.user) return false
+  if (authStore.user.rol === 'directivo') return true
+  return !!student.grupo_director_id && student.grupo_director_id === authStore.user.id
 }
 
 const goToCreatePiar = (studentId: string) => {
@@ -283,6 +294,7 @@ async function ejecutarImportar() {
               Si es la primera vez que ingresas, registra un nuevo estudiante para comenzar su Plan Individual de Ajustes Razonables (PIAR).
             </p>
             <button
+              v-if="authStore.canCreateStudent"
               @click="goToAddStudent"
               class="bg-primary/10 hover:bg-primary/20 text-primary px-lg py-3 rounded-xl font-label-md text-label-md inline-flex items-center gap-xs cursor-pointer transition-all active:scale-95"
             >
@@ -334,9 +346,18 @@ async function ejecutarImportar() {
                   </td>
                   <td class="py-4 px-md text-right">
                     <div class="flex items-center justify-end gap-xs">
+                      <!-- Ver registro (solo lectura para docentes) -->
+                      <button
+                        @click="goToViewStudent(student.id)"
+                        class="p-2 text-outline hover:bg-surface-container-high rounded-full transition-all cursor-pointer"
+                        title="Ver registro pedagógico (Anexo 1)"
+                      >
+                        <span class="material-symbols-outlined text-[20px]">visibility</span>
+                      </button>
+
                       <!-- Edit Anexo 1 -->
                       <button
-                        v-if="authStore.canCreateStudent"
+                        v-if="puedeGestionar(student)"
                         @click="goToEditStudent(student.id)"
                         class="p-2 text-primary hover:bg-primary/5 rounded-full transition-all cursor-pointer"
                         title="Editar Registro Pedagógico (Anexo 1)"
@@ -346,7 +367,7 @@ async function ejecutarImportar() {
 
                     <!-- Delete -->
                       <button
-                        v-if="authStore.canCreateStudent"
+                        v-if="puedeGestionar(student)"
                         @click="promptDelete(student)"
                         class="p-2 text-error hover:bg-error/5 rounded-full transition-all cursor-pointer"
                         title="Eliminar estudiante"

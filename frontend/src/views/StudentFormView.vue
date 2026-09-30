@@ -18,6 +18,15 @@ const isRegistrationMode = computed(() => !isEditMode.value)
 const isPiarContext = computed(() => route.query.contexto === 'piar')
 const validationError = ref<string | null>(null)
 
+// Solo lectura: docentes con carga pueden consultar el expediente, pero
+// únicamente el directivo o el director del grupo pueden editarlo.
+const soloLectura = computed(() => {
+  if (isRegistrationMode.value) return false
+  if (!authStore.user) return true
+  if (authStore.user.rol === 'directivo') return false
+  return studentsStore.currentStudentDirectorId !== authStore.user.id
+})
+
 // Catalog lists
 const sedes = ref<any[]>([])
 const grupos = ref<any[]>([])
@@ -205,16 +214,22 @@ const fetchSedesAndGrupos = async () => {
 
 // Load data on mount
 onMounted(async () => {
-  // Enforzar permisos
-  if (!authStore.canCreateStudent) {
+  const studentId = route.params.id as string
+
+  // Crear/registrar exige permiso de escritura; consultar solo requiere acceso
+  // de lectura (el backend valida y responde 403 si no corresponde).
+  if (!studentId && !authStore.canCreateStudent) {
     router.push('/estudiantes')
     return
   }
 
-  const studentId = route.params.id as string
   if (studentId) {
     isEditMode.value = true
     await studentsStore.fetchStudentForEdit(studentId)
+    if (studentsStore.error) {
+      router.push('/estudiantes')
+      return
+    }
     const requestedStep = Number(route.query.paso || 1)
     currentStep.value = requestedStep >= 1 && requestedStep <= 4 ? requestedStep : 1
   } else {
@@ -584,8 +599,15 @@ const save = async () => {
           <span>{{ validationError || studentsStore.error }}</span>
         </div>
 
+        <!-- Modo solo lectura -->
+        <div v-if="soloLectura" class="p-sm bg-blue-50 text-blue-900 rounded-xl text-body-md border border-blue-200 flex gap-xs items-start">
+          <span class="material-symbols-outlined">visibility</span>
+          <span>Solo lectura: puedes consultar el expediente, pero únicamente el director de este grupo o un directivo pueden editarlo.</span>
+        </div>
+
         <!-- Form Cards by Step -->
         <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xxl p-md md:p-xl shadow-sm space-y-md transition-colors duration-300">
+          <fieldset :disabled="soloLectura" class="contents">
           
           <!-- STEP 1: INFORMACIÓN GENERAL -->
           <div v-if="currentStep === 1" class="space-y-md">
@@ -1672,6 +1694,8 @@ const save = async () => {
             </div>
           </div>
 
+          </fieldset>
+
           <!-- Bottom Navigation Controls -->
           <div class="pt-md border-t border-outline-variant/30 flex justify-between gap-sm">
             <button
@@ -1696,7 +1720,7 @@ const save = async () => {
                 <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
               <button
-                v-else
+                v-else-if="!soloLectura"
                 @click="save"
                 :disabled="studentsStore.submitting"
                 class="px-lg py-3 bg-green-700 hover:bg-green-800 text-white font-label-md text-label-md rounded-input shadow-md flex items-center justify-center gap-xs cursor-pointer disabled:opacity-75 disabled:pointer-events-none transition-all"

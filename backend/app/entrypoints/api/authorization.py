@@ -9,10 +9,12 @@ información de un estudiante deben pasar por `authorize_student_access`.
 Reglas (Decreto 1421 de 2017 — manejo de información sensible):
 
 - Directivo: acceso institucional completo.
-- Director de grupo: acceso únicamente a estudiantes de los grupos que dirige.
-- Docente (aula/apoyo/orientador): únicamente a estudiantes de grupos donde
-  tenga carga académica; nunca puede escribir el Anexo 1 ni ver datos de hogar.
-- `delete`: exclusivo de directivos.
+- Director de grupo: gestiona (crear, editar, eliminar) únicamente estudiantes
+  de los grupos que dirige.
+- Docente (aula/apoyo/orientador): lectura completa (incluye salud y hogar) de
+  los estudiantes de grupos donde tenga carga académica, para fundamentar sus
+  ajustes; nunca puede escribir ni eliminar el Anexo 1.
+- `delete`: directivo o director del grupo del estudiante.
 """
 
 import uuid
@@ -64,9 +66,12 @@ def puede_acceder(
         return es_director_grupo or tiene_carga
 
     if accion == "family_read":
+        return es_director_grupo or tiene_carga
+
+    # delete: directivo o director del grupo del estudiante
+    if accion == "delete":
         return es_director_grupo
 
-    # delete: exclusivo de directivos
     return False
 
 

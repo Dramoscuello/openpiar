@@ -4,8 +4,10 @@ withDefaults(defineProps<{
   estado: string
   versionActual: number
   puedeGestionar?: boolean
+  puedeDescargar?: boolean
 }>(), {
   puedeGestionar: true,
+  puedeDescargar: false,
 })
 const emit = defineEmits<{
   draft: []
@@ -16,11 +18,11 @@ const emit = defineEmits<{
 
 <template>
   <section
-    v-if="puedeGestionar || estado === 'firmado'"
+    v-if="puedeGestionar || puedeDescargar || estado === 'firmado'"
     class="rounded-2xl border border-outline-variant/30 bg-surface p-4 flex flex-wrap items-center gap-3"
   >
     <button
-      v-if="puedeGestionar"
+      v-if="puedeGestionar || puedeDescargar"
       type="button"
       class="px-4 py-2 rounded-xl border border-primary text-primary font-bold"
       @click="emit('draft')"

@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.adapters.db.models import CargaAcademicaORM, EstudianteORM, GrupoORM
+from app.adapters.db.session import get_db
 from app.entrypoints.api import middleware
 from app.entrypoints.api.authorization import (
     authorize_group_access,
@@ -18,6 +19,7 @@ from app.entrypoints.api.authorization import (
     subquery_grupos_con_acceso,
 )
 from app.entrypoints.api.dependencies import get_estudiante_repo, get_current_user
+from app.entrypoints.api.v1.endpoints import piars
 from app.main import app
 
 ESTUDIANTE_ID = uuid4()
@@ -56,6 +58,8 @@ class _FakeSession:
         self._estudiante = estudiante
         self._grupo = grupo
         self._carga = carga
+        self.eliminado = None
+        self.confirmado = False
 
     async def get(self, model, pk):
         if model is EstudianteORM:
@@ -66,6 +70,12 @@ class _FakeSession:
 
     async def execute(self, *args, **kwargs):
         return _Result(self._carga)
+
+    async def delete(self, obj):
+        self.eliminado = obj
+
+    async def commit(self):
+        self.confirmado = True
 
 
 class _FakeSessionCM:
@@ -103,11 +113,11 @@ def _grupo(director_id=None):
         ("write", False, True, False, True),
         ("medical_read", False, True, False, True),
         ("family_read", False, True, False, True),
-        ("delete", False, True, False, False),
+        ("delete", False, True, False, True),
         ("read", False, False, True, True),
         ("medical_read", False, False, True, True),
+        ("family_read", False, False, True, True),
         ("write", False, False, True, False),
-        ("family_read", False, False, True, False),
         ("delete", False, False, True, False),
         ("read", False, False, False, False),
         ("write", False, False, False, False),
@@ -171,6 +181,17 @@ async def test_director_de_su_grupo_puede_escribir():
     await authorize_student_access(db, usuario, ESTUDIANTE_ID, "write")
 
 
+async def test_director_de_su_grupo_puede_eliminar():
+    usuario = _usuario()
+    db = _FakeSession(
+        estudiante=_estudiante(),
+        grupo=_grupo(director_id=usuario.id),
+        carga=None,
+    )
+
+    await authorize_student_access(db, usuario, ESTUDIANTE_ID, "delete")
+
+
 async def test_director_de_otro_grupo_no_puede_escribir():
     usuario = _usuario()
     db = _FakeSession(
@@ -211,7 +232,7 @@ async def test_docente_con_carga_puede_leer_y_ver_salud():
     await authorize_student_access(db, usuario, ESTUDIANTE_ID, "medical_read")
 
 
-async def test_docente_con_carga_no_puede_escribir_ni_ver_hogar():
+async def test_docente_con_carga_puede_ver_hogar():
     usuario = _usuario()
     db = _FakeSession(
         estudiante=_estudiante(),
@@ -219,7 +240,18 @@ async def test_docente_con_carga_no_puede_escribir_ni_ver_hogar():
         carga=NS(id=uuid4()),
     )
 
-    for accion in ("write", "family_read", "delete"):
+    await authorize_student_access(db, usuario, ESTUDIANTE_ID, "family_read")
+
+
+async def test_docente_con_carga_no_puede_escribir_ni_eliminar():
+    usuario = _usuario()
+    db = _FakeSession(
+        estudiante=_estudiante(),
+        grupo=_grupo(director_id=uuid4()),
+        carga=NS(id=uuid4()),
+    )
+
+    for accion in ("write", "delete"):
         with pytest.raises(HTTPException) as exc:
             await authorize_student_access(db, usuario, ESTUDIANTE_ID, accion)
         assert exc.value.status_code == 403
@@ -343,9 +375,13 @@ class _RepoFalso:
 
 @pytest.fixture
 def cliente(monkeypatch):
-    def _crear(usuario, estudiante):
+    def _crear(usuario, estudiante, *, grupo=None, carga=None):
+        async def _fake_get_db():
+            yield _FakeSession(estudiante=estudiante, grupo=grupo, carga=carga)
+
         app.dependency_overrides[get_current_user] = lambda: usuario
         app.dependency_overrides[get_estudiante_repo] = lambda: _RepoFalso(estudiante)
+        app.dependency_overrides[get_db] = _fake_get_db
         monkeypatch.setattr(
             middleware,
             "AsyncSessionLocal",
@@ -374,3 +410,93 @@ def test_endpoint_permite_directivo(cliente):
 
     assert response.status_code == 200
     assert response.json()["id"] == str(ESTUDIANTE_ID)
+
+
+def test_endpoint_permite_eliminar_al_director_del_grupo(cliente):
+    usuario = _usuario()
+    estudiante = _estudiante_orm_falso()
+    estudiante.grupo_id = GRUPO_ID
+    client = cliente(usuario, estudiante, grupo=_grupo(director_id=usuario.id))
+
+    response = client.delete(f"/api/v1/estudiantes/{ESTUDIANTE_ID}")
+
+    assert response.status_code == 204
+
+
+def test_endpoint_rechaza_eliminar_a_docente_con_carga(cliente):
+    usuario = _usuario()
+    estudiante = _estudiante_orm_falso()
+    estudiante.grupo_id = GRUPO_ID
+    client = cliente(
+        usuario,
+        estudiante,
+        grupo=_grupo(director_id=uuid4()),
+        carga=NS(id=uuid4()),
+    )
+
+    response = client.delete(f"/api/v1/estudiantes/{ESTUDIANTE_ID}")
+
+    assert response.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: GET /piars/{piar_id}/pdf
+# ---------------------------------------------------------------------------
+
+def _piar_falso():
+    return NS(
+        estudiante_id=ESTUDIANTE_ID,
+        estudiante=NS(
+            nombres="Ana",
+            apellidos="Pérez",
+            numero_documento="123456",
+        ),
+    )
+
+
+def test_endpoint_pdf_rechaza_usuario_ajeno(cliente, monkeypatch):
+    async def _cargar(db, piar_id):
+        return _piar_falso()
+
+    monkeypatch.setattr(piars, "_cargar_piar_completo", _cargar)
+    client = cliente(_usuario(), _estudiante_orm_falso())
+
+    response = client.get(f"/api/v1/piars/{uuid4()}/pdf")
+
+    assert response.status_code == 403
+
+
+def test_endpoint_pdf_permite_docente_con_carga(cliente, monkeypatch):
+    usuario = _usuario()
+    estudiante = _estudiante_orm_falso()
+    estudiante.grupo_id = GRUPO_ID
+
+    async def _cargar(db, piar_id):
+        return _piar_falso()
+
+    async def _resolver(db, piar, periodo_id):
+        return None
+
+    def _completitud(piar, periodo_id):
+        return NS(secciones=[])
+
+    async def _generar(db, piar, modo, faltantes, periodo):
+        return b"%PDF-1.4 prueba"
+
+    monkeypatch.setattr(piars, "_cargar_piar_completo", _cargar)
+    monkeypatch.setattr(piars, "_resolver_periodo", _resolver)
+    monkeypatch.setattr(piars, "_evaluar_completitud", _completitud)
+    monkeypatch.setattr(piars, "_generar_pdf_actual", _generar)
+    monkeypatch.setattr(piars, "nombre_archivo_piar", lambda nombre, apellido: "piar.pdf")
+
+    client = cliente(
+        usuario,
+        estudiante,
+        grupo=_grupo(director_id=uuid4()),
+        carga=NS(id=uuid4()),
+    )
+
+    response = client.get(f"/api/v1/piars/{uuid4()}/pdf")
+
+    assert response.status_code == 200
+    assert response.content == b"%PDF-1.4 prueba"

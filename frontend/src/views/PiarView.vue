@@ -97,6 +97,7 @@
           :estado="activePiar.estado"
           :version-actual="activePiar.version_actual || 0"
           :puede-gestionar="isDirectorOrAdmin"
+          :puede-descargar="puedeDescargarPdf"
           @draft="descargarBorrador"
           @final="descargarFinal"
           @reopen="reabrirPiar"
@@ -105,7 +106,6 @@
       <!-- Tabs Navigation -->
       <div class="bg-surface border-b border-outline-variant/30 flex-shrink-0 px-lg flex gap-md">
         <button 
-          v-if="isDirectorOrAdmin"
           @click="activeTab = 'caracteristicas'" 
           :class="['py-4 border-b-2 font-label-md text-body-md cursor-pointer flex items-center gap-2 transition-all', activeTab === 'caracteristicas' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface']"
         >
@@ -142,7 +142,12 @@
 
 
         <!-- TAB 1: CARACTERÍSTICAS -->
-        <div v-if="activeTab === 'caracteristicas' && isDirectorOrAdmin" class="max-w-4xl mx-auto space-y-md">
+        <div v-if="activeTab === 'caracteristicas'" class="max-w-4xl mx-auto space-y-md">
+          <div v-if="!isDirectorOrAdmin" class="p-sm bg-blue-50 text-blue-900 rounded-xl text-body-md border border-blue-200 flex gap-xs items-start">
+            <span class="material-symbols-outlined">visibility</span>
+            <span>Solo lectura: el director del grupo o un directivo editan esta sección. Puedes consultarla para fundamentar tus ajustes.</span>
+          </div>
+          <fieldset :disabled="!isDirectorOrAdmin" class="contents">
           <section class="glass-card p-lg space-y-md border border-outline-variant/30">
             <h2 class="text-headline-md font-bold text-primary flex items-center gap-2 border-b border-outline-variant/30 pb-xs">
               <span class="material-symbols-outlined">edit_note</span>
@@ -253,6 +258,7 @@
 
             <div class="flex justify-end pt-sm border-t border-outline-variant/30">
               <button 
+                v-if="isDirectorOrAdmin"
                 @click="guardarCaracteristicas"
                 :disabled="isSavingCarac"
                 class="px-6 py-3 bg-primary text-on-primary rounded-xl font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/20 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
@@ -264,6 +270,7 @@
               </button>
             </div>
           </section>
+          </fieldset>
         </div>
 
         <!-- TAB 2: MATRIZ DE AJUSTES -->
@@ -1623,6 +1630,12 @@ const { coberturaVisible, ajustesVisibles, esDirectorOAdmin } = usePiarVisibilit
 })
 
 const isDirectorOrAdmin = esDirectorOAdmin
+
+// Los docentes con carga pueden descargar el PDF (borrador o final) para
+// consultar el PIAR completo; la matriz en pantalla sigue mostrando solo sus ajustes.
+const puedeDescargarPdf = computed(
+  () => isDirectorOrAdmin.value || coberturaVisible.value.length > 0
+)
 
 const asignaturasParaAjuste = coberturaVisible
 
