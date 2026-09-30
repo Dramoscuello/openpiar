@@ -70,11 +70,14 @@
         </div>
         <div class="space-y-sm w-full">
           <h2 class="text-headline-md font-bold text-on-surface leading-tight">No hay un PIAR activo para este estudiante</h2>
-          <p class="text-body-md text-on-surface-variant w-full leading-relaxed">
+          <p v-if="isDirectorOrAdmin" class="text-body-md text-on-surface-variant w-full leading-relaxed">
             Para el año lectivo en curso, el estudiante no cuenta con un Plan Individual de Ajustes Razonables (PIAR) registrado. Inicia el proceso de planeación a continuación.
           </p>
+          <p v-else class="text-body-md text-on-surface-variant w-full leading-relaxed">
+            El director del grupo o un directivo debe iniciar el PIAR. Cuando esté creado, podrás registrar los ajustes de las asignaturas que dictas.
+          </p>
         </div>
-        <button @click="iniciarPiar" class="mt-4 px-8 py-3.5 bg-primary text-on-primary rounded-xl font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/30 active:scale-95 transition-all cursor-pointer flex-shrink-0">
+        <button v-if="isDirectorOrAdmin" @click="iniciarPiar" class="mt-4 px-8 py-3.5 bg-primary text-on-primary rounded-xl font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/30 active:scale-95 transition-all cursor-pointer flex-shrink-0">
           <span class="material-symbols-outlined">add_circle</span>
           Iniciar PIAR 2026
         </button>
@@ -1612,19 +1615,14 @@ async function ejecutarExportar() {
 // Pestañas
 const activeTab = ref('caracteristicas')
 
-const isDirectorOrAdmin = computed(() => {
-  if (!authStore.user) return false
-  if (authStore.user.rol === 'directivo') return true
-  if (estudiante.value && estudiante.value.grupo_director_id === authStore.user.id) return true
-  return false
-})
-
-const { coberturaVisible, ajustesVisibles } = usePiarVisibility<any>({
+const { coberturaVisible, ajustesVisibles, esDirectorOAdmin } = usePiarVisibility<any>({
   usuario: () => authStore.user,
   directorId: () => estudiante.value?.grupo_director_id,
   asignaturas: () => completitud.value?.asignaturas || [],
   ajustes: () => activePiar.value?.ajustes_razonables || [],
 })
+
+const isDirectorOrAdmin = esDirectorOAdmin
 
 const asignaturasParaAjuste = coberturaVisible
 
@@ -2398,6 +2396,10 @@ async function reintentarCarga() {
 }
 
 async function iniciarPiar() {
+  if (!isDirectorOrAdmin.value) {
+    showToast("Solo el director del grupo o un directivo puede iniciar el PIAR.", true)
+    return
+  }
   try {
     await piarStore.createPiar(estudianteId)
     await refreshCompletitud()
@@ -2407,7 +2409,7 @@ async function iniciarPiar() {
       query: { contexto: 'piar', paso: '1' },
     })
   } catch (e: any) {
-    showToast("Error al iniciar el documento PIAR.", true)
+    showToast(e?.message || "Error al iniciar el documento PIAR.", true)
   }
 }
 

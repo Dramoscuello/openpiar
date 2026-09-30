@@ -51,4 +51,40 @@ describe('visibilidad de cobertura y malla PIAR', () => {
     expect(result.ajustesVisibles.value).toEqual([])
     expect(result.coberturaVisible.value).toEqual([])
   })
+
+  it('solo directivos y el director del estudiante pueden iniciar el PIAR', () => {
+    const base = { asignaturas: () => [], ajustes: () => [] }
+    const docente = usePiarVisibility({
+      ...base,
+      usuario: () => ({ id: 'teacher', rol: 'docente' }), directorId: () => 'director',
+    })
+    const director = usePiarVisibility({
+      ...base,
+      usuario: () => ({ id: 'director', rol: 'docente' }), directorId: () => 'director',
+    })
+    const directivo = usePiarVisibility({
+      ...base,
+      usuario: () => ({ id: 'rector', rol: 'directivo' }), directorId: () => null,
+    })
+    const sinSesion = usePiarVisibility({
+      ...base,
+      usuario: () => null, directorId: () => 'director',
+    })
+
+    expect(docente.esDirectorOAdmin.value).toBe(false)
+    expect(director.esDirectorOAdmin.value).toBe(true)
+    expect(directivo.esDirectorOAdmin.value).toBe(true)
+    expect(sinSesion.esDirectorOAdmin.value).toBe(false)
+  })
+
+  it('recalcula esDirectorOAdmin al cambiar la dirección del estudiante', () => {
+    const directorId = ref<string | null>('otro')
+    const result = usePiarVisibility({
+      usuario: () => ({ id: 'teacher', rol: 'docente' }), directorId: () => directorId.value,
+      asignaturas: () => [], ajustes: () => [],
+    })
+    expect(result.esDirectorOAdmin.value).toBe(false)
+    directorId.value = 'teacher'
+    expect(result.esDirectorOAdmin.value).toBe(true)
+  })
 })

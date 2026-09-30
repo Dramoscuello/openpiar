@@ -14,6 +14,12 @@ export function usePiarVisibility<T extends AjusteVisible>(options: {
   asignaturas: () => PiarAsignaturaCobertura[]
   ajustes: () => T[]
 }) {
+  const esDirectorOAdmin = computed(() => {
+    const usuario = options.usuario()
+    if (!usuario) return false
+    return usuario.rol === 'directivo' || options.directorId() === usuario.id
+  })
+
   const coberturaVisible = computed(() => {
     const usuario = options.usuario()
     return usuario ? options.asignaturas().filter(item => item.docente_id === usuario.id) : []
@@ -33,5 +39,5 @@ export function usePiarVisibility<T extends AjusteVisible>(options: {
     })
   })
 
-  return { coberturaVisible, ajustesVisibles }
+  return { coberturaVisible, ajustesVisibles, esDirectorOAdmin }
 }

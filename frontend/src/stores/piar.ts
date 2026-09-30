@@ -51,7 +51,16 @@ export const usePiarStore = defineStore('piar', () => {
           estado: 'borrador'
         })
       })
-      if (!response.ok) throw new Error('Error al crear PIAR')
+      if (!response.ok) {
+        let detail = 'Error al crear PIAR'
+        try {
+          const errorJson = await response.json()
+          detail = errorJson.detail || detail
+        } catch {
+          // Respuesta sin cuerpo JSON: conservar mensaje genérico
+        }
+        throw new Error(detail)
+      }
       activePiar.value = await response.json()
       return activePiar.value
     } catch (e: any) {
