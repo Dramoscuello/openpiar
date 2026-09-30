@@ -28,11 +28,14 @@ from app.adapters.db.models import (
     TrayectoriaEducativaORM,
     GrupoORM,
     GradoORM,
-    CargaAcademicaORM,
 )
 from app.adapters.db.session import get_db
 from app.core.exceptions import EstudianteNoEncontradoError, EstudianteYaRegistradoError
-from app.domain.entities import Usuario
+from app.entrypoints.api.authorization import (
+    authorize_group_access,
+    authorize_student_access,
+    subquery_grupos_con_acceso,
+)
 from app.entrypoints.api.dependencies import CurrentUser, get_estudiante_repo
 from app.entrypoints.api.schemas import (
     BaseResponse,
@@ -90,37 +93,18 @@ async def listar_estudiantes(
     repo=Depends(get_estudiante_repo),
     db: AsyncSession = Depends(get_db),
 ) -> EstudianteListResponse:
-    if current_user.rol.es_directivo:
-        # Admin: sin filtros
-        query = (
-            select(EstudianteORM, GrupoORM.director_id, GradoORM.nombre)
-            .outerjoin(GrupoORM, GrupoORM.id == EstudianteORM.grupo_id)
-            .outerjoin(GradoORM, GradoORM.id == GrupoORM.grado_id)
-            .order_by(EstudianteORM.apellidos, EstudianteORM.nombres)
-        )
-        count_query = select(func.count()).select_from(EstudianteORM)
-    else:
-        # Docente: filtrar por grupo dirigido o grados donde da clase
-        grados_docente_query = select(GrupoORM.grado_id).join(
-            CargaAcademicaORM, CargaAcademicaORM.grupo_id == GrupoORM.id
-        ).where(CargaAcademicaORM.docente_id == current_user.id)
+    query = (
+        select(EstudianteORM, GrupoORM.director_id, GradoORM.nombre)
+        .outerjoin(GrupoORM, GrupoORM.id == EstudianteORM.grupo_id)
+        .outerjoin(GradoORM, GradoORM.id == GrupoORM.grado_id)
+        .order_by(EstudianteORM.apellidos, EstudianteORM.nombres)
+    )
+    count_query = select(func.count()).select_from(EstudianteORM)
 
-        grupos_permitidos_query = select(GrupoORM.id).where(
-            (GrupoORM.director_id == current_user.id) | 
-            (GrupoORM.grado_id.in_(grados_docente_query))
-        )
-
-        query = (
-            select(EstudianteORM, GrupoORM.director_id, GradoORM.nombre)
-            .outerjoin(GrupoORM, GrupoORM.id == EstudianteORM.grupo_id)
-            .outerjoin(GradoORM, GradoORM.id == GrupoORM.grado_id)
-            .where(EstudianteORM.grupo_id.in_(grupos_permitidos_query))
-            .order_by(EstudianteORM.apellidos, EstudianteORM.nombres)
-        )
-
-        count_query = select(func.count()).select_from(EstudianteORM).where(
-            EstudianteORM.grupo_id.in_(grupos_permitidos_query)
-        )
+    grupos_con_acceso = subquery_grupos_con_acceso(current_user)
+    if grupos_con_acceso is not None:
+        query = query.where(EstudianteORM.grupo_id.in_(grupos_con_acceso))
+        count_query = count_query.where(EstudianteORM.grupo_id.in_(grupos_con_acceso))
 
     # Offset y límite
     result = await db.execute(query.offset(skip).limit(limit))
@@ -163,33 +147,6 @@ async def listar_estudiantes(
 
 
 # ---------------------------------------------------------------------------
-# Helper: check write permissions on student profiles (Anexo 1)
-# ---------------------------------------------------------------------------
-
-async def check_write_permission(current_user: Usuario, db: AsyncSession) -> None:
-    """Solo directivos o directores de grupo pueden escribir en Anexo 1."""
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Autenticación requerida."
-        )
-    if current_user.rol.es_directivo:
-        return
-
-    # Verificar si es director de algún grupo
-    group_director_result = await db.execute(
-        select(GrupoORM).where(GrupoORM.director_id == current_user.id)
-    )
-    if group_director_result.scalars().first() is not None:
-        return
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Solo los directivos o directores de grupo tienen permisos para registrar o editar estudiantes."
-    )
-
-
-# ---------------------------------------------------------------------------
 # POST /estudiantes — Crear
 # ---------------------------------------------------------------------------
 
@@ -209,10 +166,7 @@ async def crear_estudiante(
     current_user: CurrentUser = None,
     repo=Depends(get_estudiante_repo),
 ) -> EstudianteResponse:
-    await check_write_permission(current_user, repo._session)
-    grupo = await repo._session.get(GrupoORM, body.grupo_id)
-    if not grupo:
-        raise HTTPException(status_code=422, detail="El grupo seleccionado no existe.")
+    await authorize_group_access(repo._session, current_user, body.grupo_id, "write")
     try:
         edad = calcular_edad(body.fecha_nacimiento)
     except ValueError as exc:
@@ -306,6 +260,10 @@ async def obtener_estudiante(
             detail=f"Estudiante {estudiante_id} no encontrado.",
         )
 
+    await authorize_student_access(
+        repo._session, current_user, estudiante_id, "read", estudiante=estudiante
+    )
+
     grado = None
     grupo_director_id = None
     if estudiante.grupo_id:
@@ -365,13 +323,7 @@ async def eliminar_estudiante(
     db: AsyncSession = Depends(get_db),
     repo=Depends(get_estudiante_repo),
 ) -> None:
-    await check_write_permission(current_user, db)
-    orm = await db.get(EstudianteORM, estudiante_id)
-    if not orm:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Estudiante {estudiante_id} no encontrado.",
-        )
+    orm = await authorize_student_access(db, current_user, estudiante_id, "delete")
     await db.delete(orm)
     await db.commit()
 
@@ -391,13 +343,16 @@ async def actualizar_estudiante(
     current_user: CurrentUser = None,
     repo=Depends(get_estudiante_repo),
 ) -> EstudianteResponse:
-    await check_write_permission(current_user, repo._session)
     estudiante = await repo.find_by_id(estudiante_id)
     if not estudiante:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Estudiante {estudiante_id} no encontrado.",
         )
+
+    await authorize_student_access(
+        repo._session, current_user, estudiante_id, "write", estudiante=estudiante
+    )
 
     cambios = body.model_dump(exclude_unset=True)
     if "correo" in cambios and cambios["correo"] is not None:
@@ -409,8 +364,9 @@ async def actualizar_estudiante(
     if "numero_documento" in cambios:
         cambios["numero_documento"] = cambios["numero_documento"].strip()
     if "grupo_id" in cambios and cambios["grupo_id"] is not None:
-        if not await repo._session.get(GrupoORM, cambios["grupo_id"]):
-            raise HTTPException(status_code=422, detail="El grupo seleccionado no existe.")
+        await authorize_group_access(
+            repo._session, current_user, cambios["grupo_id"], "write"
+        )
     for campo, valor in cambios.items():
         setattr(estudiante, campo, valor)
     estudiante.edad = calcular_edad(estudiante.fecha_nacimiento)
@@ -468,6 +424,7 @@ async def get_entorno_salud(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoSaludResponse:
+    await authorize_student_access(db, current_user, estudiante_id, "medical_read")
     result = await db.execute(
         select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
     )
@@ -489,12 +446,7 @@ async def crear_entorno_salud(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoSaludResponse:
-    await check_write_permission(current_user, db)
-    # Verificar que el estudiante existe
-    estudiante = await db.get(EstudianteORM, estudiante_id)
-    if not estudiante:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
-
+    await authorize_student_access(db, current_user, estudiante_id, "write")
     orm = EntornoSaludORM(
         estudiante_id=estudiante_id,
         **body.model_dump(),
@@ -516,7 +468,7 @@ async def actualizar_entorno_salud(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoSaludResponse:
-    await check_write_permission(current_user, db)
+    await authorize_student_access(db, current_user, estudiante_id, "write")
     result = await db.execute(
         select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
     )
@@ -543,7 +495,7 @@ async def subir_soporte_medico(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> BaseResponse:
-    await check_write_permission(current_user, db)
+    await authorize_student_access(db, current_user, estudiante_id, "write")
     
     # Validar formato de archivo
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -589,6 +541,7 @@ async def descargar_soporte_medico(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ):
+    await authorize_student_access(db, current_user, estudiante_id, "medical_read")
     result = await db.execute(
         select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
     )
@@ -618,7 +571,7 @@ async def eliminar_soporte_medico(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> BaseResponse:
-    await check_write_permission(current_user, db)
+    await authorize_student_access(db, current_user, estudiante_id, "write")
     result = await db.execute(
         select(EntornoSaludORM).where(EntornoSaludORM.estudiante_id == estudiante_id)
     )
@@ -653,6 +606,7 @@ async def get_entorno_hogar(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoHogarResponse:
+    await authorize_student_access(db, current_user, estudiante_id, "family_read")
     result = await db.execute(
         select(EntornoHogarORM).where(EntornoHogarORM.estudiante_id == estudiante_id)
     )
@@ -674,10 +628,7 @@ async def crear_entorno_hogar(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoHogarResponse:
-    await check_write_permission(current_user, db)
-    estudiante = await db.get(EstudianteORM, estudiante_id)
-    if not estudiante:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+    await authorize_student_access(db, current_user, estudiante_id, "write")
 
     orm = EntornoHogarORM(estudiante_id=estudiante_id, **body.model_dump())
     db.add(orm)
@@ -697,7 +648,7 @@ async def actualizar_entorno_hogar(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoHogarResponse:
-    await check_write_permission(current_user, db)
+    await authorize_student_access(db, current_user, estudiante_id, "write")
     result = await db.execute(
         select(EntornoHogarORM).where(EntornoHogarORM.estudiante_id == estudiante_id)
     )
@@ -727,6 +678,7 @@ async def get_trayectoria_educativa(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> TrayectoriaEducativaResponse:
+    await authorize_student_access(db, current_user, estudiante_id, "read")
     result = await db.execute(
         select(TrayectoriaEducativaORM).where(TrayectoriaEducativaORM.estudiante_id == estudiante_id)
     )
@@ -748,10 +700,7 @@ async def crear_trayectoria_educativa(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> TrayectoriaEducativaResponse:
-    await check_write_permission(current_user, db)
-    estudiante = await db.get(EstudianteORM, estudiante_id)
-    if not estudiante:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+    await authorize_student_access(db, current_user, estudiante_id, "write")
 
     orm = TrayectoriaEducativaORM(
         estudiante_id=estudiante_id,
@@ -774,7 +723,7 @@ async def actualizar_trayectoria_educativa(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> TrayectoriaEducativaResponse:
-    await check_write_permission(current_user, db)
+    await authorize_student_access(db, current_user, estudiante_id, "write")
     result = await db.execute(
         select(TrayectoriaEducativaORM).where(TrayectoriaEducativaORM.estudiante_id == estudiante_id)
     )
@@ -804,6 +753,7 @@ async def get_matricula_actual(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> MatriculaActualResponse:
+    await authorize_student_access(db, current_user, estudiante_id, "read")
     result = await db.execute(
         select(MatriculaActualORM).where(MatriculaActualORM.estudiante_id == estudiante_id)
     )
@@ -825,10 +775,7 @@ async def crear_matricula_actual(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> MatriculaActualResponse:
-    await check_write_permission(current_user, db)
-    estudiante = await db.get(EstudianteORM, estudiante_id)
-    if not estudiante:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
+    await authorize_student_access(db, current_user, estudiante_id, "write")
 
     orm = MatriculaActualORM(
         estudiante_id=estudiante_id,
@@ -851,7 +798,7 @@ async def actualizar_matricula_actual(
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> MatriculaActualResponse:
-    await check_write_permission(current_user, db)
+    await authorize_student_access(db, current_user, estudiante_id, "write")
     result = await db.execute(
         select(MatriculaActualORM).where(MatriculaActualORM.estudiante_id == estudiante_id)
     )
