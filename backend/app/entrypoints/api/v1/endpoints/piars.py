@@ -14,7 +14,10 @@ from google.genai import types as genai_types
 from app.core.config import get_settings
 from app.core.pdf_security import nombre_archivo_piar, proteger_pdf
 from app.adapters.db.session import get_db
-from app.entrypoints.api.authorization import authorize_student_access
+from app.entrypoints.api.authorization import (
+    authorize_piar_access,
+    authorize_student_access,
+)
 from app.adapters.db.models import (
     PiarORM,
     CaracteristicasEstudianteORM,
@@ -180,20 +183,6 @@ def _piar_periodo(piar: PiarORM, periodo_id: int) -> PiarPeriodoORM:
     return item
 
 
-async def _exigir_director_o_directivo(
-    piar: PiarORM, current_user, db: AsyncSession
-) -> None:
-    if current_user.rol.es_directivo:
-        return
-    grupo = piar.estudiante.grupo if piar.estudiante else None
-    if grupo and grupo.director_id == current_user.id:
-        return
-    raise HTTPException(
-        status_code=403,
-        detail="Solo el director de grupo o un directivo puede realizar esta acción.",
-    )
-
-
 def _exigir_piar_editable(piar: PiarORM) -> None:
     if piar.estado == "firmado":
         raise HTTPException(
@@ -221,15 +210,6 @@ def _buscar_cobertura_asignatura(
         if item.nombre_asignatura.strip().casefold() == area.strip().casefold()
     ]
     return coincidencias[0] if len(coincidencias) == 1 else None
-
-
-def _exigir_permiso_asignatura(cobertura: PiarAsignaturaORM, current_user) -> None:
-    if cobertura.docente_id and cobertura.docente_id == current_user.id:
-        return
-    raise HTTPException(
-        status_code=403,
-        detail="Solo el docente asignado a esta asignatura puede modificar sus ajustes o su justificación de cobertura.",
-    )
 
 
 def _ajustes_visibles_para_usuario(
@@ -592,6 +572,8 @@ def _construir_respuesta_piar(
     piar: PiarORM, periodo: Optional[PeriodoAcademicoORM], current_user
 ) -> PiarResponse:
     """Vista del PIAR para un periodo: filtra ajustes, cobertura, acta y versiones."""
+    # PiarResponse es una lista blanca; no serializar el ORM directamente evita
+    # exponer estudiante, salud, hogar u otras relaciones no declaradas.
     response = PiarResponse.model_validate(piar)
     periodo_id = periodo.id if periodo else None
 
@@ -634,6 +616,9 @@ async def get_piar_by_estudiante(
     db: AsyncSession = Depends(get_db)
 ):
     """Obtiene el PIAR de un estudiante para el año y periodo indicados (o los vigentes)."""
+    # Autorizar antes de cargar ajustes, evidencias, participantes y actas.
+    await authorize_student_access(db, current_user, estudiante_id, "read")
+
     condiciones = [PiarORM.estudiante_id == estudiante_id]
     if anio is not None:
         condiciones.append(PiarORM.anio_lectivo == anio)
@@ -687,11 +672,9 @@ async def create_piar(
         raise HTTPException(status_code=404, detail="Estudiante no encontrado.")
     if not estudiante.grupo:
         raise HTTPException(status_code=409, detail="El estudiante debe tener un grupo asignado.")
-    if not (current_user.rol.es_directivo or estudiante.grupo.director_id == current_user.id):
-        raise HTTPException(
-            status_code=403,
-            detail="Solo el director de grupo o un directivo puede iniciar el PIAR.",
-        )
+    await authorize_student_access(
+        db, current_user, data.estudiante_id, "write", estudiante=estudiante
+    )
 
     existente = await db.execute(
         select(PiarORM).where(
@@ -811,6 +794,7 @@ async def add_ajuste_razonable(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
 
     periodo_activo = await _periodo_activo(db)
     if not periodo_activo:
@@ -825,7 +809,14 @@ async def add_ajuste_razonable(
             status_code=422,
             detail="La asignatura no pertenece a la carga académica congelada del PIAR para este periodo.",
         )
-    _exigir_permiso_asignatura(cobertura, current_user)
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "adjustments",
+        piar=piar,
+        cobertura=cobertura,
+    )
 
     nuevo_ajuste = AjusteRazonableORM(
         piar_id=piar_id,
@@ -875,6 +866,7 @@ async def generar_ajustes_ia(
         piar = await _cargar_piar_completo(db, piar_id)
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+        await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
 
         config = await _configuracion_sistema(db)
         contexto_estudiante = construir_contexto_estudiante(piar)
@@ -910,6 +902,8 @@ async def generar_ajustes_ia(
         response = model.generate_content(prompt)
         
         return {"success": True, "estrategias_generadas": response.text.strip()}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generando IA: {str(e)}")
 
@@ -931,6 +925,7 @@ async def generar_plan_completo_ia(
         piar = await _cargar_piar_completo(db, piar_id)
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+        await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
 
         # --- Contexto institucional (PEI) y perfil ampliado del estudiante ---
         config = await _configuracion_sistema(db)
@@ -1082,7 +1077,7 @@ async def update_piar(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-    await _exigir_director_o_directivo(piar, current_user, db)
+    await authorize_piar_access(db, current_user, piar_id, "edit", piar=piar)
     _exigir_piar_editable(piar)
     if data.estado == "firmado":
         raise HTTPException(
@@ -1167,6 +1162,7 @@ async def update_ajuste_razonable(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
     ajuste = await db.get(AjusteRazonableORM, ajuste_id)
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
@@ -1177,13 +1173,27 @@ async def update_ajuste_razonable(
     )
     if not cobertura_anterior:
         raise HTTPException(status_code=422, detail="El ajuste debe vincularse a una asignatura del PIAR.")
-    _exigir_permiso_asignatura(cobertura_anterior, current_user)
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "adjustments",
+        piar=piar,
+        cobertura=cobertura_anterior,
+    )
     cobertura = _buscar_cobertura_asignatura(
         piar, data.asignatura_id or ajuste.asignatura_id, data.area, ajuste.periodo_id
     )
     if not cobertura:
         raise HTTPException(status_code=422, detail="La asignatura no pertenece al PIAR.")
-    _exigir_permiso_asignatura(cobertura, current_user)
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "adjustments",
+        piar=piar,
+        cobertura=cobertura,
+    )
 
     datos_antes = serializar_ajuste(ajuste)
 
@@ -1248,11 +1258,16 @@ async def puntuar_ajuste(
     if piar:
         _exigir_periodo_editable(piar, ajuste.periodo_id)
 
-    if ajuste.creado_por != current_user.id:
-        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
-
-    if ajuste.creado_por != current_user.id:
-        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede puntuarlo.")
+    if not piar:
+        raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "read",
+        piar=piar,
+        propietario_id=ajuste.creado_por,
+    )
 
     datos_antes = serializar_ajuste(ajuste)
     ajuste.puntuacion = data.puntuacion
@@ -1286,6 +1301,7 @@ async def delete_ajuste_razonable(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
     ajuste = await db.get(AjusteRazonableORM, ajuste_id)
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
@@ -1294,8 +1310,14 @@ async def delete_ajuste_razonable(
     cobertura = _buscar_cobertura_asignatura(
         piar, ajuste.asignatura_id, ajuste.area, ajuste.periodo_id
     )
-    if cobertura:
-        _exigir_permiso_asignatura(cobertura, current_user)
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "adjustments",
+        piar=piar,
+        cobertura=cobertura,
+    )
 
     datos_antes = serializar_ajuste(ajuste)
     ajuste_id = ajuste.id
@@ -1339,6 +1361,7 @@ async def get_completitud_piar(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if periodo_id is not None and periodo is None:
         raise HTTPException(status_code=404, detail="Periodo académico no encontrado.")
@@ -1361,6 +1384,7 @@ async def update_estado_asignatura(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if not periodo:
         raise HTTPException(
@@ -1371,7 +1395,14 @@ async def update_estado_asignatura(
     cobertura = _buscar_cobertura_asignatura(piar, asignatura_id, "", periodo.id)
     if not cobertura:
         raise HTTPException(status_code=404, detail="Asignatura no incluida en este PIAR.")
-    _exigir_permiso_asignatura(cobertura, current_user)
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "adjustments",
+        piar=piar,
+        cobertura=cobertura,
+    )
 
     justificacion = (data.justificacion or "").strip()
     if data.estado == "no_requiere" and len(justificacion) < 5:
@@ -1398,9 +1429,7 @@ async def download_piar_pdf(
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
 
-    # Solo usuarios con acceso al estudiante (dirección o docentes con carga)
-    # pueden descargar el PDF completo; los ajustes ajenos se ven solo aquí.
-    await authorize_student_access(db, current_user, piar.estudiante_id, "read")
+    await authorize_piar_access(db, current_user, piar_id, "export", piar=piar)
 
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if periodo_id is not None and periodo is None:
@@ -1451,7 +1480,7 @@ async def finalizar_piar(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-    await _exigir_director_o_directivo(piar, current_user, db)
+    await authorize_piar_access(db, current_user, piar_id, "sign", piar=piar)
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if not periodo:
         raise HTTPException(
@@ -1515,7 +1544,7 @@ async def reabrir_piar(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-    await _exigir_director_o_directivo(piar, current_user, db)
+    await authorize_piar_access(db, current_user, piar_id, "sign", piar=piar)
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if not periodo:
         raise HTTPException(
@@ -1562,6 +1591,7 @@ async def get_acta_acuerdo(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
     periodo = await _resolver_periodo(db, piar, periodo_id)
     return _acta_del_periodo(piar, periodo.id if periodo else None)
 
@@ -1577,7 +1607,7 @@ async def upsert_acta_acuerdo(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-    await _exigir_director_o_directivo(piar, current_user, db)
+    await authorize_piar_access(db, current_user, piar_id, "sign", piar=piar)
     periodo = await _resolver_periodo(db, piar, data.periodo_id)
     if not periodo:
         raise HTTPException(
@@ -1677,6 +1707,7 @@ async def download_acta_pdf(
     piar = await _cargar_piar_completo(db, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "export", piar=piar)
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if periodo_id is not None and periodo is None:
         raise HTTPException(status_code=404, detail="Periodo académico no encontrado.")
@@ -1742,6 +1773,15 @@ def validar_archivo_evidencia(filename: str, contenido: bytes) -> str:
     return nombre
 
 
+def _nombre_archivo_auditoria(estudiante: Optional[EstudianteORM]) -> str:
+    """Genera un nombre de auditoría sin incluir el documento de identidad."""
+    nombre = nombre_archivo_piar(
+        getattr(estudiante, "nombres", None),
+        getattr(estudiante, "apellidos", None),
+    )
+    return nombre.replace("PIAR_", "Auditoria_PIAR_", 1)
+
+
 @router.post(
     "/{piar_id}/ajustes/{ajuste_id}/evidencias",
     response_model=EvidenciaAjusteResponse,
@@ -1760,8 +1800,13 @@ async def upload_evidencia(
     if not ajuste or ajuste.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Ajuste razonable no encontrado en este PIAR.")
 
-    if ajuste.creado_por != current_user.id:
-        raise HTTPException(status_code=403, detail="Solo el docente que creó el ajuste puede adjuntar evidencias.")
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "evidences",
+        propietario_id=ajuste.creado_por,
+    )
 
     contenido = await file.read()
     if len(contenido) > 15 * 1024 * 1024:
@@ -1831,6 +1876,7 @@ async def list_evidencias_ajuste(
     db: AsyncSession = Depends(get_db),
 ):
     """Lista las evidencias de un ajuste DUA."""
+    await authorize_piar_access(db, current_user, piar_id, "evidences")
     query = (
         select(EvidenciaAjusteORM)
         .where(
@@ -1868,6 +1914,7 @@ async def list_evidencias_piar(
     db: AsyncSession = Depends(get_db),
 ):
     """Lista todas las evidencias del PIAR (para timeline y PDF)."""
+    await authorize_piar_access(db, current_user, piar_id, "evidences")
     query = (
         select(EvidenciaAjusteORM)
         .where(EvidenciaAjusteORM.piar_id == piar_id)
@@ -1906,6 +1953,7 @@ async def descargar_evidencia(
     evidencia = await db.get(EvidenciaAjusteORM, evidencia_id)
     if not evidencia or evidencia.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Evidencia no encontrada.")
+    await authorize_piar_access(db, current_user, piar_id, "evidences")
 
     import os as _os
     if not _os.path.exists(evidencia.ruta_archivo):
@@ -1939,8 +1987,13 @@ async def eliminar_evidencia(
     if not evidencia or evidencia.piar_id != piar_id:
         raise HTTPException(status_code=404, detail="Evidencia no encontrada.")
 
-    if evidencia.creado_por != current_user.id:
-        raise HTTPException(status_code=403, detail="Solo quien subió la evidencia puede eliminarla.")
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "evidences",
+        propietario_id=evidencia.creado_por,
+    )
 
     nombre = evidencia.nombre_archivo
     desc = evidencia.descripcion
@@ -1986,6 +2039,7 @@ async def get_historial_piar(
     piar = await db.get(PiarORM, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "audit_read", piar=piar)
 
     query = (
         select(AuditoriaCambioORM)
@@ -2037,6 +2091,7 @@ async def diff_versiones(
     piar = await db.get(PiarORM, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "audit_read", piar=piar)
 
     if not v1 or not v2:
         raise HTTPException(
@@ -2086,6 +2141,7 @@ async def export_historial_pdf(
     piar = await db.get(PiarORM, piar_id)
     if not piar:
         raise HTTPException(status_code=404, detail="PIAR no encontrado.")
+    await authorize_piar_access(db, current_user, piar_id, "audit_read", piar=piar)
 
     query = (
         select(AuditoriaCambioORM)
@@ -2119,8 +2175,7 @@ async def export_historial_pdf(
     from app.core.pdf_generator import generate_auditoria_pdf
     pdf_bytes = generate_auditoria_pdf(piar_id, rows, config, estudiante_orm)
 
-    doc = estudiante_orm.numero_documento if estudiante_orm else str(piar_id)[:8]
-    filename = f"Auditoria_PIAR_{doc}.pdf"
+    filename = _nombre_archivo_auditoria(estudiante_orm)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

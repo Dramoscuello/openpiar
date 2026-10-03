@@ -1,10 +1,12 @@
 # Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
 """
-Política centralizada de autorización por estudiante.
+Políticas centralizadas de autorización por estudiante y PIAR.
 
 Única fuente de verdad para decidir quién puede acceder a los datos de un
-estudiante y con qué alcance. Todos los endpoints que devuelven o modifican
-información de un estudiante deben pasar por `authorize_student_access`.
+estudiante o PIAR y con qué alcance. Todos los endpoints que devuelven o
+modifican información de un estudiante deben pasar por
+`authorize_student_access`; las operaciones sobre un PIAR deben pasar por
+`authorize_piar_access`.
 
 Reglas (Decreto 1421 de 2017 — manejo de información sensible):
 
@@ -15,6 +17,13 @@ Reglas (Decreto 1421 de 2017 — manejo de información sensible):
   los estudiantes de grupos donde tenga carga académica, para fundamentar sus
   ajustes; nunca puede escribir ni eliminar el Anexo 1.
 - `delete`: directivo o director del grupo del estudiante.
+
+PIAR:
+
+- `read`, `evidences` y `export`: directivo, director de grupo o docente con
+  carga académica en el grupo.
+- `edit`, `sign` y `audit_read`: directivo o director de grupo.
+- `adjustments`: docente asignado a la cobertura de la asignatura.
 """
 
 import uuid
@@ -23,15 +32,27 @@ from typing import Literal, Optional
 from fastapi import HTTPException, status
 from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.adapters.db.models import (
     CargaAcademicaORM,
     EstudianteORM,
     GrupoORM,
+    PiarAsignaturaORM,
+    PiarORM,
 )
 from app.domain.entities import Usuario
 
 AccionEstudiante = Literal["read", "write", "medical_read", "family_read", "delete"]
+AccionPiar = Literal[
+    "read",
+    "edit",
+    "adjustments",
+    "evidences",
+    "sign",
+    "export",
+    "audit_read",
+]
 
 ACCIONES_ESTUDIANTE: set[str] = {
     "read",
@@ -40,6 +61,18 @@ ACCIONES_ESTUDIANTE: set[str] = {
     "family_read",
     "delete",
 }
+
+ACCIONES_PIAR: set[str] = {
+    "read",
+    "edit",
+    "adjustments",
+    "evidences",
+    "sign",
+    "export",
+    "audit_read",
+}
+
+_PROPIETARIO_NO_REQUERIDO = object()
 
 
 def puede_acceder(
@@ -73,6 +106,32 @@ def puede_acceder(
         return es_director_grupo
 
     return False
+
+
+def puede_acceder_piar(
+    accion: AccionPiar,
+    *,
+    es_directivo: bool,
+    es_director_grupo: bool,
+    tiene_carga: bool,
+    es_docente_asignado: bool = False,
+) -> bool:
+    """Matriz pura de autorización PIAR, sin acceso a base de datos."""
+    if accion not in ACCIONES_PIAR:
+        raise ValueError(f"Acción de PIAR desconocida: {accion}")
+
+    if accion == "adjustments":
+        # La cobertura académica identifica al docente responsable del ajuste.
+        return es_docente_asignado and (
+            es_directivo or es_director_grupo or tiene_carga
+        )
+
+    if accion in {"read", "evidences", "export"}:
+        return es_directivo or es_director_grupo or tiene_carga
+
+    # Edición general, firmas internas y auditoría requieren responsabilidad
+    # institucional sobre el grupo; la carga académica solo concede lectura.
+    return es_directivo or es_director_grupo
 
 
 def subquery_grupos_con_acceso(current_user: Usuario) -> Optional[Select]:
@@ -213,3 +272,140 @@ async def authorize_group_access(
         )
 
     return grupo
+
+
+async def _cargar_piar_para_autorizacion(
+    db: AsyncSession,
+    piar_id: uuid.UUID,
+) -> Optional[PiarORM]:
+    """Carga únicamente la relación PIAR-estudiante-grupo para autorizar."""
+    result = await db.execute(
+        select(PiarORM)
+        .where(PiarORM.id == piar_id)
+        .options(
+            selectinload(PiarORM.estudiante).selectinload(EstudianteORM.grupo),
+        )
+    )
+    return result.scalars().first()
+
+
+async def _relacion_con_piar(
+    db: AsyncSession,
+    current_user: Usuario,
+    piar: PiarORM,
+) -> tuple[bool, bool]:
+    """Devuelve (es_director_del_grupo, tiene_carga_en_el_grupo) del PIAR."""
+    estudiante = getattr(piar, "__dict__", {}).get("estudiante")
+    estudiante_id = getattr(piar, "estudiante_id", None)
+    if estudiante is None or (
+        estudiante_id is not None and getattr(estudiante, "grupo_id", None) is None
+    ):
+        if estudiante_id is not None:
+            estudiante_cargado = await db.get(EstudianteORM, estudiante_id)
+            if estudiante_cargado is not None:
+                estudiante = estudiante_cargado
+
+    if estudiante is None:
+        return False, False
+
+    grupo = getattr(estudiante, "__dict__", {}).get("grupo")
+    grupo_id = getattr(estudiante, "grupo_id", None)
+    if grupo_id is None and grupo is not None:
+        grupo_id = getattr(grupo, "id", None)
+
+    if grupo is not None:
+        es_director = getattr(grupo, "director_id", None) == current_user.id
+        # Evita una consulta adicional cuando la relación ya fue cargada por el
+        # endpoint, sin activar una carga perezosa en AsyncSession.
+        relaciones_cargadas = getattr(grupo, "__dict__", {}).get("carga", None)
+        if relaciones_cargadas is not None:
+            tiene_carga = any(
+                getattr(carga, "docente_id", None) == current_user.id
+                for carga in relaciones_cargadas
+            )
+            return es_director, tiene_carga
+        if grupo_id is None:
+            return es_director, False
+
+    return await _relacion_con_grupo(db, current_user, grupo_id)
+
+
+async def authorize_piar_access(
+    db: AsyncSession,
+    current_user: Usuario,
+    piar_id: uuid.UUID,
+    accion: AccionPiar = "read",
+    *,
+    piar: Optional[PiarORM] = None,
+    cobertura: Optional[PiarAsignaturaORM] = None,
+    propietario_id: object = _PROPIETARIO_NO_REQUERIDO,
+) -> PiarORM:
+    """
+    Autoriza una operación sobre un PIAR.
+
+    La autorización de PIAR combina el alcance institucional sobre el
+    estudiante con reglas específicas de cobertura y autoría. Devuelve el
+    PIAR para evitar una segunda consulta cuando ya fue cargado por el
+    endpoint.
+
+    - 404 si el PIAR no existe.
+    - 403 si el usuario no tiene el alcance solicitado.
+    """
+    if accion not in ACCIONES_PIAR:
+        raise ValueError(f"Acción de PIAR desconocida: {accion}")
+
+    if piar is None:
+        piar = await _cargar_piar_para_autorizacion(db, piar_id)
+    if piar is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="PIAR no encontrado.",
+        )
+
+    if (
+        propietario_id is not _PROPIETARIO_NO_REQUERIDO
+        and propietario_id != current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos sobre este recurso del PIAR.",
+        )
+
+    es_director = False
+    tiene_carga = False
+    if not current_user.rol.es_directivo:
+        es_director, tiene_carga = await _relacion_con_piar(
+            db, current_user, piar
+        )
+
+    if accion == "adjustments":
+        es_docente_asignado = bool(
+            cobertura is not None
+            and getattr(cobertura, "docente_id", None) == current_user.id
+        )
+        permitido = puede_acceder_piar(
+            accion,
+            es_directivo=current_user.rol.es_directivo,
+            es_director_grupo=es_director,
+            tiene_carga=tiene_carga,
+            es_docente_asignado=es_docente_asignado,
+        )
+        if not permitido:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo el docente asignado a esta cobertura puede modificarla.",
+            )
+        return piar
+
+    if not puede_acceder_piar(
+        accion,
+        es_directivo=current_user.rol.es_directivo,
+        es_director_grupo=es_director,
+        tiene_carga=tiene_carga,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a este PIAR.",
+        )
+
+    return piar

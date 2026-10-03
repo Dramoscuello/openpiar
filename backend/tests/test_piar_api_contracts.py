@@ -9,12 +9,12 @@ import pytest
 from fastapi import HTTPException
 
 from app.main import app
+from app.entrypoints.api.authorization import puede_acceder_piar
 from app.entrypoints.api.schemas import (
     AjusteRazonableCreate, GenerarPlanCompletoRequest, PiarAsignaturaEstadoUpdate,
 )
 from app.entrypoints.api.v1.endpoints import piars
 from app.entrypoints.api.v1.endpoints.piars import (
-    _exigir_permiso_asignatura,
     _exigir_piar_editable,
 )
 
@@ -84,18 +84,27 @@ def test_ajuste_e_ia_aceptan_ausencia_de_campos_ocultos():
 
 
 def test_permisos_de_asignatura_y_bloqueo_de_version_final():
-    cobertura = NS(docente_id="docente-asignado")
-    docente_asignado = NS(id="docente-asignado", rol=NS(es_directivo=False))
-    docente_ajeno = NS(id="docente-ajeno", rol=NS(es_directivo=False))
-    directivo = NS(id="directivo", rol=NS(es_directivo=True))
-
-    _exigir_permiso_asignatura(cobertura, docente_asignado)
-    with pytest.raises(HTTPException) as error_directivo:
-        _exigir_permiso_asignatura(cobertura, directivo)
-    assert error_directivo.value.status_code == 403
-    with pytest.raises(HTTPException) as error:
-        _exigir_permiso_asignatura(cobertura, docente_ajeno)
-    assert error.value.status_code == 403
+    assert puede_acceder_piar(
+        "adjustments",
+        es_directivo=False,
+        es_director_grupo=False,
+        tiene_carga=True,
+        es_docente_asignado=True,
+    )
+    assert not puede_acceder_piar(
+        "adjustments",
+        es_directivo=True,
+        es_director_grupo=False,
+        tiene_carga=False,
+        es_docente_asignado=False,
+    )
+    assert not puede_acceder_piar(
+        "adjustments",
+        es_directivo=False,
+        es_director_grupo=False,
+        tiene_carga=True,
+        es_docente_asignado=False,
+    )
 
     with pytest.raises(HTTPException) as error_final:
         _exigir_piar_editable(NS(estado="firmado"))
@@ -137,6 +146,12 @@ async def test_docente_asignado_resuelve_su_cobertura(monkeypatch, estado):
     monkeypatch.setattr(piars, "_cargar_piar_completo", AsyncMock(return_value=NS(
         estado="borrador", asignaturas_estado=[cobertura],
         periodos=[NS(periodo_id=1, estado="borrador")],
+        estudiante=NS(
+            grupo=NS(
+                id=uuid4(), director_id=None,
+                carga=[NS(docente_id=docente_id)],
+            )
+        ),
     )))
     monkeypatch.setattr(piars, "_resolver_periodo", AsyncMock(return_value=NS(id=1, activo=True)))
     db = NS(flush=AsyncMock())
