@@ -20,7 +20,11 @@ from app.entrypoints.api.authorization import (
     subquery_grupos_con_acceso,
 )
 from app.entrypoints.api.dependencies import get_estudiante_repo, get_current_user
-from app.entrypoints.api.schemas import EntornoSaludRequest
+from app.entrypoints.api.schemas import (
+    EntornoHogarRequest,
+    EntornoSaludRequest,
+    TrayectoriaEducativaRequest,
+)
 from app.entrypoints.api.v1.endpoints import piars
 from app.main import app
 
@@ -63,6 +67,7 @@ class _FakeSession:
         self._resultados = list(resultados or [])
         self.eliminado = None
         self.confirmado = False
+        self.agregado = None
 
     async def get(self, model, pk):
         if model is EstudianteORM:
@@ -75,6 +80,16 @@ class _FakeSession:
         if self._resultados:
             return _Result(self._resultados.pop(0))
         return _Result(self._carga)
+
+    def add(self, obj):
+        self.agregado = obj
+
+    async def flush(self):
+        if self.agregado is not None and getattr(self.agregado, "id", None) is None:
+            self.agregado.id = uuid4()
+
+    async def refresh(self, obj):
+        return None
 
     async def delete(self, obj):
         self.eliminado = obj
@@ -651,3 +666,149 @@ def test_auditoria_sanitiza_ip_y_user_agent(caplog):
     assert "AgenteX" in mensaje or "Agentemalicioso" in mensaje
     assert "\n" not in mensaje
     assert "\r" not in mensaje
+
+
+# ---------------------------------------------------------------------------
+# Endpoints: hogar y trayectoria (acceso cruzado y solo lectura)
+# ---------------------------------------------------------------------------
+
+def _hogar_falso(**overrides):
+    datos = EntornoHogarRequest().model_dump()
+    datos.update(overrides)
+    return NS(**datos, id=uuid4(), estudiante_id=ESTUDIANTE_ID)
+
+
+def _trayectoria_falsa(**overrides):
+    datos = TrayectoriaEducativaRequest().model_dump()
+    datos.update(overrides)
+    return NS(**datos, id=uuid4(), estudiante_id=ESTUDIANTE_ID)
+
+
+def _estudiante_con_grupo():
+    estudiante = _estudiante_orm_falso()
+    estudiante.grupo_id = GRUPO_ID
+    return estudiante
+
+
+def test_endpoint_hogar_rechaza_ajeno(cliente):
+    client = cliente(_usuario(), _estudiante_con_grupo(), grupo=_grupo(director_id=uuid4()))
+
+    assert client.get(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar").status_code == 403
+    assert client.post(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar", json={}).status_code == 403
+    assert client.patch(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar", json={}).status_code == 403
+
+
+def test_endpoint_hogar_docente_con_carga_lee_todo(cliente):
+    hogar = _hogar_falso(nombre_madre="Madre", telefono_madre="3001234567")
+    client = cliente(
+        _usuario(),
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=uuid4()),
+        resultados=[NS(id=uuid4()), hogar],
+    )
+
+    response = client.get(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["nombre_madre"] == "Madre"
+    assert body["telefono_madre"] == "3001234567"
+
+
+def test_endpoint_hogar_docente_con_carga_no_escribe(cliente):
+    client = cliente(
+        _usuario(),
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=uuid4()),
+        carga=NS(id=uuid4()),
+    )
+
+    assert client.post(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar", json={}).status_code == 403
+    assert client.patch(
+        f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar", json={"nombre_madre": "X"}
+    ).status_code == 403
+
+
+def test_endpoint_hogar_director_crea_y_actualiza(cliente):
+    usuario = _usuario()
+    client = cliente(
+        usuario,
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=usuario.id),
+        resultados=[None],
+    )
+    assert client.post(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar", json={}).status_code == 201
+
+    hogar = _hogar_falso()
+    client = cliente(
+        usuario,
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=usuario.id),
+        resultados=[None, hogar],
+    )
+    response = client.patch(
+        f"/api/v1/estudiantes/{ESTUDIANTE_ID}/hogar", json={"nombre_madre": "Madre"}
+    )
+    assert response.status_code == 200
+    assert response.json()["nombre_madre"] == "Madre"
+
+
+def test_endpoint_trayectoria_rechaza_ajeno(cliente):
+    client = cliente(_usuario(), _estudiante_con_grupo(), grupo=_grupo(director_id=uuid4()))
+
+    assert client.get(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria").status_code == 403
+    assert client.post(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria", json={}).status_code == 403
+    assert client.patch(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria", json={}).status_code == 403
+
+
+def test_endpoint_trayectoria_docente_con_carga_lee(cliente):
+    trayectoria = _trayectoria_falsa(ultimo_grado_cursado="5°")
+    client = cliente(
+        _usuario(),
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=uuid4()),
+        resultados=[NS(id=uuid4()), trayectoria],
+    )
+
+    response = client.get(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria")
+
+    assert response.status_code == 200
+    assert response.json()["ultimo_grado_cursado"] == "5°"
+
+
+def test_endpoint_trayectoria_docente_con_carga_no_escribe(cliente):
+    client = cliente(
+        _usuario(),
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=uuid4()),
+        carga=NS(id=uuid4()),
+    )
+
+    assert client.post(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria", json={}).status_code == 403
+    assert client.patch(
+        f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria", json={"ultimo_grado_cursado": "X"}
+    ).status_code == 403
+
+
+def test_endpoint_trayectoria_director_crea_y_actualiza(cliente):
+    usuario = _usuario()
+    client = cliente(
+        usuario,
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=usuario.id),
+        resultados=[None],
+    )
+    assert client.post(f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria", json={}).status_code == 201
+
+    trayectoria = _trayectoria_falsa()
+    client = cliente(
+        usuario,
+        _estudiante_con_grupo(),
+        grupo=_grupo(director_id=usuario.id),
+        resultados=[None, trayectoria],
+    )
+    response = client.patch(
+        f"/api/v1/estudiantes/{ESTUDIANTE_ID}/trayectoria", json={"ultimo_grado_cursado": "5°"}
+    )
+    assert response.status_code == 200
+    assert response.json()["ultimo_grado_cursado"] == "5°"

@@ -5,6 +5,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { useStudentsStore } from '../stores/students'
 import { useAuthStore } from '../stores/auth'
 import { DEPARTAMENTOS } from '../data/colombia'
+import {
+  componerLugarNacimiento,
+  municipiosDe,
+  parsearLugarNacimiento,
+} from '../utils/ubicacion'
 
 const router = useRouter()
 const route = useRoute()
@@ -110,58 +115,9 @@ const filteredGrupos = computed(() => {
 })
 
 // -----------------------------------------------------------------------
-// Custom date picker (Día / Mes / Año)
+// Fecha de nacimiento (datepicker nativo)
 // -----------------------------------------------------------------------
-const MESES = [
-  { val: '01', label: 'Enero' }, { val: '02', label: 'Febrero' },
-  { val: '03', label: 'Marzo' }, { val: '04', label: 'Abril' },
-  { val: '05', label: 'Mayo' }, { val: '06', label: 'Junio' },
-  { val: '07', label: 'Julio' }, { val: '08', label: 'Agosto' },
-  { val: '09', label: 'Septiembre' }, { val: '10', label: 'Octubre' },
-  { val: '11', label: 'Noviembre' }, { val: '12', label: 'Diciembre' },
-]
-const birthDay   = ref<string>('')
-const birthMonth = ref<string>('')
-const birthYear  = ref<string>('')
-
-// Años válidos: nacidos entre 1990 y hace 2 años
-const birthYears = computed(() => {
-  const end = new Date().getFullYear() - 2
-  const years: number[] = []
-  for (let y = end; y >= 1990; y--) years.push(y)
-  return years
-})
-
-// Días del mes seleccionado
-const birthDays = computed(() => {
-  const m = parseInt(birthMonth.value || '1')
-  const y = parseInt(birthYear.value  || '2000')
-  const max = new Date(y, m, 0).getDate()
-  return Array.from({ length: max }, (_, i) => String(i + 1).padStart(2, '0'))
-})
-
-// Cuando cambia alguno de los tres selects, actualizar el modelo
-watch([birthDay, birthMonth, birthYear], ([d, m, y]) => {
-  if (d && m && y) {
-    studentsStore.draft.general.fecha_nacimiento = `${y}-${m}-${d}`
-  } else {
-    studentsStore.draft.general.fecha_nacimiento = ''
-  }
-})
-
-// Si ya hay una fecha en el store (modo edición), descomponer
-watch(
-  () => studentsStore.draft.general.fecha_nacimiento,
-  (val) => {
-    if (val && val.length === 10 && !birthYear.value) {
-      const parts = val.split('-')
-      birthYear.value  = parts[0] ?? ''
-      birthMonth.value = parts[1] ?? ''
-      birthDay.value   = parts[2] ?? ''
-    }
-  },
-  { immediate: true }
-)
+const maxFechaNacimiento = computed(() => `${new Date().getFullYear() - 2}-12-31`)
 
 // -----------------------------------------------------------------------
 // Departamentos / Municipios — datos estáticos DANE (sin API externa)
@@ -171,12 +127,17 @@ const municipios      = ref<{ id: string; nombre: string }[]>([])
 const loadingMunicipios = ref(false)
 const selectedDeptoId = ref<string>('')
 
+// Lugar de nacimiento (mismo selector reutilizado)
+const municipiosNacimiento = ref<{ id: string; nombre: string }[]>([])
+const selectedDeptoNacimientoId = ref<string>('')
+const municipioNacimiento = ref<string>('')
+
 const cargarMunicipios = (deptoId: string) => {
-  if (!deptoId) { municipios.value = []; return }
-  const depto = DEPARTAMENTOS.find(d => d.id === deptoId)
-  municipios.value = depto
-    ? depto.municipios.slice().sort((a, b) => a.nombre.localeCompare(b.nombre))
-    : []
+  municipios.value = municipiosDe(deptoId, DEPARTAMENTOS)
+}
+
+const cargarMunicipiosNacimiento = (deptoId: string) => {
+  municipiosNacimiento.value = municipiosDe(deptoId, DEPARTAMENTOS)
 }
 
 // Al cambiar departamento, actualizar municipio y el nombre en el store
@@ -186,6 +147,38 @@ watch(selectedDeptoId, (newId) => {
   studentsStore.draft.general.departamento_residencia = depto ? depto.nombre : ''
   cargarMunicipios(newId)
 })
+
+const actualizarLugarNacimiento = () => {
+  const depto = DEPARTAMENTOS.find(d => d.id === selectedDeptoNacimientoId.value)
+  studentsStore.draft.general.lugar_nacimiento = componerLugarNacimiento(
+    municipioNacimiento.value,
+    depto?.nombre || '',
+  )
+}
+
+watch(municipioNacimiento, actualizarLugarNacimiento, { flush: 'sync' })
+
+watch(selectedDeptoNacimientoId, (newId) => {
+  municipioNacimiento.value = ''
+  cargarMunicipiosNacimiento(newId)
+  actualizarLugarNacimiento()
+}, { flush: 'sync' })
+
+// Intenta reconstruir los selects a partir de un lugar de nacimiento guardado
+const inicializarLugarNacimiento = () => {
+  const resultado = parsearLugarNacimiento(
+    studentsStore.draft.general.lugar_nacimiento,
+    DEPARTAMENTOS,
+  )
+  if (!resultado) return
+
+  selectedDeptoNacimientoId.value = resultado.depto.id
+  cargarMunicipiosNacimiento(resultado.depto.id)
+  if (resultado.municipio) {
+    municipioNacimiento.value = resultado.municipio
+    actualizarLugarNacimiento()
+  }
+}
 
 const fetchSedesAndGrupos = async () => {
   loadingSedesGrupos.value = true
@@ -235,11 +228,19 @@ onMounted(async () => {
   } else {
     isEditMode.value = false
     studentsStore.loadDraft()
-    // Default system values
-    if (!studentsStore.draft.matricula.institucion_educativa && authStore.nombreInstitucion) {
-      studentsStore.draft.matricula.institucion_educativa = authStore.nombreInstitucion
-    }
   }
+
+  // El nombre de la institución proviene de la configuración institucional
+  // (base de datos); no se digita en el formulario.
+  if (authStore.nombreInstitucion) {
+    studentsStore.draft.matricula.institucion_educativa = authStore.nombreInstitucion
+  }
+
+  // Reconstruye los selects de lugar de nacimiento desde el valor guardado
+  if (isEditMode.value) {
+    inicializarLugarNacimiento()
+  }
+
   await fetchSedesAndGrupos()
 
   // Si en modo edición ya hay depto guardado, pre-seleccionar y restaurar municipio
@@ -362,7 +363,8 @@ const hasText = (value: string | null | undefined) => Boolean(value?.trim())
 const syncMatriculaActualDesdeSeleccion = () => {
   const mat = studentsStore.draft.matricula
 
-  if (!hasText(mat.institucion_educativa) && hasText(authStore.nombreInstitucion)) {
+  // La institución siempre es la configurada en el sistema, no la escrita a mano.
+  if (hasText(authStore.nombreInstitucion)) {
     mat.institucion_educativa = authStore.nombreInstitucion
   }
 
@@ -679,47 +681,13 @@ const save = async () => {
               </div>
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Fecha de nacimiento *</label>
-                <div class="grid grid-cols-3 gap-2">
-                  <!-- Día -->
-                  <div class="relative">
-                    <select
-                      v-model="birthDay"
-                      class="w-full px-3 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
-                    >
-                      <option value="" disabled>Día</option>
-                      <option v-for="d in birthDays" :key="d" :value="d">{{ parseInt(d) }}</option>
-                    </select>
-                    <span class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-outline">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </span>
-                  </div>
-                  <!-- Mes -->
-                  <div class="relative">
-                    <select
-                      v-model="birthMonth"
-                      class="w-full px-3 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
-                    >
-                      <option value="" disabled>Mes</option>
-                      <option v-for="m in MESES" :key="m.val" :value="m.val">{{ m.label }}</option>
-                    </select>
-                    <span class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-outline">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </span>
-                  </div>
-                  <!-- Año -->
-                  <div class="relative">
-                    <select
-                      v-model="birthYear"
-                      class="w-full px-3 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
-                    >
-                      <option value="" disabled>Año</option>
-                      <option v-for="y in birthYears" :key="y" :value="String(y)">{{ y }}</option>
-                    </select>
-                    <span class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-outline">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </span>
-                  </div>
-                </div>
+                <input
+                  v-model="studentsStore.draft.general.fecha_nacimiento"
+                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  type="date"
+                  min="1990-01-01"
+                  :max="maxFechaNacimiento"
+                />
               </div>
             </div>
 
@@ -750,7 +718,7 @@ const save = async () => {
             </div>
 
             <template v-if="isEditMode">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
               <div class="space-y-xs">
                 <label class="font-label-md text-label-md text-on-surface-variant">Edad calculada</label>
                 <input
@@ -760,14 +728,38 @@ const save = async () => {
                   type="number"
                 />
               </div>
-              <div class="space-y-xs md:col-span-3">
-                <label class="font-label-md text-label-md text-on-surface-variant">Lugar de nacimiento</label>
-                <input
-                  v-model="studentsStore.draft.general.lugar_nacimiento"
-                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none dark:text-white"
-                  type="text"
-                  placeholder="Municipio, Departamento / País"
-                />
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Departamento de nacimiento</label>
+                <div class="relative">
+                  <select
+                    v-model="selectedDeptoNacimientoId"
+                    class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  >
+                    <option value="">Selecciona un departamento</option>
+                    <option v-for="d in departamentos" :key="d.id" :value="d.id">{{ d.nombre }}</option>
+                  </select>
+                  <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </div>
+              </div>
+              <div class="space-y-xs">
+                <label class="font-label-md text-label-md text-on-surface-variant">Municipio de nacimiento</label>
+                <div class="relative">
+                  <select
+                    v-model="municipioNacimiento"
+                    :disabled="!selectedDeptoNacimientoId"
+                    class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md appearance-none cursor-pointer focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {{ !selectedDeptoNacimientoId ? 'Primero selecciona un departamento' : 'Selecciona un municipio' }}
+                    </option>
+                    <option v-for="m in municipiosNacimiento" :key="m.id" :value="m.nombre">{{ m.nombre }}</option>
+                  </select>
+                  <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1600,13 +1592,14 @@ const save = async () => {
             <h4 class="font-bold text-label-sm text-outline tracking-wide pt-sm">Matrícula institucional actual *</h4>
             <div class="bg-surface-container-low p-md rounded-xl border border-outline-variant/20 space-y-md">
               <div class="space-y-xs">
-                <label class="font-label-md text-label-md text-on-surface-variant">Institución educativa *</label>
+                <label class="font-label-md text-label-md text-on-surface-variant">Institución educativa</label>
                 <input
                   v-model="studentsStore.draft.matricula.institucion_educativa"
-                  class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 dark:text-white"
+                  class="w-full px-4 py-3 bg-surface-variant border border-outline-variant rounded-input font-body-md text-on-surface-variant cursor-not-allowed focus:outline-none dark:text-white"
                   type="text"
-                  placeholder="Nombre de la institución educativa"
+                  readonly
                 />
+                <p class="text-label-sm text-on-surface-variant">Se toma automáticamente de la configuración institucional.</p>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-md">

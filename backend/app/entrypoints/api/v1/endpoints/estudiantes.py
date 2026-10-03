@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.adapters.db.models import (
+    ConfiguracionSistemaORM,
     EntornoHogarORM,
     EntornoSaludORM,
     EstudianteORM,
@@ -761,6 +762,13 @@ async def actualizar_trayectoria_educativa(
 # Matrícula Actual — GET / POST / PATCH
 # ---------------------------------------------------------------------------
 
+async def _nombre_institucion_configurada(db: AsyncSession) -> Optional[str]:
+    """Nombre de la institución según la configuración del sistema."""
+    result = await db.execute(select(ConfiguracionSistemaORM).limit(1))
+    config = result.scalars().first()
+    return config.nombre_institucion if config else None
+
+
 @router.get(
     "/{estudiante_id}/matricula",
     response_model=MatriculaActualResponse,
@@ -795,9 +803,14 @@ async def crear_matricula_actual(
 ) -> MatriculaActualResponse:
     await authorize_student_access(db, current_user, estudiante_id, "write")
 
+    datos = body.model_dump()
+    nombre_institucion = await _nombre_institucion_configurada(db)
+    if nombre_institucion:
+        datos["institucion_educativa"] = nombre_institucion
+
     orm = MatriculaActualORM(
         estudiante_id=estudiante_id,
-        **body.model_dump(),
+        **datos,
     )
     db.add(orm)
     await db.flush()
@@ -826,6 +839,11 @@ async def actualizar_matricula_actual(
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(matricula, field, value)
+
+    # La institución siempre es la configurada en el sistema.
+    nombre_institucion = await _nombre_institucion_configurada(db)
+    if nombre_institucion:
+        matricula.institucion_educativa = nombre_institucion
 
     await db.flush()
     await db.refresh(matricula)

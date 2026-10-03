@@ -120,7 +120,7 @@ Todos bajo el prefijo `/api/v1` (registrado en `main.py:242`).
 | `/api/v1/auth` | `auth.py` | `login`, `me`, `change-password`, `tour-completado`. Público / autenticado |
 | `/api/v1/estudiantes` | `estudiantes.py` | CRUD Anexo 1 + subrecursos `salud`, `hogar`, `trayectoria`, `matricula` + export/import `.openpiar`. Escritura: directivo o director de grupo |
 | `/api/v1/curriculum` | `curriculum.py` | Búsqueda DBA (`/dba`) y EBC (`/ebc`). Autenticado |
-| `/api/v1/gestion` | `gestion_escolar.py` | Sedes, docentes, directivos, áreas, asignaturas, grados, grupos, carga académica, periodos. Mutaciones: directivo |
+| `/api/v1/gestion` | `gestion_escolar.py` | Sedes, docentes, directivos, áreas, asignaturas, grados, grupos, carga académica, periodos. Mutaciones: directivo. La carga se edita por docente con `PUT /gestion/carga-academica/docente/{docente_id}` (reemplazo en lote multi-asignatura/multi-grupo) |
 | `/api/v1/piars` | `piars.py` | PIAR: CRUD, ajustes, generación IA, PMI, completitud, finalizar/reabrir/versionar, acta Anexo 3, evidencias, historial de auditoría, PDF. Autenticado |
 | `/api/v1/dashboard` | `dashboard.py` | Estadísticas institucionales agregadas. Autenticado |
 | `/api/v1/directorio` | `directorio.py` | Directorio de acudientes. Directivo o director de grupo |

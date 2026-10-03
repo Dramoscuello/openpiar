@@ -42,7 +42,10 @@ const areaForm = ref({ nombre: '' })
 const customAreaName = ref('')
 const asignaturaForm = ref({ nombre: '', area_id: '' })
 const grupoForm = ref({ nombre: '', grado_id: '', sede_id: '', director_id: '' })
-const cargaForm = ref({ docente_id: '', asignatura_id: '', grupo_ids: [] as string[] })
+const cargaForm = ref({
+  docente_id: '',
+  asignaciones: [] as Array<{ asignatura_id: string; grupo_ids: string[] }>,
+})
 const periodoForm = ref({ nombre: '', anio_lectivo: new Date().getFullYear(), fecha_inicio: '', fecha_fin: '' })
 
 const configForm = ref({ gemini_api_key: '', contexto_institucion: '' })
@@ -62,36 +65,42 @@ const puedeRegistrarDocente = computed(() => {
 })
 
 // Computed properties for grouping
-const groupedCargas = computed(() => {
+const cargasPorDocente = computed(() => {
   const groups = new Map<string, any>()
   for (const c of cargas.value) {
-    const key = `${c.docente_id}_${c.asignatura.id}`
-    if (!groups.has(key)) {
-      groups.set(key, {
-        key,
+    if (!groups.has(c.docente_id)) {
+      groups.set(c.docente_id, {
         docente_id: c.docente_id,
         docente_nombre: c.docente_nombre,
-        asignatura: c.asignatura,
-        grupos: [],
-        cargas: [] // Store original records
+        asignaturas: new Map<string, any>(),
+        cargas: [] as any[],
       })
     }
-    const group = groups.get(key)
-    // Avoid duplicate groups in case of DB inconsistency
-    if (!group.grupos.find((g: any) => g.id === c.grupo.id)) {
-      group.grupos.push(c.grupo)
-    }
+    const group = groups.get(c.docente_id)
     group.cargas.push(c)
+
+    if (!group.asignaturas.has(c.asignatura.id)) {
+      group.asignaturas.set(c.asignatura.id, { asignatura: c.asignatura, grupos: [] })
+    }
+    const asignatura = group.asignaturas.get(c.asignatura.id)
+    if (!asignatura.grupos.find((g: any) => g.id === c.grupo.id)) {
+      asignatura.grupos.push(c.grupo)
+    }
   }
-  // Sort groups naturally by degree/name for better UX
-  Array.from(groups.values()).forEach(group => {
-    group.grupos.sort((a: any, b: any) => {
-      const aName = `${a.grado} - ${a.nombre}`
-      const bName = `${b.grado} - ${b.nombre}`
-      return aName.localeCompare(bName)
+
+  return Array.from(groups.values()).map(group => {
+    const asignaturas: any[] = Array.from(group.asignaturas.values())
+    asignaturas.sort((a: any, b: any) => a.asignatura.nombre.localeCompare(b.asignatura.nombre))
+    asignaturas.forEach((a: any) => {
+      a.grupos.sort((x: any, y: any) => `${x.grado} - ${x.nombre}`.localeCompare(`${y.grado} - ${y.nombre}`))
     })
-  })
-  return Array.from(groups.values())
+    return {
+      docente_id: group.docente_id,
+      docente_nombre: group.docente_nombre,
+      cargas: group.cargas,
+      asignaturas,
+    }
+  }).sort((a, b) => a.docente_nombre.localeCompare(b.docente_nombre))
 })
 
 // Load all management data
@@ -471,21 +480,37 @@ const openEditGrupo = (grupo: any) => {
   showGrupoModal.value = true
 }
 
+const nuevaAsignacionCarga = () => ({
+  asignatura_id: '',
+  grupo_ids: [] as string[],
+})
+
 const openNewCarga = () => {
   isEditing.value = false
-  cargaForm.value = { docente_id: '', asignatura_id: '', grupo_ids: [] }
+  editingId.value = null
+  cargaForm.value = { docente_id: '', asignaciones: [nuevaAsignacionCarga()] }
   showCargaModal.value = true
 }
 
 const openEditCarga = (groupedCarga: any) => {
   isEditing.value = true
-  editingId.value = groupedCarga.key
+  editingId.value = groupedCarga.docente_id
   cargaForm.value = {
     docente_id: groupedCarga.docente_id,
-    asignatura_id: groupedCarga.asignatura.id,
-    grupo_ids: groupedCarga.grupos.map((g: any) => g.id)
+    asignaciones: groupedCarga.asignaturas.map((a: any) => ({
+      asignatura_id: a.asignatura.id,
+      grupo_ids: a.grupos.map((g: any) => g.id),
+    })),
   }
   showCargaModal.value = true
+}
+
+const agregarAsignacionCarga = () => {
+  cargaForm.value.asignaciones.push(nuevaAsignacionCarga())
+}
+
+const quitarAsignacionCarga = (index: number) => {
+  cargaForm.value.asignaciones.splice(index, 1)
 }
 
 const openNewPeriodo = () => {
@@ -789,70 +814,57 @@ const submitGrupo = async () => {
 
 const submitCarga = async () => {
   const f = cargaForm.value
-  if (!f.docente_id || !f.asignatura_id || f.grupo_ids.length === 0) {
-    errorMsg.value = 'Completa todos los campos y selecciona al menos un grupo.'
+  if (!f.docente_id) {
+    errorMsg.value = 'Selecciona un docente.'
     return
+  }
+  if (f.asignaciones.length === 0) {
+    errorMsg.value = 'Agrega al menos una asignatura.'
+    return
+  }
+  for (const asignacion of f.asignaciones) {
+    if (!asignacion.asignatura_id || asignacion.grupo_ids.length === 0) {
+      errorMsg.value = 'Cada asignatura debe tener el/los grupo(s) seleccionado(s).'
+      return
+    }
   }
 
   isSubmitting.value = true
   errorMsg.value = ''
+  successMsg.value = ''
 
   try {
-    const headers = {
-      'Authorization': `Bearer ${authStore.token}`,
-      'Content-Type': 'application/json'
+    // Fusiona asignaturas repetidas antes de enviar
+    const fusion: Record<string, string[]> = {}
+    for (const asignacion of f.asignaciones) {
+      const previos = fusion[asignacion.asignatura_id] || []
+      fusion[asignacion.asignatura_id] = Array.from(new Set([...previos, ...asignacion.grupo_ids]))
+    }
+    const payload = {
+      asignaciones: Object.entries(fusion).map(([asignatura_id, grupo_ids]) => ({
+        asignatura_id,
+        grupo_ids,
+      })),
     }
 
-    if (isEditing.value) {
-      const groupedCarga = groupedCargas.value.find(g => g.key === editingId.value)
-      if (!groupedCarga) throw new Error("Carga original no encontrada.")
+    const res = await fetch(`/api/v1/gestion/carga-academica/docente/${f.docente_id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+    const data = await handleResponse(res, 'Error al guardar la carga académica')
 
-      const oldGroupIds = groupedCarga.grupos.map((g: any) => g.id)
-      const newGroupIds = f.grupo_ids
-
-      const toAdd = newGroupIds.filter((id: string) => !oldGroupIds.includes(id))
-      const toRemove = oldGroupIds.filter((id: string) => !newGroupIds.includes(id))
-
-      // Delete removed
-      for (const removedGroupId of toRemove) {
-        const cargaRecord = groupedCarga.cargas.find((c: any) => c.grupo.id === removedGroupId)
-        if (cargaRecord) {
-          const delRes = await fetch(`/api/v1/gestion/carga-academica/${cargaRecord.id}`, { method: 'DELETE', headers })
-          if (delRes.ok) {
-            cargas.value = cargas.value.filter(c => c.id !== cargaRecord.id)
-          }
-        }
-      }
-
-      // Add new
-      for (const addedGroupId of toAdd) {
-        const payload = { docente_id: f.docente_id, asignatura_id: f.asignatura_id, grupo_id: addedGroupId }
-        const addRes = await fetch('/api/v1/gestion/carga-academica', { method: 'POST', headers, body: JSON.stringify(payload) })
-        if (addRes.ok) {
-          const data = await addRes.json()
-          cargas.value.push(data)
-        }
-      }
-
-    } else {
-      // Create new for all selected groups
-      for (const groupId of f.grupo_ids) {
-        const payload = { docente_id: f.docente_id, asignatura_id: f.asignatura_id, grupo_id: groupId }
-        const res = await fetch('/api/v1/gestion/carga-academica', { method: 'POST', headers, body: JSON.stringify(payload) })
-        if (res.ok) {
-          const data = await res.json()
-          cargas.value.push(data)
-        } else {
-          const errData = await res.json()
-          console.error("Error al asignar carga:", errData)
-          // We don't abort, just log. Some might succeed, some might fail if already exists.
-        }
-      }
-    }
+    cargas.value = cargas.value.filter((c: any) => c.docente_id !== f.docente_id)
+    cargas.value.push(...(data.asignaciones || []))
 
     showCargaModal.value = false
-    cargaForm.value = { docente_id: '', asignatura_id: '', grupo_ids: [] }
-    successMsg.value = isEditing.value ? 'Carga académica actualizada exitosamente.' : 'Carga académica asignada exitosamente.'
+    cargaForm.value = { docente_id: '', asignaciones: [nuevaAsignacionCarga()] }
+    successMsg.value = isEditing.value
+      ? `Carga actualizada: ${data.creadas} nueva(s), ${data.eliminadas} eliminada(s).`
+      : 'Carga académica asignada exitosamente.'
   } catch (err: any) {
     errorMsg.value = err.message || 'Error al procesar la carga'
   } finally {
@@ -905,31 +917,34 @@ const confirmDeleteAction = async () => {
   }
 }
 
-const deleteCarga = async (groupedKey: string, confirmed: boolean = false) => {
+const deleteCarga = async (docenteId: string, confirmed: boolean = false) => {
   if (!confirmed) {
-    promptDelete(groupedKey, '', 'carga', 'Eliminar asignación de carga', 'Se eliminará esta asignación de carga académica de manera permanente para todos los grupos seleccionados.')
+    promptDelete(docenteId, '', 'carga', 'Eliminar carga académica', 'Se eliminará toda la carga académica asignada a este docente (todas sus asignaturas y grupos).')
     return
   }
-  
-  const groupedCarga = groupedCargas.value.find(g => g.key === groupedKey)
+
+  const groupedCarga = cargasPorDocente.value.find(g => g.docente_id === docenteId)
   if (!groupedCarga) return
 
   isSubmitting.value = true
   errorMsg.value = ''
 
   try {
-    const headers = { 'Authorization': `Bearer ${authStore.token}` }
-    for (const cargaRecord of groupedCarga.cargas) {
-      await fetch(`/api/v1/gestion/carga-academica/${cargaRecord.id}`, {
-        method: 'DELETE',
-        headers
-      })
-      // Even if one fails, we proceed with others
+    const res = await fetch(`/api/v1/gestion/carga-academica/docente/${docenteId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({ asignaciones: [] }),
+    })
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}))
+      throw new Error(errData.detail || 'Error al eliminar la carga académica')
     }
-    
-    const idsToRemove = groupedCarga.cargas.map((c: any) => c.id)
-    cargas.value = cargas.value.filter(c => !idsToRemove.includes(c.id))
-    successMsg.value = 'Carga académica removida exitosamente.'
+
+    cargas.value = cargas.value.filter((c: any) => c.docente_id !== docenteId)
+    successMsg.value = 'Carga académica eliminada exitosamente.'
   } catch (err: any) {
     errorMsg.value = err.message || 'Error al eliminar la carga'
   } finally {
@@ -1664,45 +1679,46 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
               <thead>
                 <tr class="border-b border-outline-variant/30 bg-surface-container text-on-surface-variant text-label-sm font-bold">
                   <th class="py-4 px-md">Docente</th>
-                  <th class="py-4 px-md">Asignatura</th>
-                  <th class="py-4 px-md">Grado / Grupo</th>
-                  <th class="py-4 px-md">Sede</th>
+                  <th class="py-4 px-md">Asignaturas y grupos</th>
                   <th class="py-4 px-md text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-outline-variant/20 text-body-md text-on-surface">
-                <tr v-for="c in groupedCargas" :key="c.key" class="hover:bg-surface-container-low/40">
-                  <td class="py-4 px-md font-bold">{{ c.docente_nombre }}</td>
-                  <td class="py-4 px-md font-semibold text-primary">{{ c.asignatura.nombre }}</td>
+                <tr v-for="c in cargasPorDocente" :key="c.docente_id" class="hover:bg-surface-container-low/40">
+                  <td class="py-4 px-md font-bold align-top">{{ c.docente_nombre }}</td>
                   <td class="py-4 px-md">
-                    <div class="flex flex-wrap gap-1">
-                      <span v-for="g in c.grupos" :key="g.id" class="bg-surface-container-high px-2 py-1 rounded-md text-sm font-medium border border-outline-variant/50">
-                        {{ g.grado }} - {{ g.nombre }}
-                      </span>
+                    <div class="space-y-sm">
+                      <div v-for="a in c.asignaturas" :key="a.asignatura.id" class="space-y-xs">
+                        <div class="font-semibold text-primary">{{ a.asignatura.nombre }}</div>
+                        <div class="flex flex-wrap gap-1">
+                          <span v-for="g in a.grupos" :key="g.id" class="bg-surface-container-high px-2 py-1 rounded-md text-sm font-medium border border-outline-variant/50">
+                            {{ g.grado }} - {{ g.nombre }} <span class="text-outline">({{ g.sede?.nombre }})</span>
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td class="py-4 px-md text-outline">
-                    <span v-if="c.grupos.length > 0">{{ c.grupos[0].sede?.nombre || 'Varias' }}</span>
-                  </td>
-                  <td class="py-4 px-md text-right flex justify-end gap-xs">
-                    <button
-                      @click="openEditCarga(c)"
-                      class="text-primary hover:bg-primary/10 p-2 rounded-full cursor-pointer transition-all"
-                      title="Editar Carga Académica"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">edit</span>
-                    </button>
-                    <button
-                      @click="deleteCarga(c.key)"
-                      class="text-error hover:bg-error/10 p-2 rounded-full cursor-pointer transition-all"
-                      title="Eliminar asignación de carga"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
+                  <td class="py-4 px-md text-right align-top">
+                    <div class="flex justify-end gap-xs">
+                      <button
+                        @click="openEditCarga(c)"
+                        class="text-primary hover:bg-primary/10 p-2 rounded-full cursor-pointer transition-all"
+                        title="Editar carga académica del docente"
+                      >
+                        <span class="material-symbols-outlined text-[20px]">edit</span>
+                      </button>
+                      <button
+                        @click="deleteCarga(c.docente_id)"
+                        class="text-error hover:bg-error/10 p-2 rounded-full cursor-pointer transition-all"
+                        title="Eliminar toda la carga del docente"
+                      >
+                        <span class="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
-                <tr v-if="groupedCargas.length === 0">
-                  <td colspan="5" class="py-8 text-center text-outline">No hay carga académica asignada.</td>
+                <tr v-if="cargasPorDocente.length === 0">
+                  <td colspan="3" class="py-8 text-center text-outline">No hay carga académica asignada.</td>
                 </tr>
               </tbody>
             </table>
@@ -2229,12 +2245,12 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
 
     <!-- MODAL: CARGA ACADÉMICA -->
     <div v-if="showCargaModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-surface-container-lowest max-w-[448px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
+      <div class="bg-surface-container-lowest max-w-[560px] w-full rounded-xxl p-md border border-outline-variant/30 shadow-lg space-y-md">
         <h3 class="font-headline-md text-[20px] text-primary flex items-center gap-xs">
           <span class="material-symbols-outlined">assignment_turned_in</span>
           {{ isEditing ? 'Editar carga académica' : 'Asignar carga académica' }}
         </h3>
-        <div class="space-y-sm">
+        <div class="space-y-sm max-h-[65vh] overflow-y-auto pr-1">
           <div class="space-y-xs">
             <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar docente *</label>
             <select v-model="cargaForm.docente_id" :disabled="isEditing" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none disabled:opacity-60 disabled:bg-surface-variant dark:text-white">
@@ -2243,24 +2259,50 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             </select>
           </div>
 
-          <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar asignatura *</label>
-            <select v-model="cargaForm.asignatura_id" :disabled="isEditing" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none disabled:opacity-60 disabled:bg-surface-variant dark:text-white">
-              <option value="">Selecciona asignatura...</option>
-              <option v-for="a in asignaturas" :key="a.id" :value="a.id">{{ a.nombre }}</option>
-            </select>
+          <div
+            v-for="(asignacion, index) in cargaForm.asignaciones"
+            :key="index"
+            class="border border-outline-variant/40 rounded-xl p-sm space-y-sm bg-surface"
+          >
+            <div class="flex items-end gap-sm">
+              <div class="space-y-xs flex-1">
+                <label class="font-label-md text-label-md text-on-surface-variant">Asignatura *</label>
+                <select v-model="asignacion.asignatura_id" class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input focus:border-primary focus:outline-none dark:text-white">
+                  <option value="">Selecciona asignatura...</option>
+                  <option v-for="a in asignaturas" :key="a.id" :value="a.id">{{ a.nombre }}</option>
+                </select>
+              </div>
+              <button
+                v-if="cargaForm.asignaciones.length > 1"
+                type="button"
+                @click="quitarAsignacionCarga(index)"
+                class="text-error hover:bg-error/10 p-2.5 rounded-lg cursor-pointer transition-colors"
+                title="Quitar asignatura"
+              >
+                <span class="material-symbols-outlined text-[20px]">delete</span>
+              </button>
+            </div>
+
+            <div class="space-y-xs">
+              <label class="font-label-md text-label-md text-on-surface-variant">Grupos *</label>
+              <div class="max-h-[160px] overflow-y-auto border border-outline-variant rounded-input bg-surface p-2">
+                <label v-for="g in grupos" :key="g.id" class="flex items-center gap-2 p-2 hover:bg-surface-container-low cursor-pointer rounded-md">
+                  <input type="checkbox" :value="g.id" v-model="asignacion.grupo_ids" class="w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2">
+                  <span class="text-body-md text-on-surface">{{ g.grado }} - {{ g.nombre }} <span class="text-outline text-sm">({{ g.sede.nombre }})</span></span>
+                </label>
+              </div>
+              <p class="text-label-sm text-on-surface-variant">Puedes seleccionar varios grupos para esta asignatura.</p>
+            </div>
           </div>
 
-          <div class="space-y-xs">
-            <label class="font-label-md text-label-md text-on-surface-variant">Seleccionar grupo / grado *</label>
-            <div class="max-h-[200px] overflow-y-auto border border-outline-variant rounded-input bg-surface p-2">
-              <label v-for="g in grupos" :key="g.id" class="flex items-center gap-2 p-2 hover:bg-surface-container-low cursor-pointer rounded-md">
-                <input type="checkbox" :value="g.id" v-model="cargaForm.grupo_ids" class="w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2">
-                <span class="text-body-md text-on-surface">{{ g.grado }} - {{ g.nombre }} <span class="text-outline text-sm">({{ g.sede.nombre }})</span></span>
-              </label>
-            </div>
-            <p class="text-label-sm text-on-surface-variant">Puedes seleccionar múltiples grupos.</p>
-          </div>
+          <button
+            type="button"
+            @click="agregarAsignacionCarga"
+            class="w-full py-2.5 border border-dashed border-primary/50 text-primary rounded-xl font-label-md text-label-md hover:bg-primary/5 cursor-pointer flex items-center justify-center gap-xs transition-colors"
+          >
+            <span class="material-symbols-outlined text-[20px]">add</span>
+            Agregar asignatura
+          </button>
         </div>
         <div class="flex justify-end gap-sm pt-sm border-t border-outline-variant/30">
           <button @click="showCargaModal = false" class="px-lg py-3 border border-outline hover:bg-surface-container-low rounded-input font-label-md text-label-md cursor-pointer transition-all active:scale-95">Cancelar</button>

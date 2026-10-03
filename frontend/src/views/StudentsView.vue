@@ -346,8 +346,9 @@ async function ejecutarImportar() {
                   </td>
                   <td class="py-4 px-md text-right">
                     <div class="flex items-center justify-end gap-xs">
-                      <!-- Ver registro (solo lectura para docentes) -->
+                      <!-- Ver registro (solo lectura para docentes sin gestión) -->
                       <button
+                        v-if="!puedeGestionar(student)"
                         @click="goToViewStudent(student.id)"
                         class="p-2 text-outline hover:bg-surface-container-high rounded-full transition-all cursor-pointer"
                         title="Ver registro pedagógico (Anexo 1)"

@@ -192,6 +192,23 @@ class CargaAcademicaResponse(BaseModel):
         from_attributes = True
 
 
+class CargaDocenteAsignacion(BaseModel):
+    asignatura_id: uuid.UUID
+    grupo_ids: List[uuid.UUID] = []
+
+
+class CargaDocenteUpdate(BaseModel):
+    """Reemplaza la carga completa de un docente (multi-asignatura, multi-grupo)."""
+    asignaciones: List[CargaDocenteAsignacion] = []
+
+
+class CargaDocenteUpdateResponse(BaseModel):
+    docente_id: uuid.UUID
+    creadas: int
+    eliminadas: int
+    asignaciones: List[CargaAcademicaResponse]
+
+
 # ---------------------------------------------------------------------------
 # Sedes Endpoints
 # ---------------------------------------------------------------------------
@@ -1072,48 +1089,57 @@ async def delete_grupo(
 # Carga Académica Endpoints
 # ---------------------------------------------------------------------------
 
+def calcular_cambios_carga(
+    actuales: set[tuple[uuid.UUID, uuid.UUID]],
+    deseadas: set[tuple[uuid.UUID, uuid.UUID]],
+) -> tuple[set[tuple[uuid.UUID, uuid.UUID]], set[tuple[uuid.UUID, uuid.UUID]]]:
+    """Devuelve (pares a eliminar, pares a crear) entre la carga actual y la deseada."""
+    return actuales - deseadas, deseadas - actuales
+
+
+def _serializar_carga(c: CargaAcademicaORM) -> CargaAcademicaResponse:
+    director_dict = None
+    if c.grupo.director:
+        director_dict = {
+            "id": str(c.grupo.director.id),
+            "nombre": c.grupo.director.nombre,
+            "apellido": c.grupo.director.apellido,
+            "email": c.grupo.director.email,
+        }
+
+    return CargaAcademicaResponse(
+        id=c.id,
+        docente_id=c.docente_id,
+        docente_nombre=f"{c.docente.nombre} {c.docente.apellido}",
+        asignatura=AsignaturaResponse.from_orm(c.asignatura),
+        grupo=GrupoResponse(
+            id=c.grupo.id,
+            nombre=c.grupo.nombre,
+            grado=c.grupo.grado.nombre,
+            sede=SedeResponse.from_orm(c.grupo.sede),
+            director=director_dict,
+        ),
+    )
+
+
+_OPCIONES_CARGA = (
+    selectinload(CargaAcademicaORM.docente),
+    selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
+    selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
+    selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
+    selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado),
+)
+
 @router.get("/carga-academica", response_model=List[CargaAcademicaResponse])
 async def list_carga_academica(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
-        select(CargaAcademicaORM)
-        .options(
-            selectinload(CargaAcademicaORM.docente),
-            selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
-        )
+        select(CargaAcademicaORM).options(*_OPCIONES_CARGA)
     )
     cargas = result.scalars().all()
-    
-    response = []
-    for c in cargas:
-        director_dict = None
-        if c.grupo.director:
-            director_dict = {
-                "id": str(c.grupo.director.id),
-                "nombre": c.grupo.director.nombre,
-                "apellido": c.grupo.director.apellido,
-                "email": c.grupo.director.email
-            }
-        
-        response.append(CargaAcademicaResponse(
-            id=c.id,
-            docente_id=c.docente_id,
-            docente_nombre=f"{c.docente.nombre} {c.docente.apellido}",
-            asignatura=AsignaturaResponse.from_orm(c.asignatura),
-            grupo=GrupoResponse(
-                id=c.grupo.id,
-                nombre=c.grupo.nombre,
-                grado=c.grupo.grado.nombre,
-                sede=SedeResponse.from_orm(c.grupo.sede),
-                director=director_dict
-            )
-        ))
-    return response
+    return [_serializar_carga(c) for c in cargas]
 
 @router.post("/carga-academica", response_model=CargaAcademicaResponse, status_code=status.HTTP_201_CREATED)
 async def create_carga_academica(
@@ -1166,38 +1192,10 @@ async def create_carga_academica(
     result = await db.execute(
         select(CargaAcademicaORM)
         .where(CargaAcademicaORM.id == carga.id)
-        .options(
-            selectinload(CargaAcademicaORM.docente),
-            selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
-        )
+        .options(*_OPCIONES_CARGA)
     )
     c = result.scalars().one()
-    
-    director_dict = None
-    if c.grupo.director:
-        director_dict = {
-            "id": str(c.grupo.director.id),
-            "nombre": c.grupo.director.nombre,
-            "apellido": c.grupo.director.apellido,
-            "email": c.grupo.director.email
-        }
-        
-    return CargaAcademicaResponse(
-        id=c.id,
-        docente_id=c.docente_id,
-        docente_nombre=f"{c.docente.nombre} {c.docente.apellido}",
-        asignatura=AsignaturaResponse.from_orm(c.asignatura),
-        grupo=GrupoResponse(
-            id=c.grupo.id,
-            nombre=c.grupo.nombre,
-            grado=c.grupo.grado.nombre,
-            sede=SedeResponse.from_orm(c.grupo.sede),
-            director=director_dict
-        )
-    )
+    return _serializar_carga(c)
 
 @router.put("/carga-academica/{carga_id}", response_model=CargaAcademicaResponse)
 async def update_carga_academica(
@@ -1259,38 +1257,96 @@ async def update_carga_academica(
     result = await db.execute(
         select(CargaAcademicaORM)
         .where(CargaAcademicaORM.id == carga.id)
-        .options(
-            selectinload(CargaAcademicaORM.docente),
-            selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.sede),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.director),
-            selectinload(CargaAcademicaORM.grupo).selectinload(GrupoORM.grado)
-        )
+        .options(*_OPCIONES_CARGA)
     )
     c = result.scalars().one()
-    
-    director_dict = None
-    if c.grupo.director:
-        director_dict = {
-            "id": str(c.grupo.director.id),
-            "nombre": c.grupo.director.nombre,
-            "apellido": c.grupo.director.apellido,
-            "email": c.grupo.director.email
-        }
-        
-    return CargaAcademicaResponse(
-        id=c.id,
-        docente_id=c.docente_id,
-        docente_nombre=f"{c.docente.nombre} {c.docente.apellido}",
-        asignatura=AsignaturaResponse.from_orm(c.asignatura),
-        grupo=GrupoResponse(
-            id=c.grupo.id,
-            nombre=c.grupo.nombre,
-            grado=c.grupo.grado.nombre,
-            sede=SedeResponse.from_orm(c.grupo.sede),
-            director=director_dict
+    return _serializar_carga(c)
+
+
+@router.put(
+    "/carga-academica/docente/{docente_id}",
+    response_model=CargaDocenteUpdateResponse,
+)
+async def replace_carga_docente(
+    docente_id: uuid.UUID,
+    body: CargaDocenteUpdate,
+    current_user: DirectivoUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Reemplaza la carga completa de un docente en una sola transacción.
+
+    Permite asignar varias asignaturas, cada una en varios grupos, sin crear
+    una fila por combinación. Los pares (asignatura, grupo) repetidos o ya
+    existentes se ignoran.
+    """
+    docente = (await db.execute(select(UsuarioORM).where(UsuarioORM.id == docente_id))).scalars().first()
+    if not docente:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El docente no existe.")
+
+    deseadas: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    for asignacion in body.asignaciones:
+        for grupo_id in set(asignacion.grupo_ids):
+            deseadas.add((asignacion.asignatura_id, grupo_id))
+
+    if deseadas:
+        asignatura_ids = {asignatura_id for asignatura_id, _ in deseadas}
+        grupo_ids = {grupo_id for _, grupo_id in deseadas}
+
+        asignaturas_validas = set(
+            (await db.execute(select(AsignaturaORM.id).where(AsignaturaORM.id.in_(asignatura_ids)))).scalars().all()
         )
+        if asignaturas_validas != asignatura_ids:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Una o más asignaturas no existen.",
+            )
+
+        grupos_validos = set(
+            (await db.execute(select(GrupoORM.id).where(GrupoORM.id.in_(grupo_ids)))).scalars().all()
+        )
+        if grupos_validos != grupo_ids:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Uno o más grupos no existen.",
+            )
+
+    cargas_actuales = (
+        await db.execute(select(CargaAcademicaORM).where(CargaAcademicaORM.docente_id == docente_id))
+    ).scalars().all()
+    actuales = {(c.asignatura_id, c.grupo_id): c for c in cargas_actuales}
+
+    a_eliminar, a_crear = calcular_cambios_carga(set(actuales.keys()), deseadas)
+
+    if a_eliminar:
+        ids_eliminar = [actuales[par].id for par in a_eliminar]
+        await db.execute(delete(CargaAcademicaORM).where(CargaAcademicaORM.id.in_(ids_eliminar)))
+
+    for asignatura_id, grupo_id in a_crear:
+        db.add(
+            CargaAcademicaORM(
+                docente_id=docente_id,
+                asignatura_id=asignatura_id,
+                grupo_id=grupo_id,
+            )
+        )
+
+    await db.flush()
+
+    result = await db.execute(
+        select(CargaAcademicaORM)
+        .where(CargaAcademicaORM.docente_id == docente_id)
+        .options(*_OPCIONES_CARGA)
     )
+    cargas = result.scalars().all()
+
+    return CargaDocenteUpdateResponse(
+        docente_id=docente_id,
+        creadas=len(a_crear),
+        eliminadas=len(a_eliminar),
+        asignaciones=[_serializar_carga(c) for c in cargas],
+    )
+
 
 @router.delete("/carga-academica/{carga_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_carga_academica(
