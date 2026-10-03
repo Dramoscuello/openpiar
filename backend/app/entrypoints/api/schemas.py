@@ -699,12 +699,16 @@ class ContactoDirectorioOut(BaseModel):
     correo: Optional[str] = None
     numero_documento: Optional[str] = None
     acudiente_principal: bool = False
-    estudiantes: list[EstudianteDirectorioOut] = []
+    estudiantes: list[EstudianteDirectorioOut] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 
 class DirectorioResponse(BaseModel):
-    contactos: list[ContactoDirectorioOut]
+    contactos: list[ContactoDirectorioOut] = Field(default_factory=list)
+    total: int = 0
+    skip: int = 0
+    limit: int = 50
+    has_next: bool = False
 
 
 # ---------------------------------------------------------------------------

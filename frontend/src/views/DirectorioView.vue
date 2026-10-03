@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 OpenPiar Contributors — GPL-3.0 -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { descargarBlob, nombreDesdeRespuesta } from '../api/download'
 import { useAuthStore } from '../stores/auth'
 
@@ -24,9 +24,25 @@ interface ContactoInfo {
   estudiantes: EstudianteInfo[]
 }
 
+interface DirectorioData {
+  contactos: ContactoInfo[]
+  total: number
+  skip: number
+  limit: number
+  has_next: boolean
+}
+
 const contactos = ref<ContactoInfo[]>([])
+const total = ref(0)
+const skip = ref(0)
+const limit = 25
+const busqueda = ref('')
+const busquedaAplicada = ref('')
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const puedeRetroceder = computed(() => skip.value > 0)
+const puedeAvanzar = computed(() => skip.value + contactos.value.length < total.value)
 
 const expandedContactos = ref<Set<number>>(new Set())
 const sharingIndex = ref<number | null>(null)
@@ -42,24 +58,56 @@ const rolLabels: Record<string, string> = {
   cuidador: 'Cuidador(a)',
 }
 
-async function fetchDirectorio() {
+async function fetchDirectorio(offset = skip.value) {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch('/api/v1/directorio', {
+    const params = new URLSearchParams({
+      skip: String(offset),
+      limit: String(limit),
+    })
+    if (busquedaAplicada.value.trim()) {
+      params.set('q', busquedaAplicada.value.trim())
+    }
+
+    const res = await fetch(`/api/v1/directorio?${params.toString()}`, {
       headers: { Authorization: `Bearer ${authStore.token}` },
     })
     if (!res.ok) {
       const err = await res.json()
       throw new Error(err.detail || 'Error al cargar el directorio')
     }
-    const data = await res.json()
+    const data = await res.json() as DirectorioData
     contactos.value = data.contactos || []
+    total.value = data.total ?? contactos.value.length
+    skip.value = data.skip ?? offset
+    expandedContactos.value.clear()
   } catch (e: any) {
     error.value = e.message
   } finally {
     loading.value = false
   }
+}
+
+function buscarDirectorio() {
+  busquedaAplicada.value = busqueda.value
+  skip.value = 0
+  fetchDirectorio(0)
+}
+
+function limpiarBusqueda() {
+  busqueda.value = ''
+  busquedaAplicada.value = ''
+  skip.value = 0
+  fetchDirectorio(0)
+}
+
+function paginaAnterior() {
+  if (puedeRetroceder.value) fetchDirectorio(Math.max(0, skip.value - limit))
+}
+
+function paginaSiguiente() {
+  if (puedeAvanzar.value) fetchDirectorio(skip.value + limit)
 }
 
 function toggleExpand(index: number) {
@@ -148,9 +196,36 @@ onMounted(() => {
         <h2 class="font-headline-md text-headline-md text-on-surface">Directorio de padres y acudientes</h2>
       </div>
       <div class="flex items-center gap-xs text-label-sm text-outline">
-        Total: <span class="font-bold text-on-surface">{{ contactos.length }}</span> contactos
+        Total: <span class="font-bold text-on-surface">{{ total }}</span> contactos
       </div>
     </div>
+
+    <form @submit.prevent="buscarDirectorio" class="flex flex-col sm:flex-row gap-sm items-stretch sm:items-center">
+      <label for="directorio-busqueda" class="sr-only">Buscar en el directorio</label>
+      <input
+        id="directorio-busqueda"
+        v-model="busqueda"
+        type="search"
+        placeholder="Buscar acudiente, estudiante o documento"
+        class="flex-1 min-w-0 bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-md py-sm text-body-md text-on-surface outline-none focus:border-primary"
+      />
+      <div class="flex gap-xs">
+        <button
+          type="submit"
+          class="bg-primary text-white px-md py-sm rounded-xl font-label-md cursor-pointer"
+        >
+          Buscar
+        </button>
+        <button
+          v-if="busquedaAplicada"
+          type="button"
+          @click="limpiarBusqueda"
+          class="border border-outline-variant/50 text-on-surface-variant px-md py-sm rounded-xl font-label-md cursor-pointer"
+        >
+          Limpiar
+        </button>
+      </div>
+    </form>
 
     <p class="text-label-sm text-outline flex items-center gap-xs">
       <span class="material-symbols-outlined text-[16px]">lock</span>
@@ -166,7 +241,7 @@ onMounted(() => {
       <span class="material-symbols-outlined text-[48px] text-error">error</span>
       <p class="text-error mt-sm">{{ error }}</p>
       <button
-        @click="fetchDirectorio"
+        @click="() => fetchDirectorio(0)"
         class="mt-md bg-primary text-white px-lg py-2 rounded-xl font-label-md cursor-pointer"
       >
         Reintentar
@@ -293,6 +368,29 @@ onMounted(() => {
             </template>
           </tbody>
         </table>
+      </div>
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-sm p-md border-t border-outline-variant/30 text-label-sm text-outline">
+        <span>
+          Mostrando {{ skip + 1 }}-{{ Math.min(skip + contactos.length, total) }} de {{ total }} contactos
+        </span>
+        <div class="flex gap-xs">
+          <button
+            type="button"
+            :disabled="!puedeRetroceder || loading"
+            @click="paginaAnterior"
+            class="border border-outline-variant/50 text-on-surface-variant px-md py-sm rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            :disabled="!puedeAvanzar || loading"
+            @click="paginaSiguiente"
+            class="border border-outline-variant/50 text-on-surface-variant px-md py-sm rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Siguiente
+          </button>
+        </div>
       </div>
     </div>
   </div>

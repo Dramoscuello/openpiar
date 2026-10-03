@@ -160,6 +160,14 @@ def subquery_grupos_con_acceso(current_user: Usuario) -> Optional[Select]:
     )
 
 
+def subquery_grupos_dirigidos(current_user: Usuario) -> Optional[Select]:
+    """IDs de los grupos dirigidos por el usuario para consultas institucionales."""
+    if current_user.rol.es_directivo:
+        return None
+
+    return select(GrupoORM.id).where(GrupoORM.director_id == current_user.id)
+
+
 async def _relacion_con_grupo(
     db: AsyncSession,
     current_user: Usuario,
