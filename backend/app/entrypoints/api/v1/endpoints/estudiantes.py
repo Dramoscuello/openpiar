@@ -15,7 +15,7 @@ import uuid
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, Response, UploadFile, File, Form
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -30,6 +30,7 @@ from app.adapters.db.models import (
     GradoORM,
 )
 from app.adapters.db.session import get_db
+from app.core.audit import registrar_acceso_sensible
 from app.core.exceptions import EstudianteNoEncontradoError, EstudianteYaRegistradoError
 from app.entrypoints.api.authorization import (
     authorize_group_access,
@@ -421,6 +422,7 @@ async def actualizar_estudiante(
 )
 async def get_entorno_salud(
     estudiante_id: uuid.UUID,
+    request: Request,
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> EntornoSaludResponse:
@@ -431,6 +433,13 @@ async def get_entorno_salud(
     salud = result.scalars().first()
     if not salud:
         raise HTTPException(status_code=404, detail="Entorno de salud no encontrado.")
+    registrar_acceso_sensible(
+        request,
+        usuario_id=current_user.id,
+        estudiante_id=estudiante_id,
+        recurso="salud",
+        accion="leer",
+    )
     return EntornoSaludResponse.model_validate(salud)
 
 
@@ -538,6 +547,7 @@ async def subir_soporte_medico(
 )
 async def descargar_soporte_medico(
     estudiante_id: uuid.UUID,
+    request: Request,
     current_user: CurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -551,7 +561,15 @@ async def descargar_soporte_medico(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Soporte médico no encontrado para este estudiante.",
         )
-        
+
+    registrar_acceso_sensible(
+        request,
+        usuario_id=current_user.id,
+        estudiante_id=estudiante_id,
+        recurso="soporte_medico",
+        accion="descargar",
+    )
+
     return Response(
         content=salud.soporte_medico_archivo,
         media_type="application/pdf",

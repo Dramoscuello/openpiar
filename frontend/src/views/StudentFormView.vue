@@ -600,9 +600,20 @@ const save = async () => {
         </div>
 
         <!-- Modo solo lectura -->
-        <div v-if="soloLectura" class="p-sm bg-blue-50 text-blue-900 rounded-xl text-body-md border border-blue-200 flex gap-xs items-start">
+        <div v-if="soloLectura" class="p-sm bg-blue-50 text-blue-900 rounded-xl text-body-md border border-blue-200 flex flex-wrap items-center gap-sm">
           <span class="material-symbols-outlined">visibility</span>
-          <span>Solo lectura: puedes consultar el expediente, pero únicamente el director de este grupo o un directivo pueden editarlo.</span>
+          <span class="flex-1">Solo lectura: puedes consultar el expediente, pero únicamente el director de este grupo o un directivo pueden editarlo.</span>
+          <button
+            v-if="studentsStore.draft.salud.soporte_medico_nombre"
+            type="button"
+            @click="downloadMedicalSupport"
+            :disabled="isDownloadingSupport"
+            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-300 bg-white text-blue-900 font-bold text-label-sm cursor-pointer hover:bg-blue-100 disabled:opacity-50 transition-colors"
+          >
+            <span v-if="isDownloadingSupport" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+            <span v-else class="material-symbols-outlined text-[18px]">download</span>
+            Descargar soporte médico
+          </button>
         </div>
 
         <!-- Form Cards by Step -->
@@ -1035,7 +1046,7 @@ const save = async () => {
                         {{ studentsStore.draft.salud.soporte_medico_nombre }}
                       </span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div v-if="!soloLectura" class="flex items-center gap-2">
                       <button
                         type="button"
                         @click="downloadMedicalSupport"
