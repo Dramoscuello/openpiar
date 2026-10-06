@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.db.models import ConfiguracionSistemaORM
 from app.adapters.db.session import get_db
+from app.core.gemini_crypto import encrypt_gemini_key
 from app.entrypoints.api.dependencies import DirectivoUser
 from app.entrypoints.api.schemas import (
     ActualizarConfiguracionRequest,
@@ -33,7 +34,7 @@ def _build_response(config: ConfiguracionSistemaORM) -> ConfiguracionSistemaResp
         telefono_contacto=config.telefono_contacto,
         correo_contacto=config.correo_contacto,
         nombre_rector=config.nombre_rector,
-        gemini_api_key=config.gemini_api_key,
+        tiene_gemini_key=bool(config.gemini_api_key),
         contexto_institucion=config.contexto_institucion,
         pei_modelo_pedagogico=config.pei_modelo_pedagogico,
     )
@@ -84,11 +85,21 @@ async def update_configuracion(
             detail="Configuración del sistema no encontrada.",
         )
 
-    if body.gemini_api_key is not None:
-        config.gemini_api_key = body.gemini_api_key or None
+    cambios = body.model_dump(exclude_unset=True)
+    if "gemini_api_key" in cambios:
+        api_key = cambios["gemini_api_key"]
+        try:
+            config.gemini_api_key = (
+                encrypt_gemini_key(api_key) if api_key and api_key.strip() else None
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="No se pudo proteger la configuración de IA.",
+            ) from exc
 
-    if body.contexto_institucion is not None:
-        config.contexto_institucion = body.contexto_institucion
+    if "contexto_institucion" in cambios:
+        config.contexto_institucion = cambios["contexto_institucion"]
 
     await db.flush()
 

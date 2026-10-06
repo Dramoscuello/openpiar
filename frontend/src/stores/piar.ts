@@ -27,6 +27,7 @@ export const usePiarStore = defineStore('piar', () => {
       } else if (response.status === 404) {
         activePiar.value = null
       } else {
+        activePiar.value = null
         throw new Error('Error al obtener PIAR')
       }
     } catch (e: any) {
@@ -69,7 +70,14 @@ export const usePiarStore = defineStore('piar', () => {
     }
   }
 
-  async function generateAIAjustes(barreras: string, objetivos: string, area: string, instrucciones: string = '') {
+  async function generateAIAjustes(
+    barreras: string,
+    objetivos: string,
+    area: string,
+    instrucciones: string = '',
+    asignaturaId: string | null = null,
+    periodoId: number | null = null,
+  ) {
     if (!activePiar.value) throw new Error('No hay PIAR activo')
     
     isGeneratingAI.value = true
@@ -86,6 +94,8 @@ export const usePiarStore = defineStore('piar', () => {
           barreras_evidenciadas: barreras,
           objetivos_propositos: objetivos,
           area: area,
+          asignatura_id: asignaturaId,
+          periodo_id: periodoId,
           instrucciones_adicionales: instrucciones
         })
       })

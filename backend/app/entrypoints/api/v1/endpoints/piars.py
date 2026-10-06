@@ -1,18 +1,21 @@
 # Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
 import uuid
-import json
 from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status, Response, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-import google.generativeai as genai          # SDK legacy — usado solo en /generar_ia
-from google import genai as genai_new        # SDK nuevo — usado en /generar_plan_ia
-from google.genai import types as genai_types
-
 from app.core.config import get_settings
+from app.core.gemini_privacy import sanitizar_texto_gemini
 from app.core.pdf_security import nombre_archivo_piar, proteger_pdf
+from app.adapters.ai.gemini_service import (
+    GeminiConfigurationError,
+    GeminiQuotaError,
+    GeminiService,
+    GeminiServiceError,
+    GeminiTimeoutError,
+)
 from app.adapters.db.session import get_db
 from app.entrypoints.api.authorization import (
     authorize_piar_access,
@@ -189,6 +192,72 @@ def _exigir_piar_editable(piar: PiarORM) -> None:
             status_code=409,
             detail="El PIAR está finalizado. Debe reabrirse para crear una nueva versión.",
         )
+
+
+async def _sincronizar_coberturas_periodo(
+    db: AsyncSession,
+    piar: PiarORM,
+    periodo: Optional[PeriodoAcademicoORM],
+) -> None:
+    """Alinea la cobertura congelada del periodo con la carga actual del grupo.
+
+    Inserta asignaturas que hoy tienen docente y no están en el PIAR, y
+    actualiza el docente solo cuando la cobertura aún no tiene ajustes, para no
+    perder historial ni la visibilidad del docente anterior. No elimina filas.
+    """
+    if periodo is None or _estado_periodo(piar, periodo.id) == "firmado":
+        return
+
+    estudiante = getattr(piar, "__dict__", {}).get("estudiante")
+    grupo_id = getattr(estudiante, "grupo_id", None) if estudiante else None
+    if grupo_id is None:
+        return
+
+    resultado = await db.execute(
+        select(CargaAcademicaORM)
+        .where(CargaAcademicaORM.grupo_id == grupo_id)
+        .options(
+            selectinload(CargaAcademicaORM.docente),
+            selectinload(CargaAcademicaORM.asignatura).selectinload(AsignaturaORM.area),
+        )
+    )
+    cargas = resultado.scalars().all()
+
+    existentes = {
+        item.asignatura_id: item
+        for item in piar.asignaturas_estado
+        if item.periodo_id == periodo.id
+    }
+
+    for carga in cargas:
+        asignatura = carga.asignatura
+        docente = carga.docente
+        if asignatura is None or docente is None:
+            continue
+
+        nombre_docente = f"{docente.nombre} {docente.apellido}"
+        actual = existentes.get(asignatura.id)
+        if actual is None:
+            cobertura = PiarAsignaturaORM(
+                piar_id=piar.id,
+                periodo_id=periodo.id,
+                asignatura_id=asignatura.id,
+                docente_id=docente.id,
+                nombre_asignatura=asignatura.nombre,
+                area_nombre=asignatura.area.nombre if asignatura.area else None,
+                docente_nombre=nombre_docente,
+                estado="pendiente",
+            )
+            db.add(cobertura)
+            piar.asignaturas_estado.append(cobertura)
+            existentes[asignatura.id] = cobertura
+        elif actual.docente_id != docente.id and actual.estado != "con_ajuste":
+            actual.docente_id = docente.id
+            actual.docente_nombre = nombre_docente
+            actual.nombre_asignatura = asignatura.nombre
+            actual.area_nombre = asignatura.area.nombre if asignatura.area else None
+
+    await db.flush()
 
 
 def _buscar_cobertura_asignatura(
@@ -492,15 +561,98 @@ async def get_gemini_key(db: AsyncSession) -> str:
     )
 
 
-def _texto_ia(valor) -> str:
-    """Normaliza texto opcional para los prompts de IA; ignora vacíos y serializa JSON."""
-    if valor is None:
-        return ""
-    if isinstance(valor, str):
-        return valor.strip()
-    if isinstance(valor, (dict, list)):
-        return json.dumps(valor, ensure_ascii=False, default=str) if valor else ""
-    return str(valor).strip()
+async def _autorizar_generacion_ia(
+    db: AsyncSession,
+    current_user: CurrentUser,
+    piar_id: uuid.UUID,
+    piar: PiarORM,
+    data,
+) -> None:
+    """Limita la generación a dirección o a quien imparte la asignatura.
+
+    La cobertura se resuelve por `asignatura_id` (preferido), por nombre en el
+    periodo activo y, como último recurso, por cualquier cobertura del propio
+    docente en el PIAR. Así no depende de un área desactualizada del formulario.
+    """
+    cobertura = None
+    if not current_user.rol.es_directivo:
+        periodo = None
+        periodo_id = getattr(data, "periodo_id", None)
+        if periodo_id is not None:
+            periodo = await db.get(PeriodoAcademicoORM, periodo_id)
+        if periodo is None:
+            periodo = await _periodo_activo(db)
+        periodo_activo_id = periodo.id if periodo else None
+
+        asignatura_id = getattr(data, "asignatura_id", None)
+        cobertura = _buscar_cobertura_asignatura(
+            piar, asignatura_id, data.area, periodo_activo_id
+        )
+
+        if cobertura is None:
+            propias = [
+                item for item in piar.asignaturas_estado
+                if item.docente_id == current_user.id
+            ]
+            if asignatura_id is not None:
+                cobertura = next(
+                    (
+                        item for item in propias
+                        if item.asignatura_id == asignatura_id
+                    ),
+                    None,
+                )
+            if cobertura is None and data.area:
+                nombre = data.area.strip().casefold()
+                coincidencias = [
+                    item for item in propias
+                    if item.nombre_asignatura.strip().casefold() == nombre
+                ]
+                if coincidencias:
+                    cobertura = coincidencias[0]
+            if cobertura is None and propias:
+                cobertura = propias[0]
+
+    await authorize_piar_access(
+        db,
+        current_user,
+        piar_id,
+        "ai_generate",
+        piar=piar,
+        cobertura=cobertura,
+    )
+
+
+def _gemini_http_error(error: GeminiServiceError) -> HTTPException:
+    if isinstance(error, GeminiQuotaError):
+        return HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="La cuota del servicio de IA está agotada. Intenta más tarde.",
+            headers={"Retry-After": "60"},
+        )
+    if isinstance(error, GeminiTimeoutError):
+        return HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="El servicio de IA tardó demasiado en responder.",
+        )
+    if isinstance(error, GeminiConfigurationError):
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(error) or "El servicio de IA no está disponible en este momento.",
+        )
+    return HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail="No fue posible obtener una respuesta del servicio de IA.",
+    )
+
+
+def _sanitizar_texto_gemini(
+    valor,
+    limite: int = 3000,
+    textos_prohibidos: Optional[list[str]] = None,
+) -> str:
+    """Alias local para mantener legibles los constructores de prompts."""
+    return sanitizar_texto_gemini(valor, limite, textos_prohibidos)
 
 
 def construir_contexto_estudiante(piar, overrides: Optional[dict] = None) -> str:
@@ -513,39 +665,71 @@ def construir_contexto_estudiante(piar, overrides: Optional[dict] = None) -> str
     estudiante = getattr(piar, "estudiante", None)
     caracteristicas = getattr(piar, "caracteristicas", None)
     salud = getattr(estudiante, "entorno_salud", None) if estudiante else None
+    nombres_prohibidos: list[str] = []
+    if estudiante:
+        nombre_completo = " ".join(
+            filter(
+                None,
+                (
+                    getattr(estudiante, "nombres", None),
+                    getattr(estudiante, "apellidos", None),
+                ),
+            )
+        ).strip()
+        if nombre_completo:
+            nombres_prohibidos.append(nombre_completo)
 
     def campo(fuente, atributo: str) -> str:
-        return _texto_ia(getattr(fuente, atributo, None)) if fuente is not None else ""
+        return (
+            _sanitizar_texto_gemini(
+                getattr(fuente, atributo, None),
+                textos_prohibidos=nombres_prohibidos,
+            )
+            if fuente is not None
+            else ""
+        )
 
     filas = [
         (
-            "Gustos, intereses y expectativas del estudiante y su familia",
+            "Gustos, intereses y expectativas del estudiante",
             " ".join(filter(None, (
-                _texto_ia(overrides.get("gustos_intereses")) or campo(caracteristicas, "descripcion_gustos_intereses"),
+                _sanitizar_texto_gemini(
+                    overrides.get("gustos_intereses"),
+                    textos_prohibidos=nombres_prohibidos,
+                ) or campo(caracteristicas, "descripcion_gustos_intereses"),
                 campo(caracteristicas, "expectativas_estudiante"),
-                campo(caracteristicas, "expectativas_familia"),
             ))),
         ),
         (
-            "Habilidades, cualidades, fortalezas y apoyos requeridos",
+            "Habilidades, cualidades y fortalezas",
             " ".join(filter(None, (
-                _texto_ia(overrides.get("habilidades_fortalezas")) or campo(caracteristicas, "descripcion_habilidades"),
-                campo(caracteristicas, "redes_apoyo"),
+                _sanitizar_texto_gemini(
+                    overrides.get("habilidades_fortalezas"),
+                    textos_prohibidos=nombres_prohibidos,
+                ) or campo(caracteristicas, "descripcion_habilidades"),
             ))),
         ),
-        ("Entorno familiar, social y económico",
-         _texto_ia(overrides.get("entorno_familiar_social_economico")) or campo(caracteristicas, "entorno_familiar_social_economico")),
         ("Otras observaciones",
-         _texto_ia(overrides.get("otras_observaciones")) or campo(caracteristicas, "otras_observaciones")),
+         _sanitizar_texto_gemini(
+             overrides.get("otras_observaciones"),
+             textos_prohibidos=nombres_prohibidos,
+         ) or campo(caracteristicas, "otras_observaciones")),
         (
-            "Caracterización pedagógica / Diagnóstico",
-            _texto_ia(overrides.get("caracterizacion_pedagogica")) or campo(caracteristicas, "caracterizacion_pedagogica"),
-        ),
-        (
-            "Diagnóstico médico",
-            _texto_ia(overrides.get("diagnostico_medico")) or campo(salud, "diagnostico_medico"),
+            "Caracterización pedagógica",
+            _sanitizar_texto_gemini(
+                overrides.get("caracterizacion_pedagogica"),
+                textos_prohibidos=nombres_prohibidos,
+            ) or campo(caracteristicas, "caracterizacion_pedagogica"),
         ),
     ]
+    if settings.AI_INCLUDE_MEDICAL_DIAGNOSIS:
+        filas.append((
+            "Diagnóstico médico",
+             _sanitizar_texto_gemini(
+                 overrides.get("diagnostico_medico"),
+                 textos_prohibidos=nombres_prohibidos,
+             ) or campo(salud, "diagnostico_medico"),
+        ))
     lineas = [f"- {etiqueta}: {valor}" for etiqueta, valor in filas if valor]
     return "\n".join(lineas) if lineas else "- Sin información registrada."
 
@@ -555,9 +739,9 @@ def construir_contexto_institucional(config) -> str:
     if config is None:
         return "Sin contexto institucional registrado."
     filas = [
-        ("Modelo pedagógico del PEI", _texto_ia(getattr(config, "pei_modelo_pedagogico", None))),
-        ("Valores y principios del PEI", _texto_ia(getattr(config, "pei_valores_principios", None))),
-        ("Contexto institucional", _texto_ia(getattr(config, "contexto_institucion", None))),
+        ("Modelo pedagógico del PEI", _sanitizar_texto_gemini(getattr(config, "pei_modelo_pedagogico", None))),
+        ("Valores y principios del PEI", _sanitizar_texto_gemini(getattr(config, "pei_valores_principios", None))),
+        ("Contexto institucional", _sanitizar_texto_gemini(getattr(config, "contexto_institucion", None))),
     ]
     lineas = [f"- {etiqueta}: {valor}" for etiqueta, valor in filas if valor]
     return "\n".join(lineas) if lineas else "Sin contexto institucional registrado."
@@ -647,6 +831,8 @@ async def get_piar_by_estudiante(
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if periodo_id is not None and periodo is None:
         raise HTTPException(status_code=404, detail="Periodo académico no encontrado.")
+
+    await _sincronizar_coberturas_periodo(db, piar, periodo)
 
     return _construir_respuesta_piar(piar, periodo, current_user)
 
@@ -801,6 +987,7 @@ async def add_ajuste_razonable(
         raise HTTPException(status_code=400, detail="No hay ningún periodo académico activo. Active uno en Gestión Escolar.")
 
     _exigir_periodo_editable(piar, periodo_activo.id)
+    await _sincronizar_coberturas_periodo(db, piar, periodo_activo)
     cobertura = _buscar_cobertura_asignatura(
         piar, data.asignatura_id, data.area, periodo_activo.id
     )
@@ -862,11 +1049,13 @@ async def generar_ajustes_ia(
 ):
     """Genera recomendaciones DUA usando Google Gemini."""
     try:
-        # Verificar PIAR (con contexto completo del estudiante)
+        await authorize_piar_access(db, current_user, piar_id, "read")
         piar = await _cargar_piar_completo(db, piar_id)
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-        await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
+        await _autorizar_generacion_ia(
+            db, current_user, piar_id, piar, data
+        )
 
         config = await _configuracion_sistema(db)
         contexto_estudiante = construir_contexto_estudiante(piar)
@@ -877,35 +1066,32 @@ async def generar_ajustes_ia(
             f"Actúa como un experto en Educación Inclusiva y Diseño Universal para el Aprendizaje (DUA).\n"
             f"Necesito sugerencias de estrategias y ajustes razonables concretos para un estudiante.\n\n"
             f"Contexto de la asignatura:\n"
-            f"- Área/Materia: {data.area}\n"
+            f"- Área/Materia: {_sanitizar_texto_gemini(data.area, 500)}\n"
         )
         if data.titulo_tema:
-            prompt += f"- Título del Tema: {data.titulo_tema}\n"
+            prompt += f"- Título del Tema: {_sanitizar_texto_gemini(data.titulo_tema, 500)}\n"
         prompt += (
-            f"- Objetivos o Propósitos de Aprendizaje: {data.objetivos_propositos}\n"
-            f"- Barreras Evidenciadas en el Estudiante: {data.barreras_evidenciadas}\n"
+            f"- Objetivos o Propósitos de Aprendizaje: {_sanitizar_texto_gemini(data.objetivos_propositos)}\n"
+            f"- Barreras Evidenciadas en el Estudiante: {_sanitizar_texto_gemini(data.barreras_evidenciadas)}\n"
             f"\nContexto del estudiante:\n{contexto_estudiante}\n"
             f"\nContexto institucional (PEI):\n{contexto_institucional}\n"
         )
         if data.instrucciones_adicionales:
-            prompt += f"\nInstrucciones adicionales del docente: {data.instrucciones_adicionales}\n"
+            prompt += f"\nInstrucciones adicionales del docente: {_sanitizar_texto_gemini(data.instrucciones_adicionales)}\n"
         
         prompt += (
             "\nEscribe ÚNICAMENTE las estrategias DUA propuestas en un formato claro, accionable y "
             "directo, sin preámbulos, organizadas en viñetas o un párrafo claro."
         )
 
-        # Obtener clave Gemini: BD primero, .env como fallback
-        gemini_key = await get_gemini_key(db)
-        genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-        response = model.generate_content(prompt)
-        
-        return {"success": True, "estrategias_generadas": response.text.strip()}
+        respuesta = await GeminiService(
+            db, usuario_id=current_user.id, piar_id=piar_id
+        ).generate_text(prompt)
+        return {"success": True, "estrategias_generadas": respuesta}
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando IA: {str(e)}")
+    except GeminiServiceError as error:
+        raise _gemini_http_error(error)
 
 
 @router.post("/{piar_id}/generar_plan_ia", response_model=PlanCompletoIAResponse)
@@ -921,11 +1107,13 @@ async def generar_plan_completo_ia(
     Usa JSON structured output para garantizar texto limpio sin markdown.
     """
     try:
-        # Verificar PIAR (con contexto completo del estudiante)
+        await authorize_piar_access(db, current_user, piar_id, "read")
         piar = await _cargar_piar_completo(db, piar_id)
         if not piar:
             raise HTTPException(status_code=404, detail="PIAR no encontrado.")
-        await authorize_piar_access(db, current_user, piar_id, "read", piar=piar)
+        await _autorizar_generacion_ia(
+            db, current_user, piar_id, piar, data
+        )
 
         # --- Contexto institucional (PEI) y perfil ampliado del estudiante ---
         config = await _configuracion_sistema(db)
@@ -940,31 +1128,27 @@ async def generar_plan_completo_ia(
             "entorno_familiar_social_economico": data.entorno_familiar_social_economico,
             "otras_observaciones": data.otras_observaciones,
         }
-        perfil_parts = []
-        if data.estudiante_nombre:
-            perfil_parts.append(f"Nombre: {data.estudiante_nombre}")
-        if data.edad is not None:
-            perfil_parts.append(f"Edad: {data.edad} años")
-        if data.grado:
-            perfil_parts.append(f"Grado escolar: {data.grado}")
-        perfil_parts.append(construir_contexto_estudiante(piar, overrides))
-        perfil_texto = "\n".join(perfil_parts)
+        # Nombre, edad y grado llegan por compatibilidad del formulario, pero
+        # se ignoran deliberadamente para no enviarlos al proveedor externo.
+        perfil_texto = construir_contexto_estudiante(piar, overrides)
 
         # --- Construir bloque curricular de referencia ---
         curricular_parts = []
         if data.dba_referencia:
             curricular_parts.append(
-                f"Derechos Básicos de Aprendizaje (DBA) para el grado {data.grado or ''}:\n{data.dba_referencia}"
+                "Derechos Básicos de Aprendizaje (DBA):\n"
+                f"{_sanitizar_texto_gemini(data.dba_referencia)}"
             )
         if data.ebc_referencia:
             curricular_parts.append(
-                f"Estándares Básicos de Competencias (EBC):\n{data.ebc_referencia}"
+                "Estándares Básicos de Competencias (EBC):\n"
+                f"{_sanitizar_texto_gemini(data.ebc_referencia)}"
             )
         curricular_texto = ("\n\n".join(curricular_parts)
                             if curricular_parts else "No se proporcionaron DBA/EBC de referencia.")
 
         instrucciones_extra = (
-            f"\n\nNota adicional del docente: {data.instrucciones_docente}"
+            f"\n\nNota adicional del docente: {_sanitizar_texto_gemini(data.instrucciones_docente)}"
             if data.instrucciones_docente else ""
         )
 
@@ -974,15 +1158,15 @@ async def generar_plan_completo_ia(
 
 El docente ya definió los objetivos de aprendizaje y las barreras identificadas. Tu tarea consiste EXCLUSIVAMENTE en proponer los ajustes razonables concretos, pedagógicos y accionables que minimicen esas barreras.
 
-AREA O ASIGNATURA: {data.area}
-TÍTULO DEL TEMA O TEMÁTICA: {data.titulo_tema if data.titulo_tema else 'No especificado'}
-OBJETIVOS / PROPÓSITOS DE APRENDIZAJE: {data.objetivos_propositos if data.objetivos_propositos else 'No especificados'}
+AREA O ASIGNATURA: {_sanitizar_texto_gemini(data.area, 500)}
+TÍTULO DEL TEMA O TEMÁTICA: {_sanitizar_texto_gemini(data.titulo_tema, 500) if data.titulo_tema else 'No especificado'}
+OBJETIVOS / PROPÓSITOS DE APRENDIZAJE: {_sanitizar_texto_gemini(data.objetivos_propositos) if data.objetivos_propositos else 'No especificados'}
 
 PERFIL DEL ESTUDIANTE:
 {perfil_texto}
 
 BARRERAS IDENTIFICADAS POR EL DOCENTE EN ESTE CONTEXTO:
-{data.barreras_evidenciadas}
+{_sanitizar_texto_gemini(data.barreras_evidenciadas)}
 
 REFERENCIA CURRICULAR (para contexto de los ajustes):
 {curricular_texto}{instrucciones_extra}
@@ -997,7 +1181,7 @@ MARCO NORMATIVO A CONSIDERAR PARA LOS AJUSTES:
 - Decreto 1421 de 2017 (Inclusión y Ajustes Razonables): Proponer adaptaciones eficaces basadas en las necesidades específicas del estudiante, promoviendo la máxima autonomía y permanencia dentro del aula regular junto a sus pares, sin segregación.
 - Decreto 1860 de 1994 (Flexibilidad): Asegurar la flexibilización de metodologías, ritmos de aprendizaje y formas de evaluación, adaptándose a la diversidad y edad cronológica del educando.
 - Ley 2216 de 2022 (Dificultades/Trastornos de Aprendizaje): En caso de dificultades de lectura, escritura, cálculos o procesamiento de información, incorporar estrategias didácticas específicas, recursos metodológicos y herramientas tecnológicas sin aislar al estudiante del aula regular, articulando pautas para la continuidad del acompañamiento en casa por parte de la familia.
-- Edad del estudiante: Los apoyos sugeridos deben ser pedagógicamente adecuados para un estudiante de su edad ({data.edad if data.edad else 'no especificada'} años).
+- Adecuación pedagógica: Los apoyos sugeridos deben ser apropiados para el contexto educativo descrito.
 
 CATEGORÍAS DE APOYO A CONSIDERAR (según el catálogo colombiano de ajustes):
 - Mediaciones discursivas: comunicación, ritmos de instrucción, alternativas de lenguaje.
@@ -1037,22 +1221,9 @@ Reglas de formato para tu respuesta JSON:
             "required": ["ajustes_estrategias", "tipo_ajuste", "apoyo_requerido"]
         }
 
-        # --- Llamar a Gemini con el nuevo SDK (google-genai) ---
-        gemini_key = await get_gemini_key(db)
-        client = genai_new.Client(api_key=gemini_key)
-
-        response = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_json_schema=schema_json,
-                temperature=0.4,
-            )
-        )
-
-        # El SDK nuevo garantiza JSON válido cuando se usa response_mime_type
-        parsed = json.loads(response.text)
+        parsed = await GeminiService(
+            db, usuario_id=current_user.id, piar_id=piar_id
+        ).generate_json(prompt, schema_json)
 
         return PlanCompletoIAResponse(
             ajustes_estrategias=parsed.get("ajustes_estrategias", "").strip(),
@@ -1062,8 +1233,8 @@ Reglas de formato para tu respuesta JSON:
 
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al contactar Gemini: {str(e)}")
+    except GeminiServiceError as error:
+        raise _gemini_http_error(error)
 
 @router.patch("/{piar_id}", response_model=PiarResponse)
 async def update_piar(
@@ -1365,6 +1536,7 @@ async def get_completitud_piar(
     periodo = await _resolver_periodo(db, piar, periodo_id)
     if periodo_id is not None and periodo is None:
         raise HTTPException(status_code=404, detail="Periodo académico no encontrado.")
+    await _sincronizar_coberturas_periodo(db, piar, periodo)
     return _respuesta_completitud(piar, periodo.id if periodo else None)
 
 

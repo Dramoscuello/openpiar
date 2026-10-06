@@ -21,6 +21,7 @@ email-validator==2.3.0
 passlib[bcrypt]==1.7.4    # Hash de contraseñas
 bcrypt==4.0.1             # Backend bcrypt para passlib (pin para compatibilidad)
 python-jose[cryptography]==3.3.0  # JWT tokens
+cryptography>=43.0.0,<51.0.0      # AES-GCM para secretos almacenados
 python-multipart==0.0.12  # Form data (login OAuth2)
 
 # --- IA — Gemini ---

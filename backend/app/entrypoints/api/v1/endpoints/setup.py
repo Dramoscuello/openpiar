@@ -19,6 +19,13 @@ from app.adapters.db.models import ConfiguracionSistemaORM
 from app.adapters.db.session import get_db
 from app.core.config import settings
 from app.core.exceptions import SetupYaCompletadoError
+from app.core.gemini_crypto import encrypt_gemini_key
+from app.core.gemini_privacy import sanitizar_texto_gemini
+from app.adapters.ai.gemini_service import (
+    GeminiQuotaError,
+    GeminiServiceError,
+    GeminiTimeoutError,
+)
 from app.entrypoints.api.dependencies import (
     get_usuario_repo,
     require_bootstrap_token,
@@ -175,6 +182,18 @@ async def configurar_sistema(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
     # Guardar configuración del sistema
+    try:
+        clave_gemini = (
+            encrypt_gemini_key(body.gemini_api_key)
+            if body.gemini_api_key and body.gemini_api_key.strip()
+            else None
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No se pudo proteger la configuración de IA.",
+        ) from exc
+
     config = ConfiguracionSistemaORM(
         nombre_institucion=body.nombre_institucion,
         nit=body.nit,
@@ -183,7 +202,7 @@ async def configurar_sistema(
         telefono_contacto=body.telefono_contacto,
         correo_contacto=body.correo_contacto,
         nombre_rector=body.nombre_rector,
-        gemini_api_key=body.gemini_api_key,
+        gemini_api_key=clave_gemini,
         contexto_institucion=body.contexto_institucion,
         pei_nombre_archivo=body.pei_nombre_archivo,
         pei_modelo_pedagogico=body.pei_modelo_pedagogico,
@@ -237,6 +256,12 @@ async def upload_pei(
             detail="El archivo debe ser un PDF (.pdf).",
         )
 
+    if not settings.AI_EXTERNAL_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="El procesamiento externo de IA está deshabilitado.",
+        )
+
     llave_gemini = gemini_api_key.strip() or await resolver_gemini_key(db)
     if not llave_gemini:
         raise HTTPException(
@@ -270,7 +295,7 @@ async def upload_pei(
 
         # Llamar al agente Gemini con la API Key del formulario, la BD o el entorno
         agente = GeminiAgentAdapter(api_key=llave_gemini)
-        perfil = await agente.extraer_perfil_pei(texto)
+        perfil = await agente.extraer_perfil_pei(sanitizar_texto_gemini(texto, 8000))
 
         return {
             "message": "PEI procesado exitosamente.",
@@ -278,9 +303,27 @@ async def upload_pei(
             "perfil_extraido": perfil
         }
 
-    except Exception as exc:
-        logger.error("Error procesando PEI: %s", exc)
+    except GeminiQuotaError as exc:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al analizar el PEI con IA: {str(exc)}"
-        )
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="La cuota del servicio de IA está agotada. Intenta más tarde.",
+            headers={"Retry-After": "60"},
+        ) from exc
+    except GeminiTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="El servicio de IA tardó demasiado en responder.",
+        ) from exc
+    except GeminiServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No fue posible procesar el PEI con el servicio de IA.",
+        ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Error procesando PEI tipo=%s", type(exc).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No fue posible procesar el PEI en este momento.",
+        ) from exc

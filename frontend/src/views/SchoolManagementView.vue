@@ -49,6 +49,7 @@ const cargaForm = ref({
 const periodoForm = ref({ nombre: '', anio_lectivo: new Date().getFullYear(), fecha_inicio: '', fecha_fin: '' })
 
 const configForm = ref({ gemini_api_key: '', contexto_institucion: '' })
+const tieneGeminiKey = ref(false)
 const configSaving = ref(false)
 
 const passwordSecured = ref(false)
@@ -156,9 +157,10 @@ const loadConfig = async () => {
     if (res.ok) {
       const data = await res.json()
       configForm.value = {
-        gemini_api_key: data.gemini_api_key || '',
+        gemini_api_key: '',
         contexto_institucion: data.contexto_institucion || ''
       }
+      tieneGeminiKey.value = Boolean(data.tiene_gemini_key)
     }
   } catch {
     errorMsg.value = 'Error al cargar la configuración del sistema.'
@@ -177,9 +179,11 @@ const submitConfig = async () => {
       'Authorization': `Bearer ${authStore.token}`,
       'Content-Type': 'application/json'
     }
-    const body: any = {
-      gemini_api_key: configForm.value.gemini_api_key || null,
-      contexto_institucion: configForm.value.contexto_institucion.trim() || null
+    const body: Record<string, string> = {
+      contexto_institucion: configForm.value.contexto_institucion.trim()
+    }
+    if (configForm.value.gemini_api_key.trim()) {
+      body.gemini_api_key = configForm.value.gemini_api_key.trim()
     }
     const res = await fetch('/api/v1/configuracion', {
       method: 'PATCH',
@@ -1833,16 +1837,17 @@ const deleteGrado = async (id: string, nombreCompleto: string, confirmed: boolea
             <div class="space-y-xs">
               <label class="font-label-md text-label-md text-on-surface-variant" for="config-gemini">
                 Gemini API Key
+                <span v-if="tieneGeminiKey" class="text-success font-normal">(configurada)</span>
               </label>
               <input
                 id="config-gemini"
                 v-model="configForm.gemini_api_key"
                 class="w-full px-4 py-3 bg-surface border border-outline-variant rounded-input font-body-md focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
-                placeholder="Ingresa tu API Key de Gemini"
+                placeholder="Ingresa una nueva API Key de Gemini"
                 type="password"
               />
               <p class="font-label-sm text-label-sm text-on-surface-variant">
-                La API Key se usa para que el asistente de IA genere sugerencias de ajustes razonables. Puedes obtener una gratuita en <a href="https://aistudio.google.com/" target="_blank" class="text-primary underline">Google AI Studio</a>.
+                 La clave nunca se muestra de nuevo. Déjala vacía para conservar la actual; escribe una nueva para reemplazarla. Puedes obtener una gratuita en <a href="https://aistudio.google.com/" target="_blank" class="text-primary underline">Google AI Studio</a>.
               </p>
             </div>
 

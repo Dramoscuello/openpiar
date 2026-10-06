@@ -29,18 +29,15 @@ def test_contexto_estudiante_incluye_los_campos_solicitados():
     contexto = construir_contexto_estudiante(_piar_completo())
 
     esperados = {
-        "Gustos, intereses y expectativas del estudiante y su familia": [
+        "Gustos, intereses y expectativas del estudiante": [
             "Dinosaurios y dibujo",
             "Aprender a leer",
-            "Integrarse con sus pares",
         ],
-        "Habilidades, cualidades, fortalezas y apoyos requeridos": [
+        "Habilidades, cualidades y fortalezas": [
             "Memoria visual",
-            "Abuela",
         ],
-        "Entorno familiar, social y económico": ["Entorno estable"],
         "Otras observaciones": ["Participa en teatro"],
-        "Caracterización pedagógica / Diagnóstico": ["Requiere apoyos visuales"],
+        "Caracterización pedagógica": ["Requiere apoyos visuales"],
         "Diagnóstico médico": ["Dislexia"],
     }
     for etiqueta, valores in esperados.items():
@@ -88,7 +85,7 @@ def test_contexto_estudiante_prioriza_los_overrides_del_formulario():
     assert "Dinosaurios y dibujo" not in contexto
     assert "TDAH" in contexto
     assert "Dislexia" not in contexto
-    assert "Contexto editado" in contexto
+    assert "Contexto editado" not in contexto
     assert "Entorno estable" not in contexto
 
 
@@ -115,3 +112,22 @@ def test_contexto_institucional_tolera_configuracion_ausente_o_vacia():
         contexto_institucion="",
     )
     assert construir_contexto_institucional(config) == "Sin contexto institucional registrado."
+
+
+def test_contexto_gemini_redacta_identificadores_y_contactos():
+    contexto = construir_contexto_estudiante(NS(
+        estudiante=NS(entorno_salud=NS(diagnostico_medico="Dislexia")),
+        caracteristicas=NS(
+            descripcion_gustos_intereses="Correo ana@example.com",
+            descripcion_habilidades="CC 1234567890 y teléfono 300 123 4567",
+            expectativas_estudiante="Aprender",
+            caracterizacion_pedagogica="Requiere apoyos visuales",
+            otras_observaciones="Vive en Calle 10",
+        ),
+    ))
+
+    assert "Dislexia" in contexto
+    assert "ana@example.com" not in contexto
+    assert "1234567890" not in contexto
+    assert "300 123 4567" not in contexto
+    assert "Calle 10" not in contexto

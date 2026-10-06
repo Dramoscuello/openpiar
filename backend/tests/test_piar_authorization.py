@@ -40,31 +40,40 @@ def _cobertura(docente_id):
 
 
 @pytest.mark.parametrize(
-    "accion,es_directivo,es_director,tiene_carga,esperado",
+    "accion,es_directivo,es_director,tiene_carga,es_docente_asignado,esperado",
     [
-        ("read", True, False, False, True),
-        ("read", False, True, False, True),
-        ("read", False, False, True, True),
-        ("edit", True, False, False, True),
-        ("edit", False, True, False, True),
-        ("edit", False, False, True, False),
-        ("sign", False, False, True, False),
-        ("audit_read", False, True, False, True),
-        ("export", False, False, True, True),
-        ("adjustments", False, False, True, True),
-        ("adjustments", True, False, False, False),
-        ("adjustments", False, False, True, False),
+        ("read", True, False, False, False, True),
+        ("read", False, True, False, False, True),
+        ("read", False, False, True, False, True),
+        ("edit", True, False, False, False, True),
+        ("edit", False, True, False, False, True),
+        ("edit", False, False, True, False, False),
+        ("sign", False, False, True, False, False),
+        ("audit_read", False, True, False, False, True),
+        ("export", False, False, True, False, True),
+        ("adjustments", False, False, True, True, True),
+        ("adjustments", True, False, False, False, False),
+        ("adjustments", False, False, True, False, False),
+        ("ai_generate", True, False, False, False, True),
+        ("ai_generate", False, False, True, True, True),
+        ("ai_generate", False, True, False, False, False),
+        ("ai_generate", False, False, True, False, False),
     ],
 )
 def test_matriz_piar(
-    accion, es_directivo, es_director, tiene_carga, esperado
+    accion,
+    es_directivo,
+    es_director,
+    tiene_carga,
+    es_docente_asignado,
+    esperado,
 ):
     assert puede_acceder_piar(
         accion,
         es_directivo=es_directivo,
         es_director_grupo=es_director,
         tiene_carga=tiene_carga,
-        es_docente_asignado=accion == "adjustments" and esperado,
+        es_docente_asignado=es_docente_asignado,
     ) is esperado
 
 
@@ -134,6 +143,121 @@ async def test_solo_docente_asignado_puede_modificar_ajustes():
             cobertura=_cobertura(uuid4()),
         )
     assert error.value.status_code == 403
+
+
+class _ResultadoConValor:
+    def __init__(self, valor):
+        self._valor = valor
+
+    def scalars(self):
+        return self
+
+    def first(self):
+        return self._valor
+
+
+class _DbConCarga:
+    """Fake DB: execute() responde si existe carga del docente en la asignatura."""
+
+    def __init__(self, valor):
+        self._valor = valor
+
+    async def execute(self, *args, **kwargs):
+        return _ResultadoConValor(self._valor)
+
+
+class _DbPeriodos:
+    """Fake DB: get() no encuentra el periodo, execute() devuelve uno activo."""
+
+    def __init__(self, periodo):
+        self._periodo = periodo
+
+    async def get(self, _model, _pk):
+        return None
+
+    async def execute(self, *args, **kwargs):
+        return _ResultadoConValor(self._periodo)
+
+
+async def test_director_de_grupo_no_genera_ia_sin_impartir_la_asignatura():
+    usuario = _usuario()
+    piar = _piar(director_id=usuario.id)
+
+    with pytest.raises(HTTPException) as error:
+        await authorize_piar_access(
+            _DbConCarga(None), usuario, PIAR_ID, "ai_generate",
+            piar=piar, cobertura=None,
+        )
+    assert error.value.status_code == 403
+
+
+async def test_docente_asignado_genera_ia():
+    usuario = _usuario()
+    piar = _piar(director_id=uuid4())
+    cobertura = NS(docente_id=usuario.id, asignatura_id=uuid4())
+
+    await authorize_piar_access(
+        NS(), usuario, PIAR_ID, "ai_generate", piar=piar, cobertura=cobertura
+    )
+
+
+async def test_docente_con_carga_actual_genera_ia_aunque_la_cobertura_sea_ajena():
+    usuario = _usuario()
+    piar = _piar(director_id=uuid4())
+    cobertura = NS(docente_id=uuid4(), asignatura_id=uuid4())
+
+    await authorize_piar_access(
+        _DbConCarga(NS(id=uuid4())), usuario, PIAR_ID, "ai_generate",
+        piar=piar, cobertura=cobertura,
+    )
+
+
+async def test_docente_sin_carga_ni_cobertura_no_genera_ia():
+    usuario = _usuario()
+    piar = _piar(director_id=uuid4())
+    cobertura = NS(docente_id=uuid4(), asignatura_id=uuid4())
+
+    with pytest.raises(HTTPException) as error:
+        await authorize_piar_access(
+            _DbConCarga(None), usuario, PIAR_ID, "ai_generate",
+            piar=piar, cobertura=cobertura,
+        )
+    assert error.value.status_code == 403
+
+
+async def test_generacion_ia_resuelve_cobertura_por_asignatura_id():
+    usuario = _usuario()
+    asignatura_id = uuid4()
+    cobertura = NS(
+        docente_id=usuario.id,
+        asignatura_id=asignatura_id,
+        nombre_asignatura="Matemáticas",
+        periodo_id=1,
+    )
+    piar = _piar(director_id=uuid4())
+    piar.asignaturas_estado = [cobertura]
+    data = NS(area="Área desactualizada", asignatura_id=asignatura_id, periodo_id=1)
+
+    await piars._autorizar_generacion_ia(
+        _DbPeriodos(NS(id=1)), usuario, PIAR_ID, piar, data
+    )
+
+
+async def test_generacion_ia_cae_a_cobertura_propia_si_el_area_no_coincide():
+    usuario = _usuario()
+    cobertura = NS(
+        docente_id=usuario.id,
+        asignatura_id=uuid4(),
+        nombre_asignatura="Matemáticas",
+        periodo_id=1,
+    )
+    piar = _piar(director_id=uuid4())
+    piar.asignaturas_estado = [cobertura]
+    data = NS(area="Área inexistente", asignatura_id=None, periodo_id=None)
+
+    await piars._autorizar_generacion_ia(
+        _DbPeriodos(NS(id=1)), usuario, PIAR_ID, piar, data
+    )
 
 
 async def test_la_autoria_no_sustituye_el_acceso_al_piar():

@@ -48,6 +48,7 @@ AccionPiar = Literal[
     "read",
     "edit",
     "adjustments",
+    "ai_generate",
     "evidences",
     "sign",
     "export",
@@ -66,6 +67,7 @@ ACCIONES_PIAR: set[str] = {
     "read",
     "edit",
     "adjustments",
+    "ai_generate",
     "evidences",
     "sign",
     "export",
@@ -125,6 +127,10 @@ def puede_acceder_piar(
         return es_docente_asignado and (
             es_directivo or es_director_grupo or tiene_carga
         )
+
+    if accion == "ai_generate":
+        # Solo dirección o quien realmente imparte la asignatura al estudiante.
+        return es_directivo or es_docente_asignado
 
     if accion in {"read", "evidences", "export"}:
         return es_directivo or es_director_grupo or tiene_carga
@@ -338,6 +344,39 @@ async def _relacion_con_piar(
     return await _relacion_con_grupo(db, current_user, grupo_id)
 
 
+async def _imparte_cobertura(
+    db: AsyncSession,
+    current_user: Usuario,
+    piar: PiarORM,
+    cobertura: Optional[PiarAsignaturaORM],
+) -> bool:
+    """True si el docente imparte la asignatura: cobertura propia o carga actual."""
+    if cobertura is None:
+        return False
+    if getattr(cobertura, "docente_id", None) == current_user.id:
+        return True
+
+    asignatura_id = getattr(cobertura, "asignatura_id", None)
+    if asignatura_id is None:
+        return False
+
+    estudiante = getattr(piar, "__dict__", {}).get("estudiante")
+    grupo_id = getattr(estudiante, "grupo_id", None) if estudiante else None
+    if grupo_id is None:
+        return False
+
+    resultado = await db.execute(
+        select(CargaAcademicaORM.id)
+        .where(
+            CargaAcademicaORM.grupo_id == grupo_id,
+            CargaAcademicaORM.asignatura_id == asignatura_id,
+            CargaAcademicaORM.docente_id == current_user.id,
+        )
+        .limit(1)
+    )
+    return resultado.scalars().first() is not None
+
+
 async def authorize_piar_access(
     db: AsyncSession,
     current_user: Usuario,
@@ -386,11 +425,19 @@ async def authorize_piar_access(
             db, current_user, piar
         )
 
-    if accion == "adjustments":
-        es_docente_asignado = bool(
-            cobertura is not None
-            and getattr(cobertura, "docente_id", None) == current_user.id
-        )
+    if accion in {"adjustments", "ai_generate"}:
+        if accion == "adjustments":
+            es_docente_asignado = bool(
+                cobertura is not None
+                and getattr(cobertura, "docente_id", None) == current_user.id
+            )
+            detalle = "Solo el docente asignado a esta cobertura puede modificarla."
+        else:
+            es_docente_asignado = await _imparte_cobertura(
+                db, current_user, piar, cobertura
+            )
+            detalle = "Solo el docente que imparte esta asignatura puede generar con IA."
+
         permitido = puede_acceder_piar(
             accion,
             es_directivo=current_user.rol.es_directivo,
@@ -401,7 +448,7 @@ async def authorize_piar_access(
         if not permitido:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo el docente asignado a esta cobertura puede modificarla.",
+                detail=detalle,
             )
         return piar
 

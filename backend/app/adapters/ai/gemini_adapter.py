@@ -7,6 +7,7 @@ para garantizar respuestas tipadas que encajan en la tabla ajustes_razonables.
 """
 
 import json
+import asyncio
 import logging
 from typing import Any
 
@@ -14,6 +15,11 @@ import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 
 from app.core.config import get_settings
+from app.adapters.ai.gemini_service import (
+    GeminiQuotaError,
+    GeminiServiceError,
+    GeminiTimeoutError,
+)
 from app.domain.ports import IAgentePedagogico
 
 logger = logging.getLogger(__name__)
@@ -120,17 +126,26 @@ Responde con este JSON exacto:
 }}
 """
         try:
-            response = await self._model.generate_content_async(
-                prompt,
-                generation_config=GenerationConfig(
-                    response_mime_type="application/json",
-                    temperature=0.4,  # Más determinista para salidas pedagógicas
+            response = await asyncio.wait_for(
+                self._model.generate_content_async(
+                    prompt,
+                    generation_config=GenerationConfig(
+                        response_mime_type="application/json",
+                        temperature=0.4,
+                        max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
+                    ),
                 ),
+                timeout=settings.GEMINI_TIMEOUT_SECONDS,
             )
             return json.loads(response.text)
+        except asyncio.TimeoutError as exc:
+            raise GeminiTimeoutError("Gemini agotó el tiempo de respuesta.") from exc
         except Exception as exc:
-            logger.error("Error generando ajustes DUA con Gemini: %s", exc)
-            raise RuntimeError(f"Error en el agente pedagógico: {exc}") from exc
+            texto = f"{type(exc).__name__} {exc}".lower()
+            if any(indicador in texto for indicador in ("429", "quota", "rate limit", "resource_exhausted")):
+                raise GeminiQuotaError("La cuota de Gemini está agotada.") from exc
+            logger.warning("Error Gemini en generación DUA tipo=%s", type(exc).__name__)
+            raise GeminiServiceError("No fue posible consultar el servicio de IA.") from exc
 
     async def extraer_perfil_pei(self, texto_pei: str) -> dict:
         """
@@ -148,20 +163,23 @@ Analiza el siguiente texto del PEI y extrae la información solicitada:
 {texto_pei[:8000]}  # Limitar a 8000 chars para no exceder contexto
 """
         try:
-            response = await self._model_pei.generate_content_async(
-                prompt,
-                generation_config=GenerationConfig(
-                    response_mime_type="application/json",
-                    temperature=0.2,
+            response = await asyncio.wait_for(
+                self._model_pei.generate_content_async(
+                    prompt,
+                    generation_config=GenerationConfig(
+                        response_mime_type="application/json",
+                        temperature=0.2,
+                        max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
+                    ),
                 ),
+                timeout=settings.GEMINI_TIMEOUT_SECONDS,
             )
             return json.loads(response.text)
+        except asyncio.TimeoutError as exc:
+            raise GeminiTimeoutError("Gemini agotó el tiempo de respuesta.") from exc
         except Exception as exc:
-            logger.error("Error extrayendo perfil PEI con Gemini: %s", exc)
-            # Retornar perfil vacío para no bloquear el flujo del setup
-            return {
-                "modelo_pedagogico": "No extraído",
-                "enfoques_didacticos": [],
-                "valores": [],
-                "politicas_convivencia": "",
-            }
+            texto = f"{type(exc).__name__} {exc}".lower()
+            if any(indicador in texto for indicador in ("429", "quota", "rate limit", "resource_exhausted")):
+                raise GeminiQuotaError("La cuota de Gemini está agotada.") from exc
+            logger.warning("Error Gemini en extracción PEI tipo=%s", type(exc).__name__)
+            raise GeminiServiceError("No fue posible consultar el servicio de IA.") from exc

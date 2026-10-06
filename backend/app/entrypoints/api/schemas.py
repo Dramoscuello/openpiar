@@ -44,7 +44,7 @@ class ConfigurarSistemaRequest(BaseModel):
     telefono_contacto: Optional[str] = None
     correo_contacto: Optional[EmailStr] = None
     nombre_rector: Optional[str] = None
-    gemini_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = Field(default=None, max_length=500)
     contexto_institucion: Optional[str] = None
     pei_nombre_archivo: Optional[str] = None
     pei_modelo_pedagogico: Optional[str] = None
@@ -150,13 +150,14 @@ class ConfiguracionSistemaResponse(BaseResponse):
     telefono_contacto: Optional[str] = None
     correo_contacto: Optional[str] = None
     nombre_rector: Optional[str] = None
-    gemini_api_key: Optional[str] = None
+    tiene_gemini_key: bool = False
     contexto_institucion: Optional[str] = None
     pei_modelo_pedagogico: Optional[str] = None
 
 
 class ActualizarConfiguracionRequest(BaseModel):
-    gemini_api_key: Optional[str] = None
+    # Write-only: nunca forma parte de ConfiguracionSistemaResponse.
+    gemini_api_key: Optional[str] = Field(default=None, max_length=500)
     contexto_institucion: Optional[str] = Field(default=None)
 
     @field_validator("contexto_institucion")
@@ -645,6 +646,9 @@ class GenerarAjustesRequest(BaseModel):
     area: str
     titulo_tema: Optional[str] = None
     instrucciones_adicionales: Optional[str] = None
+    # Identificadores opcionales para autorizar la cobertura con precisión.
+    asignatura_id: Optional[uuid.UUID] = None
+    periodo_id: Optional[int] = None
 
 
 class GenerarPlanCompletoRequest(BaseModel):
@@ -653,7 +657,7 @@ class GenerarPlanCompletoRequest(BaseModel):
     titulo_tema: Optional[str] = None
     objetivos_propositos: Optional[str] = None
     # Datos del estudiante
-    estudiante_nombre: str
+    estudiante_nombre: Optional[str] = None
     grado: Optional[str] = None
     edad: Optional[int] = None
     diagnostico_medico: Optional[str] = None
@@ -670,6 +674,9 @@ class GenerarPlanCompletoRequest(BaseModel):
     barreras_evidenciadas: str
     # Instrucciones adicionales del docente
     instrucciones_docente: Optional[str] = None
+    # Identificadores opcionales para autorizar la cobertura con precisión.
+    asignatura_id: Optional[uuid.UUID] = None
+    periodo_id: Optional[int] = None
 
 
 class PlanCompletoIAResponse(BaseResponse):

@@ -547,6 +547,24 @@
             </section>
           </div>
 
+          <!-- Aviso para docentes sin cobertura en el PIAR -->
+          <div
+            v-else-if="!isDirectorOrAdmin && !asignaturasParaAjuste.length"
+            class="col-span-12 lg:col-span-5"
+          >
+            <section class="glass-card p-md border border-outline-variant/30 space-y-2 text-body-md text-on-surface-variant">
+              <p class="font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">info</span>
+                Sin asignaturas asignadas en este PIAR
+              </p>
+              <p>
+                No tienes asignaturas en la cobertura del periodo
+                {{ periodoSeleccionado?.nombre || 'activo' }}. Si dictas clase a este
+                estudiante, pide al directivo que revise tu carga académica en Gestión Escolar.
+              </p>
+            </section>
+          </div>
+
           <!-- Matriz de Ajustes Cargados (7 columnas) -->
           <div class="col-span-12 space-y-sm" :class="{ 'lg:col-span-7': asignaturasParaAjuste.length > 0 }">
             <h3 class="text-headline-md font-bold text-on-surface flex items-center gap-2 mb-xs">
@@ -2341,9 +2359,7 @@ async function cargarAsignaturas() {
     })
     if (res.ok) {
       dbAsignaturas.value = await res.json()
-      if (dbAsignaturas.value.length > 0 && !ajusteForm.value.area) {
-        ajusteForm.value.area = dbAsignaturas.value[0].nombre
-      }
+      sincronizarAreaConCobertura()
     }
   } catch (e) {
     console.error("Error fetching asignaturas", e)
@@ -2354,6 +2370,7 @@ async function cargarPiar() {
   await piarStore.fetchPiarForStudent(estudianteId, periodoSeleccionadoId.value)
   inicializarFormularios()
   if (activePiar.value) await refreshCompletitud()
+  sincronizarAreaConCobertura()
   if (activePiar.value?.ajustes_razonables) {
     activePiar.value.ajustes_razonables.forEach((a: any) => {
       if (a._comentarioPuntuacion === undefined) {
@@ -2518,10 +2535,21 @@ function cargarAjusteParaEdicion(ajuste: any) {
   }
 }
 
+function areaPredeterminada(): string {
+  return coberturaVisible.value[0]?.nombre_asignatura || ajusteForm.value.area || 'Matemáticas'
+}
+
+function sincronizarAreaConCobertura() {
+  const nombres = coberturaVisible.value.map((item: any) => item.nombre_asignatura)
+  if (nombres.length > 0 && !nombres.includes(ajusteForm.value.area)) {
+    ajusteForm.value.area = nombres[0]
+  }
+}
+
 function cancelarEdicionAjuste() {
   ajusteForm.value = {
     id: '',
-    area: 'Matemáticas',
+    area: areaPredeterminada(),
     titulo_tema: '',
     objetivos: '',
     barreras: '',
@@ -2652,18 +2680,20 @@ async function generarConIA() {
     // Contexto del estudiante
     const diagnostico = entornoSalud.value?.diagnostico_medico || null
 
+    const coberturaSeleccionada = asignaturasParaAjuste.value.find(
+      (item: any) => item.nombre_asignatura === ajusteForm.value.area
+    )
+
     const payload = {
       area: ajusteForm.value.area,
+      asignatura_id: coberturaSeleccionada?.asignatura_id || null,
+      periodo_id: periodoSeleccionado.value?.id || null,
       titulo_tema: ajusteForm.value.titulo_tema || null,
       objetivos_propositos: ajusteForm.value.objetivos || null,
-      estudiante_nombre: `${estudiante.value?.nombres || ''} ${estudiante.value?.apellidos || ''}`.trim(),
-      grado: estudiante.value?.grado || null,
-      edad: estudiante.value?.edad || null,
       diagnostico_medico: diagnostico,
       gustos_intereses: activePiar.value.caracteristicas?.descripcion_gustos_intereses || null,
       habilidades_fortalezas: activePiar.value.caracteristicas?.descripcion_habilidades || null,
       caracterizacion_pedagogica: activePiar.value.caracteristicas?.caracterizacion_pedagogica || null,
-      entorno_familiar_social_economico: activePiar.value.caracteristicas?.entorno_familiar_social_economico || null,
       otras_observaciones: activePiar.value.caracteristicas?.otras_observaciones || null,
       dba_referencia: dbaTexto,
       ebc_referencia: ebcTexto,

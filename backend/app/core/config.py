@@ -83,7 +83,12 @@ class Settings(BaseSettings):
     # Gemini API
     # ------------------------------------------------------------------
     GEMINI_API_KEY: str = ""
+    GEMINI_ENCRYPTION_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.1-flash-lite"
+    GEMINI_TIMEOUT_SECONDS: float = 30.0
+    GEMINI_MAX_OUTPUT_TOKENS: int = 2048
+    AI_EXTERNAL_ENABLED: bool = True
+    AI_INCLUDE_MEDICAL_DIAGNOSIS: bool = True
 
 
 @lru_cache()
