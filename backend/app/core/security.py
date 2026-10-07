@@ -4,6 +4,9 @@ Módulo de seguridad: hash de contraseñas con bcrypt y tokens JWT.
 Implementa el estándar OAuth2 Bearer para autenticación de docentes/directivos.
 """
 
+import hashlib
+import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -38,17 +41,17 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(
     subject: str,
+    token_version: int = 0,
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
-    Crea un token JWT con:
+    Crea un token JWT de acceso con:
     - sub: identificador del usuario (UUID como string)
-    - exp: fecha de expiración
-    - iat: fecha de emisión
-
-    Args:
-        subject: UUID del usuario autenticado.
-        expires_delta: Duración del token. Si no se provee, usa el default de settings.
+    - iss/aud: emisor y audiencia esperados
+    - jti: identificador único del token
+    - type: tipo de token ("access")
+    - ver: versión de sesión del usuario; al incrementarla se revocan los emitidos
+    - iat/exp: emisión y expiración
     """
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -58,26 +61,49 @@ def create_access_token(
 
     payload = {
         "sub": str(subject),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "jti": uuid.uuid4().hex,
+        "type": "access",
+        "ver": int(token_version),
         "iat": now,
         "exp": expire,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def decode_access_token(token: str) -> Optional[str]:
+def decode_access_token(token: str) -> Optional[dict]:
     """
-    Decodifica y valida un JWT.
+    Decodifica y valida un JWT de acceso.
+
+    Valida firma, expiración, emisor, audiencia y tipo.
 
     Returns:
-        El 'sub' (UUID del usuario) si el token es válido.
-        None si el token es inválido o expirado.
+        El payload (claims) si el token es válido; None si no lo es.
     """
     try:
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
+            issuer=settings.JWT_ISSUER,
+            audience=settings.JWT_AUDIENCE,
+            options={"require": ["exp", "iat", "sub", "iss", "aud"]},
         )
-        return payload.get("sub")
     except JWTError:
         return None
+
+    if payload.get("type") != "access":
+        return None
+    return payload
+
+
+def create_refresh_token() -> tuple[str, str]:
+    """Genera un refresh token opaco y su hash SHA-256 para persistirlo."""
+    token = secrets.token_urlsafe(48)
+    return token, hash_refresh_token(token)
+
+
+def hash_refresh_token(token: str) -> str:
+    """Hash determinista del refresh token; nunca se guarda el valor original."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

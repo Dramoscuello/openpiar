@@ -20,6 +20,7 @@ from app.adapters.db.models import ConfiguracionSistemaORM
 from app.adapters.db.postgres.estudiante_repository import PostgresEstudianteRepository
 from app.adapters.db.postgres.usuario_repository import PostgresUsuarioRepository
 from app.adapters.db.postgres.auditoria_repository import PostgresAuditoriaRepository
+from app.adapters.db.postgres.refresh_token_repository import PostgresRefreshTokenRepository
 from app.adapters.db.session import get_db
 from app.core.config import Settings, get_settings
 from app.core.exceptions import SetupRequeridoError, TokenInvalidoError
@@ -46,6 +47,12 @@ def get_estudiante_repo(
     db: AsyncSession = Depends(get_db),
 ) -> PostgresEstudianteRepository:
     return PostgresEstudianteRepository(db)
+
+
+def get_refresh_token_repo(
+    db: AsyncSession = Depends(get_db),
+) -> PostgresRefreshTokenRepository:
+    return PostgresRefreshTokenRepository(db)
 
 
 # ---------------------------------------------------------------------------
@@ -172,8 +179,8 @@ async def get_current_user(
     Dependencia que valida el JWT y retorna el usuario autenticado.
     Inyectar en cualquier endpoint protegido.
     """
-    user_id_str = decode_access_token(token)
-    if not user_id_str:
+    claims = decode_access_token(token)
+    if not claims:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido o expirado.",
@@ -181,8 +188,8 @@ async def get_current_user(
         )
 
     try:
-        user_id = uuid.UUID(user_id_str)
-    except ValueError:
+        user_id = uuid.UUID(str(claims.get("sub")))
+    except (TypeError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token malformado.",
@@ -194,6 +201,13 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario no encontrado.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if int(claims.get("ver", -1)) != usuario.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sesión revocada. Inicia sesión de nuevo.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

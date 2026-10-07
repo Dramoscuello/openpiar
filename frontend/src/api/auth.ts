@@ -25,6 +25,16 @@ export interface UserResponse {
   created_at: string
 }
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 /**
  * Helper para peticiones HTTP
  */
@@ -39,7 +49,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     } catch {
       // Usar error por defecto si la respuesta no es JSON
     }
-    throw new Error(errorDetail)
+    throw new ApiError(errorDetail, response.status)
   }
 
   return response.json() as Promise<T>

@@ -36,6 +36,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
             apellido=orm.apellido,
             rol=Rol(orm.rol),
             cargo=orm.cargo,
+            token_version=orm.token_version,
             created_at=orm.created_at,
             updated_at=orm.updated_at,
         )
@@ -50,6 +51,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
             apellido=usuario.apellido,
             rol=str(usuario.rol),
             cargo=usuario.cargo,
+            token_version=usuario.token_version,
             created_at=usuario.created_at,
             updated_at=usuario.updated_at,
         )
@@ -84,6 +86,7 @@ class PostgresUsuarioRepository(IUsuarioRepository):
             existing.apellido = usuario.apellido
             existing.rol = str(usuario.rol)
             existing.cargo = usuario.cargo
+            existing.token_version = usuario.token_version
             existing.updated_at = usuario.updated_at
         else:
             self._session.add(self._to_orm(usuario))

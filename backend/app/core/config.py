@@ -36,8 +36,19 @@ class Settings(BaseSettings):
     # Seguridad — JWT
     # ------------------------------------------------------------------
     SECRET_KEY: str = "dev-secret-key-change-in-production-please"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # Sesión deslizante: expira tras 24 h sin actividad.
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 1
+    # Reuso de un refresh recién rotado (carrera entre pestañas) sin revocar familia.
+    REFRESH_REUSE_GRACE_SECONDS: int = 60
     ALGORITHM: str = "HS256"
+    JWT_ISSUER: str = "openpiar"
+    JWT_AUDIENCE: str = "openpiar-web"
+
+    # Cookies de sesión (refresh token HttpOnly)
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: str = "strict"
+    COOKIE_DOMAIN: str = ""
 
     # Token obligatorio para ejecutar el Setup Wizard en instalaciones nuevas.
     # Generar con: openssl rand -hex 32

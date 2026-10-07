@@ -1,6 +1,6 @@
 // Copyright (c) 2026 OpenPiar Contributors — GPL-3.0
 import { defineStore } from 'pinia'
-import { authApi, type UserResponse, type SetupStatus } from '../api/auth'
+import { ApiError, authApi, type UserResponse, type SetupStatus } from '../api/auth'
 
 let initPromise: Promise<void> | null = null
 
@@ -14,7 +14,8 @@ export interface AuthState {
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
-    token: localStorage.getItem('openpiar_token'),
+    // El access token vive solo en memoria; el refresh va en cookie HttpOnly.
+    token: null,
     user: null,
     setupStatus: null,
     loading: false,
@@ -41,14 +42,11 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await authApi.login(email, password)
         this.token = response.access_token
-        localStorage.setItem('openpiar_token', response.access_token)
-        
-        // Cargar datos del usuario inmediatamente
         await this.fetchCurrentUser()
         return true
       } catch (err: any) {
         this.error = err.message || 'Error al iniciar sesión'
-        this.logout()
+        this.clearSession()
         return false
       } finally {
         this.loading = false
@@ -56,27 +54,54 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Obtiene los datos del usuario logueado usando el token guardado.
+     * Renueva el access token usando la cookie HttpOnly de refresh.
      */
-    async fetchCurrentUser(): Promise<void> {
-      if (!this.token) return
-      
+    async refreshSession(): Promise<boolean> {
       try {
-        const userResponse = await authApi.getMe(this.token)
-        this.user = userResponse
-      } catch (err) {
-        // Si el token es inválido o expiró, desloguear
-        this.logout()
+        const response = await fetch('/api/v1/auth/refresh', { method: 'POST' })
+        if (!response.ok) return false
+        const data = await response.json()
+        this.token = data.access_token
+        return true
+      } catch {
+        return false
       }
     },
 
     /**
-     * Cierra la sesión activa.
+     * Obtiene los datos del usuario logueado con el access token en memoria.
      */
-    logout(): void {
+    async fetchCurrentUser(): Promise<void> {
+      if (!this.token) return
+
+      try {
+        this.user = await authApi.getMe(this.token)
+      } catch (err) {
+        // Solo cerrar sesión si el servidor rechazó el token; no ante fallos de red.
+        if (err instanceof ApiError && err.status === 401) {
+          this.clearSession()
+        }
+      }
+    },
+
+    /**
+     * Cierra la sesión activa y revoca el refresh token en el servidor.
+     */
+    async logout(): Promise<void> {
+      try {
+        await fetch('/api/v1/auth/logout', { method: 'POST' })
+      } catch {
+        // Aunque falle la red, la sesión local se limpia.
+      }
+      this.clearSession()
+    },
+
+    /**
+     * Limpia el estado local de sesión.
+     */
+    clearSession(): void {
       this.token = null
       this.user = null
-      localStorage.removeItem('openpiar_token')
     },
 
     /**
@@ -84,8 +109,7 @@ export const useAuthStore = defineStore('auth', {
      */
     async checkSetupStatus(): Promise<void> {
       try {
-        const status = await authApi.getSetupStatus()
-        this.setupStatus = status
+        this.setupStatus = await authApi.getSetupStatus()
       } catch (err) {
         console.error('Error obteniendo estado del setup wizard:', err)
         // Por defecto asumimos completado si falla para no bloquear el login en desarrollo sin backend
@@ -105,12 +129,38 @@ export const useAuthStore = defineStore('auth', {
 
       initPromise = (async () => {
         await this.checkSetupStatus()
+        // Limpieza del token persistente de versiones anteriores.
+        localStorage.removeItem('openpiar_token')
+
         if (this.token) {
+          await this.fetchCurrentUser()
+          return
+        }
+        const refreshed = await this.refreshSession()
+        if (refreshed) {
           await this.fetchCurrentUser()
         }
       })()
 
       return initPromise
+    },
+
+    /**
+     * Marca la sesión como expirada y redirige al login.
+     *
+     * Antes de cerrar, reintenta el refresh: otra pestaña pudo haber rotado la
+     * cookie y el navegador ya tener el token vigente.
+     */
+    async sessionExpired(): Promise<void> {
+      const refreshed = await this.refreshSession()
+      if (refreshed) {
+        await this.fetchCurrentUser()
+        return
+      }
+      this.clearSession()
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login')
+      }
     },
   },
 })

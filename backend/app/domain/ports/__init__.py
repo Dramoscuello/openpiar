@@ -8,6 +8,8 @@ en app/adapters/ e implementan estas interfaces.
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -39,6 +41,59 @@ class IUsuarioRepository(ABC):
     @abstractmethod
     async def count(self) -> int:
         """Retorna el total de usuarios registrados."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Puerto: Repositorio de Refresh Tokens (sesiones)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RefreshTokenData:
+    """Registro de sesión persistente; nunca contiene el token en claro."""
+    id: UUID
+    usuario_id: UUID
+    family_id: UUID
+    token_hash: str
+    expires_at: datetime
+    revoked_at: Optional[datetime] = None
+    replaced_by: Optional[UUID] = None
+    user_agent: Optional[str] = None
+    ip: Optional[str] = None
+    last_used_at: Optional[datetime] = None
+
+
+class IRefreshTokenRepository(ABC):
+    """Contrato para persistir y revocar refresh tokens con rotación."""
+
+    @abstractmethod
+    async def create(
+        self,
+        *,
+        usuario_id: UUID,
+        token_hash: str,
+        family_id: UUID,
+        expires_at: datetime,
+        user_agent: Optional[str] = None,
+        ip: Optional[str] = None,
+    ) -> RefreshTokenData:
+        ...
+
+    @abstractmethod
+    async def find_by_hash(self, token_hash: str) -> Optional[RefreshTokenData]:
+        """Busca por hash, incluidos los revocados, para detectar reutilización."""
+        ...
+
+    @abstractmethod
+    async def update(self, token: RefreshTokenData) -> None:
+        ...
+
+    @abstractmethod
+    async def revoke_family(self, family_id: UUID) -> None:
+        ...
+
+    @abstractmethod
+    async def revoke_all_for_user(self, usuario_id: UUID) -> None:
         ...
 
 

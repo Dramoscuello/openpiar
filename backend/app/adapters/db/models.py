@@ -124,6 +124,9 @@ class UsuarioORM(Base):
     tour_completado: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=false(), nullable=False
     )
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(
         default=_now, server_default=func.now()
     )
@@ -155,6 +158,42 @@ class UsuarioORM(Base):
         ),
         CheckConstraint("length(email) <= 255", name="ck_usuarios_email_len"),
         Index("usuarios_email_lower_idx", func.lower(email)),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tabla: refresh_tokens — sesiones persistentes con rotación
+# ---------------------------------------------------------------------------
+
+class RefreshTokenORM(Base):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid_pk
+    )
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("usuarios.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    token_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    family_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        default=_now, server_default=func.now()
+    )
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    replaced_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    user_agent: Mapped[Optional[str]] = mapped_column(Text)
+    ip: Mapped[Optional[str]] = mapped_column(Text)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+
+    __table_args__ = (
+        Index("refresh_tokens_usuario_id_idx", usuario_id),
+        Index("refresh_tokens_family_id_idx", family_id),
+        Index("refresh_tokens_expires_at_idx", expires_at),
     )
 
 

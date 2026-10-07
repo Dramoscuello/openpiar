@@ -60,11 +60,11 @@ const toggleTheme = (dark: boolean) => {
   }
 }
 
-const handleLogout = () => {
+const handleLogout = async () => {
   document.documentElement.classList.remove('dark')
   localStorage.setItem('theme', 'light')
   isDarkMode.value = false
-  authStore.logout()
+  await authStore.logout()
   router.push('/login')
 }
 
@@ -107,8 +107,13 @@ const handleChangePassword = async () => {
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.detail || 'Error al cambiar la contraseña.')
-    modalSuccess.value = 'Contraseña actualizada correctamente.'
-    setTimeout(() => closeModal(), 2000)
+    // El backend revoca todas las sesiones al cambiar la contraseña.
+    authStore.clearSession()
+    modalSuccess.value = 'Contraseña actualizada. Inicia sesión de nuevo.'
+    setTimeout(() => {
+      closeModal()
+      router.push('/login')
+    }, 1500)
   } catch (err: any) {
     modalError.value = err.message || 'Error en la petición de cambio de contraseña.'
   } finally {

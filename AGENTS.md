@@ -93,7 +93,8 @@ docker compose down
 Copiar `backend/.env.example` → `backend/.env`. Variables relevantes:
 - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` (PostgreSQL vía asyncpg; `DATABASE_URL` se ensambla automáticamente)
 - `SECRET_KEY` (firma JWT; generar con `openssl rand -hex 32`)
-- `ACCESS_TOKEN_EXPIRE_MINUTES` (default 720)
+- `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30)
+- `REFRESH_TOKEN_EXPIRE_DAYS` (default 1 = 24 h de inactividad) y `REFRESH_REUSE_GRACE_SECONDS` (default 60)
 - `GEMINI_API_KEY` y `GEMINI_MODEL` (default en código: `gemini-3.1-flash-lite`)
 - `OPENAI_API_KEY` (solo para scripts de ingesta de currículum)
 - `APP_ENV`, `SHOW_DOCS`, `CORS_ORIGINS`
@@ -108,7 +109,7 @@ El backend auto-crea las tablas al arrancar vía `lifespan` (`Base.metadata.crea
 2. **Middleware Setup Guard** (`entrypoints/api/middleware.py:33`): retorna **412** en todas las rutas `/api/*` hasta que `configuracion_sistema.setup_completado = TRUE`.
    - Rutas exentas: `/api/v1/setup/*`, `/api/v1/familia`, `/api/v1/health`, `/docs`, `/redoc`, `/openapi.json`, `/favicon.ico`.
 3. Guard del router frontend (`frontend/src/router/index.ts:79`) redirige a `/setup` hasta completar la configuración.
-4. Tras el setup: login → JWT en `localStorage` bajo `openpiar_token` → header `Authorization` en cada petición.
+4. Tras el setup: login → access token de 30 min **en memoria** + refresh token en cookie `HttpOnly` (`openpiar_refresh`, rotación con detección de reuso y 24 h de inactividad) → header `Authorization` en cada petición. El interceptor de `frontend/src/api/client.ts` renueva la sesión ante 401.
 
 ## API Endpoints (v1)
 
@@ -117,7 +118,7 @@ Todos bajo el prefijo `/api/v1` (registrado en `main.py:242`).
 | Prefijo | Archivo | Propósito / Acceso |
 |---------|---------|--------------------|
 | `/api/v1/setup` | `setup.py` | Wizard: `status` (público), `test-db`, `configure` (crea directivo admin), `upload-pei`. Los tres POST exigen header `X-Bootstrap-Token`; `test-db` prueba solo el PostgreSQL configurado |
-| `/api/v1/auth` | `auth.py` | `login`, `me`, `change-password`, `tour-completado`. Público / autenticado |
+| `/api/v1/auth` | `auth.py` | `login`, `refresh`, `logout`, `me`, `change-password`, `tour-completado`. Access de 30 min en memoria; refresh `HttpOnly` con rotación |
 | `/api/v1/estudiantes` | `estudiantes.py` | CRUD Anexo 1 + subrecursos `salud`, `hogar`, `trayectoria`, `matricula` + export/import `.openpiar`. Escritura: directivo o director de grupo |
 | `/api/v1/curriculum` | `curriculum.py` | Búsqueda DBA (`/dba`) y EBC (`/ebc`). Autenticado |
 | `/api/v1/gestion` | `gestion_escolar.py` | Sedes, docentes, directivos, áreas, asignaturas, grados, grupos, carga académica, periodos. Mutaciones: directivo. La carga se edita por docente con `PUT /gestion/carga-academica/docente/{docente_id}` (reemplazo en lote multi-asignatura/multi-grupo) |
@@ -137,7 +138,7 @@ Todos bajo el prefijo `/api/v1` (registrado en `main.py:242`).
 - **Autorización por entidad:** todo acceso a datos de un estudiante pasa por `entrypoints/api/authorization.py::authorize_student_access` (directivo: todo; director de grupo: gestiona solo sus grupos; docente: solo grupos con carga académica, con lectura completa incluida salud y hogar y escritura limitada a sus propios ajustes). Creación de PIAR = director de grupo o directivo; cobertura de asignaturas = docente asignado a la carga académica.
 - **Auditoría de accesos sensibles:** las lecturas de salud y las descargas de soporte médico se registran con `core/audit.py::registrar_acceso_sensible` (logger `app.audit`) sin datos clínicos.
 - **Pydantic v2** en todo el proyecto — usar `model_validator` y `computed_field` (ver `core/config.py`).
-- **Frontend/estado:** 5 stores Pinia en `src/stores/` — `auth.ts`, `dashboard.ts`, `piar.ts`, `students.ts`, `tour.ts`. Persistencia: `openpiar_token` (JWT), `openpiar_student_draft` (borrador), `theme` (modo oscuro).
+- **Frontend/estado:** 5 stores Pinia en `src/stores/` — `auth.ts`, `dashboard.ts`, `piar.ts`, `students.ts`, `tour.ts`. Persistencia: `openpiar_student_draft` (borrador), `theme` (modo oscuro); la sesión vive en memoria y en la cookie `HttpOnly` `openpiar_refresh`. Cliente HTTP central en `src/api/client.ts` (adjunta token y refresca ante 401).
 - **Cliente HTTP frontend:** no hay axios ni cliente central con interceptores. Se usa `fetch` nativo con header `Authorization: Bearer`; el helper `src/api/auth.ts::apiFetch` solo cubre auth/setup.
 - **CSS:** Tailwind CSS 4 (`@tailwindcss/vite`, configuración CSS-first en `src/assets/main.css`). Sin `tailwind.config.js`.
 - **Markdown en git:** la whitelist de `.gitignore` permite `readme.md`, `README.md`, `deploy.md`, `deploy-docker.md` y `AGENTS.md`. El resto de `.md` queda fuera de git (varios son documentos legales o notas locales).

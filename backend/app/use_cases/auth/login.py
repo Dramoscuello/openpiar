@@ -44,7 +44,10 @@ class LoginUseCase:
                 "Correo electrónico o contraseña incorrectos."
             )
 
-        token = create_access_token(subject=str(usuario.id))
+        token = create_access_token(
+            subject=str(usuario.id),
+            token_version=usuario.token_version,
+        )
         return LoginOutput(
             access_token=token,
             token_type="bearer",

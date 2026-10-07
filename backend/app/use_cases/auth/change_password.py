@@ -43,8 +43,9 @@ class ChangePasswordUseCase:
         # Validar la fortaleza de la nueva contraseña
         validar_password_fortaleza(data.new_password)
 
-        # Hashear y actualizar
+        # Hashear y actualizar; subir la versión revoca todos los tokens previos.
         usuario.password_hash = get_password_hash(data.new_password)
+        usuario.token_version += 1
         usuario.updated_at = datetime.now(timezone.utc)
 
         await self._repo.save(usuario)
